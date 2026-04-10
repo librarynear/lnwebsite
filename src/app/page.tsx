@@ -4,16 +4,28 @@ import { MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { supabaseServer } from "@/lib/supabase-server";
 import { getLibraryCoverImageMap } from "@/lib/library-images";
+import { logPerf, measureAsync } from "@/lib/perf";
 import { SaveButton } from "@/components/save-button";
 import { SearchBar } from "@/components/search-bar";
 import type { Tables } from "@/types/supabase";
 
-type LibraryBranch = Tables<"library_branches">;
+type LibraryCardData = Pick<
+  Tables<"library_branches">,
+  | "id"
+  | "slug"
+  | "city"
+  | "display_name"
+  | "locality"
+  | "nearest_metro"
+  | "nearest_metro_distance_km"
+  | "verification_status"
+>;
 
-async function getLibraries(locality?: string, q?: string): Promise<LibraryBranch[]> {
+async function getLibraries(locality?: string, q?: string): Promise<LibraryCardData[]> {
   let query = supabaseServer
     .from("library_branches")
-    .select("*")
+    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status")
+    .eq("is_active", true)
     .order("profile_completeness_score", { ascending: false })
     .limit(20);
 
@@ -55,11 +67,18 @@ interface HomeProps {
 export default async function Home({ searchParams }: HomeProps) {
   const { locality, q } = await searchParams;
 
-  const [libraries, topLocalities] = await Promise.all([
-    getLibraries(locality, q),
-    getTopLocalities(),
+  const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
+    measureAsync("libraries", () => getLibraries(locality, q)),
+    measureAsync("topLocalities", () => getTopLocalities()),
   ]);
-  const coverImageMap = await getLibraryCoverImageMap(libraries.map((lib) => lib.id));
+  const libraries = librariesMeasurement.result;
+  const topLocalities = topLocalitiesMeasurement.result;
+  const coverImagesMeasurement = await measureAsync(
+    "coverImages",
+    () => getLibraryCoverImageMap(libraries.map((lib) => lib.id)),
+  );
+  const coverImageMap = coverImagesMeasurement.result;
+  logPerf("home", [librariesMeasurement.metric, topLocalitiesMeasurement.metric, coverImagesMeasurement.metric], `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`);
 
   return (
     <div className="flex flex-col min-h-screen">

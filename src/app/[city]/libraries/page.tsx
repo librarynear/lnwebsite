@@ -4,6 +4,7 @@ import Image from "next/image";
 import { MapPin, SlidersHorizontal, SearchX, ArrowRight } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
 import { getLibraryCoverImageMap } from "@/lib/library-images";
+import { logPerf, measureAsync } from "@/lib/perf";
 import { SearchBar } from "@/components/search-bar";
 import { LibraryFilters } from "@/components/library-filters";
 import { SaveButton } from "@/components/save-button";
@@ -105,6 +106,7 @@ async function searchLibraries(
     .from("library_branches")
     .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
     .ilike("city", city)
+    .eq("is_active", true)
     .limit(60);
 
   if (locality) query = query.eq("locality", locality);
@@ -125,8 +127,9 @@ async function searchLibraries(
 async function getZeroResultSuggestions(city: string): Promise<Library[]> {
   const { data } = await supabaseServer
     .from("library_branches")
-    .select("*")
+    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
     .ilike("city", city)
+    .eq("is_active", true)
     .eq("verification_status", "verified")
     .order("profile_completeness_score", { ascending: false })
     .limit(8);
@@ -138,6 +141,7 @@ async function getLocalities(city: string): Promise<string[]> {
     .from("library_branches")
     .select("locality")
     .ilike("city", city)
+    .eq("is_active", true)
     .not("locality", "is", null);
 
   if (!data) return [];
@@ -242,17 +246,26 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
   const { q, locality, sort, verified } = await searchParams;
   const verifiedOnly = verified === "1";
 
-  const [{ results: libraries, usedRpc }, localities] = await Promise.all([
-    searchLibraries(city, q, locality, sort, verifiedOnly),
-    getLocalities(city),
+  const [searchMeasurement, localitiesMeasurement] = await Promise.all([
+    measureAsync("searchLibraries", () => searchLibraries(city, q, locality, sort, verifiedOnly)),
+    measureAsync("localities", () => getLocalities(city)),
   ]);
+  const { results: libraries, usedRpc } = searchMeasurement.result;
+  const localities = localitiesMeasurement.result;
 
   const zeroResults = libraries.length === 0;
-  const suggestions = zeroResults && q ? await getZeroResultSuggestions(city) : [];
-  const coverImageMap = await getLibraryCoverImageMap([
-    ...libraries.map((lib) => lib.id),
-    ...suggestions.map((lib) => lib.id),
-  ]);
+  const zeroSuggestionsMeasurement = zeroResults && q
+    ? await measureAsync("zeroResults", () => getZeroResultSuggestions(city))
+    : null;
+  const suggestions = zeroSuggestionsMeasurement?.result ?? [];
+  const coverImagesMeasurement = await measureAsync(
+    "coverImages",
+    () => getLibraryCoverImageMap([
+      ...libraries.map((lib) => lib.id),
+      ...suggestions.map((lib) => lib.id),
+    ]),
+  );
+  const coverImageMap = coverImagesMeasurement.result;
   const librariesWithCovers = libraries.map((lib) => ({
     ...lib,
     coverImageUrl: coverImageMap[lib.id] ?? null,
@@ -261,6 +274,16 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
     ...lib,
     coverImageUrl: coverImageMap[lib.id] ?? null,
   })) as SearchResult[];
+  logPerf(
+    "librariesPage",
+    [
+      searchMeasurement.metric,
+      localitiesMeasurement.metric,
+      ...(zeroSuggestionsMeasurement ? [zeroSuggestionsMeasurement.metric] : []),
+      coverImagesMeasurement.metric,
+    ],
+    `city="${city}" q="${q ?? ""}" locality="${locality ?? ""}" usedRpc=${usedRpc} count=${libraries.length}`,
+  );
 
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
 

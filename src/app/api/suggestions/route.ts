@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
+import { logPerf, measureAsync, toServerTiming } from "@/lib/perf";
 
 export const runtime = "edge";
 export const revalidate = 0;
@@ -13,33 +14,86 @@ export interface Suggestion {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const city = req.nextUrl.searchParams.get("city")?.trim().toLowerCase() ?? "";
 
   if (q.length < 2) {
     return NextResponse.json({ suggestions: [] });
   }
 
-  // Call the search_suggestions RPC
-  const { data, error } = await supabaseServer.rpc("search_suggestions" as never, {
-    query_term: q,
-  } as never);
+  const totalStart = performance.now();
+  const { result: rpcResponse, metric: rpcMetric } = await measureAsync(
+    "rpc",
+    () =>
+      supabaseServer.rpc("search_suggestions" as never, {
+        query_term: q,
+      } as never),
+  );
+  const { data, error } = rpcResponse;
 
   if (error) {
     console.error("Suggestions error:", error.message);
-    // Fallback: simple ilike on display_name
-    const { data: fallback } = await supabaseServer
-      .from("library_branches")
-      .select("id, slug, city, display_name, locality")
-      .or(`display_name.ilike.%${q}%,locality.ilike.%${q}%`)
-      .limit(5);
+    const { result: fallbackResponse, metric: fallbackMetric } = await measureAsync(
+      "fallback",
+      () => {
+        let fallbackQuery = supabaseServer
+          .from("library_branches")
+          .select("slug, city, display_name")
+          .eq("is_active", true)
+          .or(`display_name.ilike.%${q}%,locality.ilike.%${q}%`)
+          .limit(5);
 
-    const suggestions: Suggestion[] = (fallback ?? []).map((r) => ({
+        if (city) {
+          fallbackQuery = fallbackQuery.ilike("city", city);
+        }
+
+        return fallbackQuery;
+      },
+    );
+    const fallback = fallbackResponse.data ?? [];
+
+    const suggestions: Suggestion[] = fallback.map((r) => ({
       type: "library",
       label: r.display_name,
       slug: r.slug,
       city: r.city,
     }));
-    return NextResponse.json({ suggestions });
+
+    const totalMetric = {
+      name: "total",
+      duration: performance.now() - totalStart,
+    };
+    const metrics = [rpcMetric, fallbackMetric, totalMetric];
+    logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=1`);
+
+    return NextResponse.json(
+      { suggestions },
+      {
+        headers: {
+          "Server-Timing": toServerTiming(metrics),
+        },
+      },
+    );
   }
 
-  return NextResponse.json({ suggestions: data ?? [] });
+  const suggestionRows = (data ?? []) as Suggestion[];
+  const scopedData = suggestionRows.filter((suggestion) => {
+    if (!city) return true;
+    return suggestion.city?.toLowerCase() === city;
+  });
+  const suggestions = scopedData.slice(0, 10);
+  const totalMetric = {
+    name: "total",
+    duration: performance.now() - totalStart,
+  };
+  const metrics = [rpcMetric, totalMetric];
+  logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=0 count=${suggestions.length}`);
+
+  return NextResponse.json(
+    { suggestions },
+    {
+      headers: {
+        "Server-Timing": toServerTiming(metrics),
+      },
+    },
+  );
 }

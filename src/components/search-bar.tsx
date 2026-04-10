@@ -21,6 +21,10 @@ const TYPE_LABEL = {
   metro: "Metro Station",
 };
 
+const MIN_QUERY_LENGTH = 2;
+const DEBOUNCE_MS = 220;
+const MAX_CACHED_QUERIES = 25;
+
 function groupSuggestions(suggestions: Suggestion[]) {
   const groups: Record<string, Suggestion[]> = {};
   for (const s of suggestions) {
@@ -41,32 +45,88 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const cacheRef = useRef<Map<string, Suggestion[]>>(new Map());
 
-  // Fetch suggestions with 250ms debounce
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (q.trim().length < 2) {
+    const normalizedQuery = q.trim();
+    if (normalizedQuery.length < MIN_QUERY_LENGTH) {
+      abortRef.current?.abort();
+      setLoading(false);
       setSuggestions([]);
       setOpen(false);
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/suggestions?q=${encodeURIComponent(q)}`);
-      const json = await res.json();
-      setSuggestions(json.suggestions ?? []);
-      setOpen((json.suggestions?.length ?? 0) > 0);
-    } catch {
-      setSuggestions([]);
-    } finally {
+
+    const cacheKey = `${city}:${normalizedQuery.toLowerCase()}`;
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      setSuggestions(cached);
+      setOpen(cached.length > 0);
       setLoading(false);
+      return;
     }
-  }, []);
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+
+    try {
+      const startedAt = performance.now();
+      const res = await fetch(
+        `/api/suggestions?q=${encodeURIComponent(normalizedQuery)}&city=${encodeURIComponent(city)}`,
+        { signal: controller.signal },
+      );
+      if (!res.ok) {
+        throw new Error(`Suggestion request failed with ${res.status}`);
+      }
+      const json = await res.json();
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      const nextSuggestions = json.suggestions ?? [];
+      cacheRef.current.set(cacheKey, nextSuggestions);
+      if (cacheRef.current.size > MAX_CACHED_QUERIES) {
+        const oldestKey = cacheRef.current.keys().next().value;
+        if (oldestKey) {
+          cacheRef.current.delete(oldestKey);
+        }
+      }
+
+      if (process.env.NODE_ENV !== "production") {
+        console.debug(
+          `[perf] suggestions client total=${(performance.now() - startedAt).toFixed(1)}ms q="${normalizedQuery}" count=${nextSuggestions.length}`,
+          res.headers.get("Server-Timing") ? `server=${res.headers.get("Server-Timing")}` : "",
+        );
+      }
+
+      setSuggestions(nextSuggestions);
+      setOpen(nextSuggestions.length > 0);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      setSuggestions([]);
+      setOpen(false);
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [city]);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(val), 250);
+    debounceRef.current = setTimeout(() => fetchSuggestions(val), DEBOUNCE_MS);
   }
 
   function navigate(q: string) {
@@ -96,6 +156,8 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
   }
 
   function clearInput() {
+    abortRef.current?.abort();
+    setLoading(false);
     setQuery("");
     setSuggestions([]);
     setOpen(false);
@@ -111,6 +173,18 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const nextQuery = currentParams.get("q") ?? "";
+    setQuery((currentQuery) => (currentQuery === nextQuery ? currentQuery : nextQuery));
+  }, [currentParams]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
   }, []);
 
   const grouped = groupSuggestions(suggestions);

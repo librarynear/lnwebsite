@@ -4,11 +4,21 @@ import Image from "next/image";
 import { MapPin } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
 import { getLibraryCoverImageMap } from "@/lib/library-images";
+import { logPerf, measureAsync } from "@/lib/perf";
 import { SaveButton } from "@/components/save-button";
 import type { Tables } from "@/types/supabase";
 import type { Metadata } from "next";
 
-type Library = Tables<"library_branches">;
+type Library = Pick<
+  Tables<"library_branches">,
+  | "id"
+  | "slug"
+  | "city"
+  | "display_name"
+  | "nearest_metro"
+  | "nearest_metro_distance_km"
+  | "verification_status"
+>;
 
 interface PageProps {
   params: Promise<{ city: string; slug: string }>;
@@ -25,7 +35,8 @@ function slugToLocalityName(slug: string): string {
 async function getLibrariesByLocality(city: string, locality: string): Promise<Library[]> {
   const { data, error } = await supabaseServer
     .from("library_branches")
-    .select("*")
+    .select("id,slug,city,display_name,nearest_metro,nearest_metro_distance_km,verification_status")
+    .eq("is_active", true)
     .ilike("city", city)
     .ilike("locality", locality)
     .order("profile_completeness_score", { ascending: false });
@@ -72,9 +83,18 @@ export default async function LocalityPage({ params }: PageProps) {
   const { city, slug } = await params;
   const locality = slugToLocalityName(slug);
 
-  const libraries = await getLibrariesByLocality(city, locality);
+  const librariesMeasurement = await measureAsync(
+    "librariesByLocality",
+    () => getLibrariesByLocality(city, locality),
+  );
+  const libraries = librariesMeasurement.result;
   if (libraries.length === 0) notFound();
-  const coverImageMap = await getLibraryCoverImageMap(libraries.map((lib) => lib.id));
+  const coverImagesMeasurement = await measureAsync(
+    "coverImages",
+    () => getLibraryCoverImageMap(libraries.map((lib) => lib.id)),
+  );
+  const coverImageMap = coverImagesMeasurement.result;
+  logPerf("locality", [librariesMeasurement.metric, coverImagesMeasurement.metric], `city="${city}" locality="${locality}" count=${libraries.length}`);
 
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
 
