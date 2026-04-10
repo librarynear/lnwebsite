@@ -3,7 +3,7 @@ import type { Tables } from "@/types/supabase";
 
 type LibraryImage = Tables<"library_images">;
 
-function compareLibraryImages(a: LibraryImage, b: LibraryImage): number {
+function compareLibraryImages(a: Partial<LibraryImage>, b: Partial<LibraryImage>): number {
   const coverRankA = a.is_cover ? 0 : 1;
   const coverRankB = b.is_cover ? 0 : 1;
   if (coverRankA !== coverRankB) return coverRankA - coverRankB;

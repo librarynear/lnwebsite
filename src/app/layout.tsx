@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Suspense } from "react";
-
-const defaultFont = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -44,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${defaultFont.variable} font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 selection:text-foreground`}
+        className="font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 selection:text-foreground"
       >
         <ThemeProvider
           attribute="class"
