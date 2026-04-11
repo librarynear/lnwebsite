@@ -6,7 +6,8 @@
     "dev": "set NEXT_TEST_MODE= && next dev --webpack --disable-source-maps",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "search:smoke": "tsx scripts/search-smoke-test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

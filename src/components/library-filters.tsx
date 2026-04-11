@@ -6,7 +6,8 @@ import { X } from "lucide-react";
 
 const SORT_OPTIONS = [
   { label: "Best Match", value: "" },
-  { label: "Name A–Z", value: "name_asc" },
+  { label: "Nearest First", value: "distance" },
+  { label: "Name A-Z", value: "name_asc" },
   { label: "Most Complete", value: "completeness" },
   { label: "Verified First", value: "verified" },
 ];
@@ -18,6 +19,9 @@ interface LibraryFiltersProps {
   currentSort?: string;
   currentQ?: string;
   verifiedOnly?: boolean;
+  nearbyMode?: boolean;
+  nearbyLat?: string;
+  nearbyLng?: string;
   totalCount: number;
 }
 
@@ -28,6 +32,9 @@ export function LibraryFilters({
   currentSort,
   currentQ,
   verifiedOnly,
+  nearbyMode,
+  nearbyLat,
+  nearbyLng,
   totalCount,
 }: LibraryFiltersProps) {
   const pathname = usePathname();
@@ -39,26 +46,36 @@ export function LibraryFilters({
       locality: currentLocality,
       sort: currentSort,
       verified: verifiedOnly ? "1" : undefined,
+      nearby: nearbyMode ? "1" : undefined,
+      lat: nearbyLat,
+      lng: nearbyLng,
       ...overrides,
     };
-    for (const [k, v] of Object.entries(merged)) {
-      if (v) params.set(k, v);
+
+    for (const [key, value] of Object.entries(merged)) {
+      if (value) params.set(key, value);
     }
+
     return `${pathname}?${params.toString()}`;
   }
 
-  const hasFilters = !!(currentLocality || currentQ || currentSort || verifiedOnly);
+  const hasFilters = !!(currentLocality || currentQ || currentSort || verifiedOnly || nearbyMode);
+  const visibleSortOptions = nearbyMode
+    ? SORT_OPTIONS.filter((option) => option.value !== "")
+    : SORT_OPTIONS.filter((option) => option.value !== "distance");
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Results count */}
       <p className="text-sm text-muted-foreground">
         <span className="font-semibold text-black">{totalCount}</span> libraries found
-        {currentQ && <> for <span className="font-semibold text-black">"{currentQ}"</span></>}
+        {nearbyMode ? (
+          <> <span className="font-semibold text-black">near you</span></>
+        ) : currentQ ? (
+          <> for <span className="font-semibold text-black">&quot;{currentQ}&quot;</span></>
+        ) : null}
         {currentLocality && <> in <span className="font-semibold text-black">{currentLocality}</span></>}
       </p>
 
-      {/* Clear all */}
       {hasFilters && (
         <Link
           href={`/${city}/libraries`}
@@ -68,7 +85,6 @@ export function LibraryFilters({
         </Link>
       )}
 
-      {/* Verified toggle */}
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Filter</p>
         <Link
@@ -84,33 +100,31 @@ export function LibraryFilters({
               verifiedOnly ? "bg-primary border-primary text-white" : "border-border"
             }`}
           >
-            {verifiedOnly && "✓"}
+            {verifiedOnly ? "✓" : ""}
           </span>
           Verified only
         </Link>
       </div>
 
-      {/* Sort */}
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Sort by</p>
         <div className="flex flex-col gap-1">
-          {SORT_OPTIONS.map((opt) => (
+          {visibleSortOptions.map((option) => (
             <Link
-              key={opt.value}
-              href={buildUrl({ sort: opt.value || undefined })}
+              key={option.value}
+              href={buildUrl({ sort: option.value || undefined })}
               className={`text-sm px-3 py-2 rounded-lg transition-colors ${
-                (currentSort ?? "") === opt.value
+                (currentSort ?? "") === option.value
                   ? "bg-primary/5 text-primary font-semibold"
                   : "text-muted-foreground hover:text-black hover:bg-muted/50"
               }`}
             >
-              {opt.label}
+              {option.label}
             </Link>
           ))}
         </div>
       </div>
 
-      {/* Locality */}
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Locality</p>
         <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
@@ -124,17 +138,17 @@ export function LibraryFilters({
           >
             All localities
           </Link>
-          {localities.map((loc) => (
+          {localities.map((locality) => (
             <Link
-              key={loc}
-              href={buildUrl({ locality: loc })}
+              key={locality}
+              href={buildUrl({ locality })}
               className={`text-sm px-3 py-2 rounded-lg transition-colors ${
-                currentLocality === loc
+                currentLocality === locality
                   ? "bg-primary/5 text-primary font-semibold"
                   : "text-muted-foreground hover:text-black hover:bg-muted/50"
               }`}
             >
-              {loc}
+              {locality}
             </Link>
           ))}
         </div>

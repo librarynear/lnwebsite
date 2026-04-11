@@ -6,21 +6,63 @@ export const runtime = "edge";
 export const revalidate = 0;
 
 export interface Suggestion {
-  type: "library" | "locality" | "metro";
+  type: "library" | "locality" | "metro" | "nearby";
   label: string;
   slug: string;
   city: string;
+  distance_km?: number | null;
 }
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   const city = req.nextUrl.searchParams.get("city")?.trim().toLowerCase() ?? "";
+  const lat = Number(req.nextUrl.searchParams.get("lat"));
+  const lng = Number(req.nextUrl.searchParams.get("lng"));
+  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
 
-  if (q.length < 2) {
-    return NextResponse.json({ suggestions: [] });
+  if (!hasCoordinates && q.length < 2) {
+    return NextResponse.json({ suggestions: [], mode: "text" });
   }
 
   const totalStart = performance.now();
+  if (hasCoordinates && q.length < 2) {
+    const { result: nearbyResponse, metric: nearbyMetric } = await measureAsync(
+      "nearby",
+      () =>
+        supabaseServer.rpc("nearby_library_suggestions" as never, {
+          user_lat: lat,
+          user_lng: lng,
+          city_filter: city || null,
+          max_results: 10,
+        } as never),
+    );
+
+    const nearbySuggestions = ((nearbyResponse.data ?? []) as Suggestion[]).filter((suggestion) => {
+      if (!city) return true;
+      return suggestion.city?.toLowerCase() === city;
+    });
+
+    const totalMetric = {
+      name: "total",
+      duration: performance.now() - totalStart,
+    };
+    const metrics = [nearbyMetric, totalMetric];
+    logPerf(
+      "suggestions",
+      metrics,
+      `mode=nearby city="${city || "all"}" count=${nearbySuggestions.length}`,
+    );
+
+    return NextResponse.json(
+      { suggestions: nearbySuggestions, mode: "nearby" },
+      {
+        headers: {
+          "Server-Timing": toServerTiming(metrics),
+        },
+      },
+    );
+  }
+
   const { result: rpcResponse, metric: rpcMetric } = await measureAsync(
     "rpc",
     () =>
@@ -66,7 +108,7 @@ export async function GET(req: NextRequest) {
     logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=1`);
 
     return NextResponse.json(
-      { suggestions },
+      { suggestions, mode: "text" },
       {
         headers: {
           "Server-Timing": toServerTiming(metrics),
@@ -89,7 +131,7 @@ export async function GET(req: NextRequest) {
   logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=0 count=${suggestions.length}`);
 
   return NextResponse.json(
-    { suggestions },
+    { suggestions, mode: "text" },
     {
       headers: {
         "Server-Timing": toServerTiming(metrics),
