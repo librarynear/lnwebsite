@@ -185,7 +185,6 @@ AS $$
     UNION ALL
     SELECT * FROM ranked_metro_matches
   ) combined
-  CROSS JOIN params p
   ORDER BY type_sort ASC, score DESC, label ASC
-  LIMIT p.result_limit;
+  LIMIT (SELECT result_limit FROM params);
 $$;
