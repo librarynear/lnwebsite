@@ -79,10 +79,12 @@ export async function GET(req: NextRequest) {
       () => {
         let fallbackQuery = supabaseServer
           .from("library_branches")
-          .select("slug, city, display_name")
+          .select("slug, city, display_name, verification_status, profile_completeness_score")
           .eq("is_active", true)
           .or(`display_name.ilike.%${q}%,locality.ilike.%${q}%`)
-          .limit(5);
+          .order("verification_status", { ascending: false })
+          .order("profile_completeness_score", { ascending: false })
+          .limit(10);
 
         if (city) {
           fallbackQuery = fallbackQuery.ilike("city", city);

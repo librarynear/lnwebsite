@@ -11,6 +11,8 @@ VALUES
   ('metro', 'Barakhamba Road', 'barakhamba', 'phase1-search-quality')
 ON CONFLICT DO NOTHING;
 
+DROP FUNCTION IF EXISTS public.search_libraries(text, text, int);
+
 CREATE OR REPLACE FUNCTION public.search_libraries(
   query_term  text,
   city_filter text DEFAULT NULL,
@@ -23,7 +25,7 @@ RETURNS TABLE (
   display_name               text,
   locality                   text,
   nearest_metro              text,
-  nearest_metro_distance_km  numeric,
+  nearest_metro_distance_km  double precision,
   verification_status        text,
   profile_completeness_score int,
   rank                       float4

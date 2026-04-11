@@ -34,12 +34,16 @@ type SuggestionRow = {
 };
 
 const DEFAULT_CASES = [
-  { q: "republic library", city: "delhi" },
-  { q: "rajendra nagar", city: "delhi" },
-  { q: "orn", city: "delhi" },
-  { q: "cp", city: "delhi" },
-  { q: "karol bagh", city: "delhi" },
-  { q: "rajiv chowk", city: "delhi" },
+  { q: "republic library", city: "delhi", note: "exact library name" },
+  { q: "repub", city: "delhi", note: "prefix library match" },
+  { q: "rajendra nagar", city: "delhi", note: "locality intent" },
+  { q: "rajinder nagar", city: "delhi", note: "alternate spelling" },
+  { q: "orn", city: "delhi", note: "alias abbreviation" },
+  { q: "cp", city: "delhi", note: "common abbreviation" },
+  { q: "rajendra place", city: "delhi", note: "metro intent" },
+  { q: "rajinder place", city: "delhi", note: "metro alternate spelling" },
+  { q: "karol bagh", city: "delhi", note: "locality search" },
+  { q: "barakhamba", city: "delhi", note: "metro prefix" },
 ];
 
 function getCasesFromArgs() {
@@ -60,7 +64,7 @@ async function run() {
 
   for (const testCase of cases) {
     printDivider();
-    console.log(`Query: "${testCase.q}" | city=${testCase.city}`);
+    console.log(`Query: "${testCase.q}" | city=${testCase.city}${"note" in testCase ? ` | ${testCase.note}` : ""}`);
 
     const startedAt = Date.now();
     const { data: searchResults, error: searchError } = await supabase.rpc(
@@ -80,7 +84,11 @@ async function run() {
       );
     } else {
       console.log(`Top results (${searchMs}ms):`);
-      ((searchResults ?? []) as SearchRow[]).forEach((row, index) => {
+      const rows = (searchResults ?? []) as SearchRow[];
+      if (rows.length === 0) {
+        console.log("  No ranked results returned.");
+      }
+      rows.forEach((row, index) => {
         console.log(
           `${index + 1}. ${row.display_name} | locality=${row.locality ?? "-"} | metro=${row.nearest_metro ?? "-"} | verified=${row.verification_status ?? "-"} | rank=${row.rank ?? "-"}`,
         );
@@ -100,7 +108,11 @@ async function run() {
       console.error(`search_suggestions failed: ${suggestionsError.message}`);
     } else {
       console.log(`Suggestions (${suggestionsMs}ms):`);
-      ((suggestions ?? []) as SuggestionRow[]).forEach((row, index) => {
+      const rows = (suggestions ?? []) as SuggestionRow[];
+      if (rows.length === 0) {
+        console.log("  No suggestions returned.");
+      }
+      rows.forEach((row, index) => {
         console.log(`${index + 1}. [${row.type}] ${row.label} | city=${row.city} | slug=${row.slug}`);
       });
     }
