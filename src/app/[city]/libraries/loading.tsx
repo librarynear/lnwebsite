@@ -25,7 +25,10 @@ export default function Loading() {
           </aside>
 
           <div className="min-w-0 flex-1">
-            <LibraryGridSkeleton count={12} />
+            <LibraryGridSkeleton
+              count={12}
+              gridClassName="grid grid-cols-1 gap-6 gap-y-10 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+            />
           </div>
         </div>
       </div>
