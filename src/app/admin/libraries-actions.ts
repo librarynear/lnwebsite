@@ -1,7 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase-server";
+import {
+  getLibraryCacheTarget,
+  revalidateLibraryContent,
+} from "@/lib/revalidate-library-content";
 
 export async function toggleLibraryVerification(id: string, currentStatus: string | null) {
   const newStatus = currentStatus === "verified" ? "unverified" : "verified";
@@ -16,9 +19,7 @@ export async function toggleLibraryVerification(id: string, currentStatus: strin
     return { ok: false };
   }
 
-  // Use revalidate path to clear cache
-  revalidatePath("/admin/libraries");
-  revalidatePath("/delhi/libraries");
-  
+  revalidateLibraryContent(await getLibraryCacheTarget(id));
+
   return { ok: true, newStatus };
 }

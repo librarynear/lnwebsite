@@ -4,23 +4,1241 @@
 
 ▲ Next.js 16.2.2 (webpack)
 - Local:         http://localhost:3000
-- Network:       http://192.168.1.34:3000
+- Network:       http://192.168.255.55:3000
 - Environments: .env.local
-✓ Ready in 443ms
+✓ Ready in 429ms
 
-○ Compiling / ...
-[browser] [PostHog.js] [SessionRecording] could not load recorder [object Event] 
-[browser] [PostHog.js] [Dead Clicks] failed to load script [object Event] 
-[browser] [PostHog.js] TypeError: Failed to fetch
-[browser] [PostHog.js] Enqueued failed request for retry in 3453
-[perf] home libraries=7652.2ms topLocalitiesCached=31.5ms coverImages=151.7ms locality="" q="" count=20
- GET / 200 in 14.5s (next.js: 5.3s, proxy.ts: 1024ms, application-code: 8.1s)
-[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/035b0913-eeb5-4c16-8ebc-eb357d771c4e/photo_1_CUU4WXgwt.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+[perf] home libraries=176.3ms topLocalitiesCached=192.9ms locality="" q="" count=0
+ GET / 200 in 2.4s (next.js: 1809ms, proxy.ts: 142ms, application-code: 422ms)
+[perf] home libraries=707.1ms topLocalitiesCached=197.5ms locality="" q="" count=20
+ GET /?_ts=1 200 in 1418ms (next.js: 436ms, proxy.ts: 14ms, application-code: 968ms)
+[perf] librariesPage searchLibraries=908.3ms localities=518.7ms libraryCardImages=0.7ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 3.2s (next.js: 1290ms, proxy.ts: 725ms, application-code: 1174ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/delhi/lib..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <LoadingBoundaryProvider loading={[...]}>
+                      <SegmentViewNode type="layout" pagePath="layout.tsx">
+                        <SegmentTrieNode>
+                        <link>
+                        <RootLayout>
+                          <html lang="en" suppressHydrationWarning={true}>
+                            <body
+                              className="font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 sele..."
+-                             cz-shortcut-listen="true"
+                            >
+                  ...
+ 
+[perf] home libraries=682.1ms topLocalitiesCached=582.4ms locality="" q="" count=20
+ GET / 200 in 2.6s (next.js: 608ms, proxy.ts: 1214ms, application-code: 792ms)
+[perf] home libraries=163.3ms topLocalitiesCached=10.9ms locality="" q="" count=20
+ GET / 200 in 734ms (next.js: 8ms, proxy.ts: 463ms, application-code: 263ms)
+[perf] home libraries=776.1ms topLocalitiesCached=367.6ms locality="" q="" count=20
+ GET / 200 in 1411ms (next.js: 3ms, proxy.ts: 413ms, application-code: 995ms)
+[perf] home libraries=382.0ms topLocalitiesCached=245.5ms locality="" q="" count=20
+ GET / 200 in 1200ms (next.js: 6ms, proxy.ts: 621ms, application-code: 574ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <LoadingBoundaryProvider loading={[...]}>
+                      <SegmentViewNode type="layout" pagePath="layout.tsx">
+                        <SegmentTrieNode>
+                        <link>
+                        <RootLayout>
+                          <html lang="en" suppressHydrationWarning={true}>
+                            <body
+                              className="font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 sele..."
+-                             cz-shortcut-listen="true"
+                            >
+                  ...
+ 
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/cca6bef5-a171-4132-803b-644e769653c9/photo_1_-Dwk4he6f.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
-[browser] [PostHog.js] TypeError: Failed to fetch
-[browser] [PostHog.js] Enqueued failed request for retry in 5939
-[browser] [PostHog.js] TypeError: Failed to fetch
-[browser] [PostHog.js] Enqueued failed request for retry in 2403
- GET /delhi/library/republic-library-new-rajendra-nagar 200 in 4.2s (next.js: 3.6s, proxy.ts: 183ms, application-code: 450ms)
- GET /delhi/library/republic-library-new-rajendra-nagar 200 in 388ms (next.js: 11ms, proxy.ts: 155ms, application-code: 222ms)
-^C^C
+[perf] librariesPage searchLibraries=313.3ms localities=137.8ms libraryCardImages=0.6ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 823ms (next.js: 25ms, proxy.ts: 411ms, application-code: 387ms)
+[perf] home libraries=129.6ms topLocalitiesCached=185.4ms locality="" q="" count=20
+ GET / 200 in 380ms (next.js: 4ms, proxy.ts: 145ms, application-code: 231ms)
+ GET /api/suggestions?q=rohi&city=delhi 200 in 707ms (proxy.ts: 253ms)
+[perf] suggestions rpc=380.0ms total=380.1ms q="roh" city="delhi" fallback=0 count=10
+[perf] suggestions rpc=384.6ms total=384.7ms q="rohi" city="delhi" fallback=0 count=10
+[perf] suggestions rpc=387.3ms total=387.3ms q="ro" city="delhi" fallback=0 count=10
+[perf] home libraries=6.0ms topLocalitiesCached=5.7ms locality="" q="" count=20
+ GET / 200 in 458ms (next.js: 8ms, proxy.ts: 361ms, application-code: 90ms)
+[perf] suggestions rpc=297.4ms total=297.5ms q="rohini" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohini&city=delhi 200 in 534ms (proxy.ts: 230ms)
+ GET /api/suggestions?q=ro&city=delhi 200 in 544ms (proxy.ts: 297ms)
+[perf] suggestions rpc=259.9ms total=259.9ms q="ro" city="delhi" fallback=0 count=10
+[perf] suggestions rpc=302.2ms total=302.2ms q="roh" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=roh&city=delhi 200 in 471ms (proxy.ts: 161ms)
+[perf] suggestions rpc=303.2ms total=303.2ms q="rohi" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohi&city=delhi 200 in 546ms (proxy.ts: 237ms)
+[perf] suggestions rpc=208.3ms total=208.3ms q="rohin" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohin&city=delhi 200 in 451ms (proxy.ts: 235ms)
+[perf] librariesPage searchLibraries=463.6ms localities=146.0ms libraryCardImages=210.2ms city="delhi" q="rohini" locality="" mode=search usedRpc=true count=60
+ GET /delhi/libraries?q=rohini 200 in 1026ms (next.js: 15ms, proxy.ts: 229ms, application-code: 781ms)
+ GET /delhi/library/library-in-rohini-2-0-rohini 200 in 3.4s (next.js: 2.5s, proxy.ts: 197ms, application-code: 657ms)
+ GET /delhi/library/library-in-rohini-2-0-rohini 200 in 486ms (next.js: 20ms, proxy.ts: 171ms, application-code: 294ms)
+[perf] home libraries=161.9ms topLocalitiesCached=141.7ms locality="" q="" count=20
+ GET / 200 in 993ms (next.js: 13ms, proxy.ts: 760ms, application-code: 219ms)
+ GET /delhi/library/ramakrishna-mission-general-library-aram-bagh 200 in 772ms (next.js: 11ms, proxy.ts: 206ms, application-code: 554ms)
+ GET /delhi/library/new-era-library-alipur 200 in 562ms (next.js: 17ms, proxy.ts: 175ms, application-code: 369ms)
+ GET /delhi/library/sushma-library-nehru-vihar 200 in 821ms (next.js: 17ms, proxy.ts: 331ms, application-code: 474ms)
+ GET /delhi/library/ramakrishna-mission-general-library-aram-bagh 200 in 508ms (next.js: 14ms, proxy.ts: 160ms, application-code: 334ms)
+[perf] home libraries=12.7ms topLocalitiesCached=11.8ms locality="" q="" count=20
+ GET / 200 in 1017ms (next.js: 76ms, proxy.ts: 766ms, application-code: 175ms)
+[perf] home libraries=641.7ms topLocalitiesCached=642.8ms locality="" q="" count=20
+ GET / 200 in 945ms (next.js: 3ms, proxy.ts: 6ms, application-code: 936ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=786.7ms topLocalitiesCached=785.9ms locality="" q="" count=20
+ GET / 200 in 1237ms (next.js: 5ms, proxy.ts: 276ms, application-code: 957ms)
+[perf] home libraries=276.4ms topLocalitiesCached=275.5ms locality="" q="" count=20
+ GET / 200 in 452ms (next.js: 3ms, proxy.ts: 8ms, application-code: 441ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=152.4ms topLocalitiesCached=151.5ms locality="" q="" count=20
+ GET / 200 in 347ms (next.js: 4ms, proxy.ts: 6ms, application-code: 337ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /delhi/library/vip-library-new-rajendra-nagar 200 in 461ms (next.js: 29ms, proxy.ts: 5ms, application-code: 427ms)
+[perf] home libraries=138.2ms topLocalitiesCached=137.2ms locality="" q="" count=20
+ GET / 200 in 186ms (next.js: 6ms, proxy.ts: 6ms, application-code: 174ms)
+ GET /delhi/library/baba-namdev-public-library-aram-bagh 200 in 357ms (next.js: 20ms, proxy.ts: 8ms, application-code: 328ms)
+[perf] home libraries=157.0ms topLocalitiesCached=156.2ms locality="" q="" count=20
+ GET / 200 in 217ms (next.js: 2ms, proxy.ts: 5ms, application-code: 210ms)
+[perf] home libraries=181.4ms topLocalitiesCached=182.0ms locality="Dwarka" q="" count=20
+ GET /?locality=Dwarka 200 in 244ms (next.js: 4ms, proxy.ts: 7ms, application-code: 233ms)
+ GET / 200 in 16ms (next.js: 3ms, proxy.ts: 7ms, application-code: 6ms)
+[perf] home libraries=134.1ms topLocalitiesCached=127.3ms locality="" q="" count=20
+ GET / 200 in 193ms (next.js: 4ms, proxy.ts: 8ms, application-code: 182ms)
+ GET /delhi/library/maa-saraswati-library-1-0-shakarpur 200 in 319ms (next.js: 13ms, proxy.ts: 6ms, application-code: 300ms)
+[perf] home libraries=154.1ms topLocalitiesCached=155.3ms locality="" q="" count=20
+ GET / 200 in 221ms (next.js: 4ms, proxy.ts: 5ms, application-code: 212ms)
+ GET /delhi/library/pulse-library-ranjeet-nagar 200 in 376ms (next.js: 18ms, proxy.ts: 8ms, application-code: 350ms)
+[perf] home libraries=144.5ms topLocalitiesCached=132.1ms locality="" q="" count=20
+ GET / 200 in 206ms (next.js: 3ms, proxy.ts: 8ms, application-code: 195ms)
+ GET /delhi/library/baba-namdev-public-library-aram-bagh 200 in 342ms (next.js: 19ms, proxy.ts: 7ms, application-code: 316ms)
+[perf] home libraries=144.6ms topLocalitiesCached=145.1ms locality="" q="" count=20
+ GET / 200 in 200ms (next.js: 2ms, proxy.ts: 5ms, application-code: 193ms)
+ GET /delhi/library/vip-library-new-rajendra-nagar 200 in 444ms (next.js: 18ms, proxy.ts: 8ms, application-code: 418ms)
+[perf] home libraries=342.9ms topLocalitiesCached=343.9ms locality="" q="" count=20
+ GET / 200 in 395ms (next.js: 4ms, proxy.ts: 5ms, application-code: 387ms)
+[perf] home libraries=490.7ms topLocalitiesCached=653.8ms locality="" q="" count=20
+ GET / 200 in 844ms (next.js: 3ms, proxy.ts: 6ms, application-code: 834ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /delhi/library/pulse-library-ranjeet-nagar 200 in 1261ms (next.js: 11ms, proxy.ts: 4ms, application-code: 1246ms)
+[perf] home libraries=131.3ms topLocalitiesCached=146.4ms locality="" q="" count=20
+ GET / 200 in 198ms (next.js: 4ms, proxy.ts: 7ms, application-code: 187ms)
+ GET /delhi/library/ramakrishna-mission-general-library-aram-bagh 200 in 315ms (next.js: 10ms, proxy.ts: 4ms, application-code: 300ms)
+[perf] home libraries=148.9ms topLocalitiesCached=146.4ms locality="" q="" count=20
+ GET / 200 in 201ms (next.js: 4ms, proxy.ts: 4ms, application-code: 192ms)
+[perf] home libraries=415.2ms topLocalitiesCached=151.5ms locality="Dwarka" q="" count=20
+ GET /?locality=Dwarka 200 in 464ms (next.js: 4ms, proxy.ts: 7ms, application-code: 454ms)
+[perf] home libraries=175.0ms topLocalitiesCached=186.8ms locality="Karawal Nagar" q="" count=20
+ GET /?locality=Karawal+Nagar 200 in 230ms (next.js: 2ms, proxy.ts: 6ms, application-code: 222ms)
+ GET / 200 in 12ms (next.js: 3ms, proxy.ts: 5ms, application-code: 5ms)
+[perf] home libraries=143.4ms topLocalitiesCached=142.4ms locality="" q="" count=20
+ GET / 200 in 193ms (next.js: 2ms, proxy.ts: 7ms, application-code: 184ms)
+[perf] home libraries=284.5ms topLocalitiesCached=283.5ms locality="" q="" count=20
+ GET / 200 in 489ms (next.js: 4ms, proxy.ts: 8ms, application-code: 478ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=368.8ms topLocalitiesCached=417.0ms locality="" q="" count=20
+ GET / 200 in 598ms (next.js: 2ms, proxy.ts: 5ms, application-code: 590ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /delhi/library/baba-namdev-public-library-aram-bagh 200 in 546ms (next.js: 11ms, proxy.ts: 5ms, application-code: 529ms)
+[perf] home libraries=252.6ms topLocalitiesCached=250.7ms locality="" q="" count=20
+ GET / 200 in 308ms (next.js: 3ms, proxy.ts: 7ms, application-code: 298ms)
+ GET /api/suggestions?q=ro&city=delhi 200 in 487ms (proxy.ts: 6ms)
+[perf] suggestions rpc=444.7ms total=444.8ms q="ro" city="delhi" fallback=0 count=10
+[perf] suggestions rpc=304.0ms total=304.0ms q="rohi" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohi&city=delhi 200 in 323ms (proxy.ts: 9ms)
+[perf] suggestions rpc=271.3ms total=271.3ms q="rohin" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohin&city=delhi 200 in 282ms (proxy.ts: 6ms)
+[perf] suggestions rpc=402.9ms total=402.9ms q="rohini" city="delhi" fallback=0 count=10
+ GET /api/suggestions?q=rohini&city=delhi 200 in 416ms (proxy.ts: 7ms)
+[perf] librariesPage searchLibraries=9.9ms localities=9.6ms libraryCardImages=10.6ms city="delhi" q="rohini" locality="" mode=search usedRpc=true count=60
+ GET /delhi/libraries?q=rohini 200 in 215ms (next.js: 8ms, proxy.ts: 12ms, application-code: 195ms)
+[perf] librariesPage searchLibraries=717.4ms localities=714.8ms libraryCardImages=131.9ms city="delhi" q="rohini" locality="" mode=search usedRpc=true count=60
+ GET /delhi/libraries?q=rohini 200 in 1829ms (next.js: 802ms, proxy.ts: 12ms, application-code: 1016ms)
+[perf] home libraries=7.2ms topLocalitiesCached=6.6ms locality="" q="" count=20
+ GET / 200 in 1544ms (next.js: 10ms, proxy.ts: 1438ms, application-code: 96ms)
+ GET /delhi/library/library-in-rohini-2-0-rohini 200 in 348ms (next.js: 22ms, proxy.ts: 7ms, application-code: 319ms)
+[perf] home libraries=116.3ms topLocalitiesCached=129.8ms locality="" q="" count=20
+ GET / 200 in 177ms (next.js: 3ms, proxy.ts: 5ms, application-code: 169ms)
+ GET /api/suggestions?city=delhi&lat=28.749&lng=77.114 200 in 250ms (proxy.ts: 9ms)
+[perf] suggestions nearby=231.3ms total=231.4ms mode=nearby city="delhi" count=10
+[perf] librariesPage searchLibraries=548.9ms localities=167.5ms libraryCardImages=0.2ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 791ms (next.js: 158ms, proxy.ts: 9ms, application-code: 624ms)
+ GET /delhi/library/lyc-library-rohini 200 in 352ms (next.js: 13ms, proxy.ts: 6ms, application-code: 333ms)
+ GET /delhi/library/prism-the-library-rohini 200 in 565ms (next.js: 13ms, proxy.ts: 5ms, application-code: 547ms)
+[perf] home libraries=360.0ms topLocalitiesCached=431.3ms locality="" q="" count=20
+ GET / 200 in 507ms (next.js: 4ms, proxy.ts: 14ms, application-code: 489ms)
+[perf] home libraries=429.8ms topLocalitiesCached=188.3ms locality="" q="" count=20
+ GET / 200 in 708ms (next.js: 4ms, proxy.ts: 6ms, application-code: 699ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=132.7ms topLocalitiesCached=143.9ms locality="" q="" count=20
+ GET / 200 in 526ms (next.js: 5ms, proxy.ts: 166ms, application-code: 356ms)
+ GET /delhi/library/ramakrishna-mission-general-library-aram-bagh 200 in 309ms (next.js: 13ms, proxy.ts: 5ms, application-code: 291ms)
+[perf] home libraries=125.9ms topLocalitiesCached=128.4ms locality="" q="" count=20
+ GET / 200 in 187ms (next.js: 5ms, proxy.ts: 6ms, application-code: 177ms)
+ GET /delhi/library/bpms-rohini 200 in 308ms (next.js: 15ms, proxy.ts: 7ms, application-code: 287ms)
+ GET /delhi/library/central-secretariat-library-chanakya-puri 200 in 411ms (next.js: 20ms, proxy.ts: 12ms, application-code: 379ms)
+ GET /delhi/library/vip-library-new-rajendra-nagar 200 in 383ms (next.js: 14ms, proxy.ts: 6ms, application-code: 363ms)
+[perf] home libraries=14.3ms topLocalitiesCached=12.8ms locality="" q="" count=20
+ GET / 200 in 266ms (next.js: 70ms, proxy.ts: 16ms, application-code: 180ms)
+[perf] home libraries=9.0ms topLocalitiesCached=8.5ms locality="" q="" count=20
+ GET / 200 in 784ms (next.js: 4ms, proxy.ts: 677ms, application-code: 102ms)
+[perf] home libraries=13.0ms topLocalitiesCached=11.8ms locality="" q="" count=20
+ GET / 200 in 266ms (next.js: 64ms, proxy.ts: 15ms, application-code: 187ms)
+[perf] home libraries=8.9ms topLocalitiesCached=8.6ms locality="" q="" count=20
+ GET / 200 in 483ms (next.js: 5ms, proxy.ts: 380ms, application-code: 98ms)
+[perf] home libraries=9.3ms topLocalitiesCached=9.0ms locality="" q="" count=20
+[perf] home libraries=11.7ms topLocalitiesCached=11.4ms locality="" q="" count=20
+ GET / 200 in 449ms (next.js: 6ms, proxy.ts: 53ms, application-code: 390ms)
+ GET / 200 in 135ms (next.js: 6ms, proxy.ts: 8ms, application-code: 122ms)
+[perf] home libraries=9.5ms topLocalitiesCached=8.9ms locality="" q="" count=20
+ GET / 200 in 792ms (next.js: 4ms, proxy.ts: 673ms, application-code: 114ms)
+[perf] home libraries=6.4ms topLocalitiesCached=6.1ms locality="" q="" count=20
+ GET / 200 in 234ms (next.js: 3ms, proxy.ts: 125ms, application-code: 107ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <LoadingBoundaryProvider loading={[...]}>
+                      <SegmentViewNode type="layout" pagePath="layout.tsx">
+                        <SegmentTrieNode>
+                        <link>
+                        <RootLayout>
+                          <html lang="en" suppressHydrationWarning={true}>
+                            <body
+                              className="font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 sele..."
+-                             cz-shortcut-listen="true"
+                            >
+                  ...
+ 
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+⨯ ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx
+⨯ ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx
+ GET / 500 in 7.1s (next.js: 6.9s, proxy.ts: 18ms, application-code: 154ms)
+ GET / 500 in 7.1s (next.js: 6.4s, proxy.ts: 542ms, application-code: 152ms)
+ GET / 500 in 220ms (next.js: 19ms, proxy.ts: 21ms, application-code: 180ms)
+ GET / 500 in 229ms (next.js: 16ms, proxy.ts: 189ms, application-code: 25ms)
+ GET / 500 in 45ms (next.js: 7ms, proxy.ts: 27ms, application-code: 11ms)
+ GET / 500 in 392ms (next.js: 10ms, proxy.ts: 362ms, application-code: 19ms)
+ GET / 500 in 402ms (next.js: 9ms, proxy.ts: 376ms, application-code: 17ms)
+○ Compiling /_error ...
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+ GET / 500 in 52ms (next.js: 25ms, proxy.ts: 10ms, application-code: 17ms)
+ GET / 500 in 188ms (next.js: 5ms, proxy.ts: 167ms, application-code: 15ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+ GET / 500 in 33ms (next.js: 4ms, proxy.ts: 15ms, application-code: 14ms)
+ GET / 500 in 186ms (next.js: 5ms, proxy.ts: 169ms, application-code: 13ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+ GET / 500 in 32ms (next.js: 5ms, proxy.ts: 16ms, application-code: 11ms)
+ GET / 500 in 184ms (next.js: 6ms, proxy.ts: 161ms, application-code: 17ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 225ms (proxy.ts: 19ms)
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⨯ ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx
+ GET / 500 in 127ms (next.js: 72ms, proxy.ts: 30ms, application-code: 24ms)
+ GET / 500 in 404ms (next.js: 5ms, proxy.ts: 388ms, application-code: 11ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 500 in 299ms (proxy.ts: 17ms)
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx 
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx
+ GET / 500 in 151ms (next.js: 95ms, proxy.ts: 22ms, application-code: 34ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+ GET / 500 in 348ms (next.js: 6ms, proxy.ts: 330ms, application-code: 12ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 500 in 277ms (proxy.ts: 16ms)
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+Import trace for requested module:
+./src/components/deferred-save-button.tsx
+./src/app/page.tsx
+ GET / 500 in 97ms (next.js: 56ms, proxy.ts: 22ms, application-code: 18ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+ GET / 500 in 294ms (next.js: 3ms, proxy.ts: 283ms, application-code: 7ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+ GET / 500 in 1036ms (next.js: 6ms, proxy.ts: 1016ms, application-code: 14ms)
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `----
+
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+[browser] ./src/components/deferred-save-button.tsx
+Error:   x `ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+    ,-[3:1]
+  1 |     import dynamic from "next/dynamic";
+  2 |     
+  3 | ,-> const SaveButton = dynamic(
+  4 | |     () => import("@/components/save-button").then((module) => module.SaveButton),
+  5 | |     {
+  6 | |       ssr: false,
+  7 | |       loading: () => (
+  8 | |         <span
+  9 | |           aria-hidden="true"
+ 10 | |           className="absolute top-3 right-3 z-10 h-6 w-6 rounded-full bg-white/75 shadow-sm"
+ 11 | |         />
+ 12 | |       ),
+ 13 | |     },
+ 14 | `-> );
+ 15 |     
+ 16 |     export function DeferredSaveButton({ libraryId }: { libraryId: string }) {
+ 17 |       return <SaveButton libraryId={libraryId} />;
+    `---- 
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 500 in 244ms (proxy.ts: 21ms)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 331ms (next.js: 6ms, proxy.ts: 216ms, application-code: 109ms)
+⨯ TypeError: controller[kState].transformAlgorithm is not a function
+    at ignore-listed frames {
+  digest: '125465100'
+}
+[perf] home libraries=814.1ms topLocalitiesCached=812.8ms locality="" q="" count=20
+[perf] home libraries=479.3ms topLocalitiesCached=479.8ms locality="" q="" count=20
+ GET / 200 in 1271ms (next.js: 57ms, proxy.ts: 26ms, application-code: 1188ms)
+[perf] home libraries=871.5ms topLocalitiesCached=700.4ms locality="" q="" count=20
+[perf] home libraries=176.8ms topLocalitiesCached=175.9ms locality="" q="" count=20
+ GET / 200 in 1161ms (next.js: 5ms, proxy.ts: 12ms, application-code: 1144ms)
+ GET / 200 in 847ms (next.js: 18ms, proxy.ts: 421ms, application-code: 408ms)
+[perf] home libraries=6.4ms topLocalitiesCached=6.1ms locality="" q="" count=20
+ GET / 200 in 256ms (next.js: 13ms, proxy.ts: 21ms, application-code: 222ms)
+[perf] home libraries=5.0ms topLocalitiesCached=4.7ms locality="" q="" count=20
+ GET / 200 in 74ms (next.js: 4ms, proxy.ts: 6ms, application-code: 64ms)
+[perf] home libraries=4.6ms topLocalitiesCached=4.2ms locality="" q="" count=20
+ GET / 200 in 1125ms (next.js: 3ms, proxy.ts: 1052ms, application-code: 71ms)
+[perf] home libraries=4.8ms topLocalitiesCached=4.5ms locality="" q="" count=20
+ GET / 200 in 195ms (next.js: 3ms, proxy.ts: 124ms, application-code: 68ms)
+[perf] home libraries=5.4ms topLocalitiesCached=5.2ms locality="" q="" count=20
+ GET / 200 in 89ms (next.js: 7ms, proxy.ts: 12ms, application-code: 71ms)
+[perf] home libraries=4.9ms topLocalitiesCached=4.7ms locality="" q="" count=20
+ GET / 200 in 433ms (next.js: 3ms, proxy.ts: 365ms, application-code: 65ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <LoadingBoundaryProvider loading={[...]}>
+                      <SegmentViewNode type="layout" pagePath="layout.tsx">
+                        <SegmentTrieNode>
+                        <link>
+                        <RootLayout>
+                          <html lang="en" suppressHydrationWarning={true}>
+                            <body
+                              className="font-sans antialiased min-h-screen flex flex-col selection:bg-primary/20 sele..."
+-                             cz-shortcut-listen="true"
+                            >
+                  ...
+ 
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=759.5ms topLocalitiesCached=763.1ms locality="" q="" count=20
+ GET / 200 in 1337ms (next.js: 4ms, proxy.ts: 293ms, application-code: 1039ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[perf] home libraries=390.5ms topLocalitiesCached=723.2ms locality="" q="" count=20
+ GET / 200 in 991ms (next.js: 5ms, proxy.ts: 11ms, application-code: 974ms)
+[perf] libraryDetail libraryDetailData=257.6ms slug="central-secretariat-library-chanakya-puri" city="delhi" images=2 feePlans=0
+ GET /delhi/library/central-secretariat-library-chanakya-puri 200 in 602ms (next.js: 25ms, proxy.ts: 267ms, application-code: 310ms)
+[perf] home libraries=166.9ms topLocalitiesCached=131.3ms locality="" q="" count=20
+ GET / 200 in 413ms (next.js: 4ms, proxy.ts: 193ms, application-code: 216ms)
+[perf] libraryDetail libraryDetailData=261.5ms slug="baba-namdev-public-library-aram-bagh" city="delhi" images=1 feePlans=0
+ GET /delhi/library/baba-namdev-public-library-aram-bagh 200 in 467ms (next.js: 18ms, proxy.ts: 150ms, application-code: 298ms)
+[perf] home libraries=355.5ms topLocalitiesCached=141.8ms locality="" q="" count=20
+ GET / 200 in 552ms (next.js: 5ms, proxy.ts: 143ms, application-code: 404ms)
+[perf] home libraries=427.1ms topLocalitiesCached=133.5ms locality="Badarpur" q="" count=20
+ GET /?locality=Badarpur 200 in 668ms (next.js: 5ms, proxy.ts: 179ms, application-code: 484ms)
+ GET / 200 in 148ms (next.js: 3ms, proxy.ts: 139ms, application-code: 6ms)
+[perf] home libraries=148.0ms topLocalitiesCached=306.5ms locality="" q="" count=20
+ GET / 200 in 483ms (next.js: 3ms, proxy.ts: 130ms, application-code: 350ms)
+[perf] home libraries=130.4ms topLocalitiesCached=143.6ms locality="Civil Lines" q="" count=20
+ GET /?locality=Civil+Lines 200 in 320ms (next.js: 3ms, proxy.ts: 128ms, application-code: 189ms)
+ GET / 200 in 236ms (next.js: 3ms, proxy.ts: 228ms, application-code: 5ms)
+[perf] home libraries=151.6ms topLocalitiesCached=152.7ms locality="" q="" count=20
+ GET / 200 in 340ms (next.js: 5ms, proxy.ts: 132ms, application-code: 204ms)
+[perf] home libraries=131.4ms topLocalitiesCached=134.0ms locality="Dwarka" q="" count=20
+ GET /?locality=Dwarka 200 in 320ms (next.js: 3ms, proxy.ts: 135ms, application-code: 182ms)
+⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>) {
+  page: '/'
+}
+[perf] home libraries=9.8ms topLocalitiesCached=8.9ms locality="" q="" count=20
+⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>) {
+  page: '/'
+}
+ GET /?locality=Karawal+Nagar 500 in 1789ms (next.js: 1500ms, proxy.ts: 247ms, application-code: 42ms)
+ GET /?locality=Ghaziabad 500 in 465ms (next.js: 70ms, proxy.ts: 353ms, application-code: 42ms)
+ GET / 200 in 457ms (next.js: 76ms, proxy.ts: 18ms, application-code: 362ms)
+[perf] home libraries=161.9ms topLocalitiesCached=130.0ms locality="Gopal Nagar" q="" count=20
+ GET /?locality=Gopal+Nagar 200 in 941ms (next.js: 4ms, proxy.ts: 722ms, application-code: 214ms)
+[perf] home libraries=307.7ms topLocalitiesCached=309.3ms locality="Janakpuri" q="" count=20
+ GET /?locality=Janakpuri 200 in 938ms (next.js: 4ms, proxy.ts: 567ms, application-code: 368ms)
+ GET / 200 in 232ms (next.js: 5ms, proxy.ts: 221ms, application-code: 6ms)
+[perf] home libraries=147.9ms topLocalitiesCached=167.2ms locality="" q="" count=20
+ GET / 200 in 418ms (next.js: 5ms, proxy.ts: 188ms, application-code: 225ms)
+[perf] libraryDetail libraryDetailData=160.8ms slug="fly-library-1-0-saket" city="delhi" images=0 feePlans=0
+ GET /delhi/library/fly-library-1-0-saket 200 in 612ms (next.js: 24ms, proxy.ts: 358ms, application-code: 230ms)
+[perf] home libraries=181.5ms topLocalitiesCached=134.7ms locality="" q="" count=20
+ GET / 200 in 494ms (next.js: 4ms, proxy.ts: 245ms, application-code: 245ms)
+[perf] libraryDetail libraryDetailData=383.2ms slug="baba-namdev-public-library-aram-bagh" city="delhi" images=1 feePlans=0
+ GET /delhi/library/baba-namdev-public-library-aram-bagh 200 in 753ms (next.js: 18ms, proxy.ts: 234ms, application-code: 501ms)
+[perf] home libraries=170.8ms topLocalitiesCached=142.2ms locality="" q="" count=20
+ GET / 200 in 455ms (next.js: 5ms, proxy.ts: 222ms, application-code: 228ms)
+○ Compiling /[city]/libraries ...
+[perf] home libraries=10.3ms topLocalitiesCached=9.3ms locality="" q="" count=20
+[perf] suggestions nearby=905.1ms total=905.2ms mode=nearby city="delhi" count=10
+ GET /api/suggestions?city=delhi&lat=28.749&lng=77.114 200 in 7.0s (proxy.ts: 325ms)
+[perf] librariesPage searchLibraries=903.1ms localities=827.3ms libraryCardImages=0.6ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 7.2s (next.js: 5.8s, proxy.ts: 317ms, application-code: 1140ms)
+ GET / 200 in 897ms (next.js: 193ms, proxy.ts: 125ms, application-code: 579ms)
+[perf] librariesPage searchLibraries=21.4ms localities=14.9ms libraryCardImages=0.3ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 640ms (next.js: 36ms, proxy.ts: 346ms, application-code: 258ms)
+[perf] home libraries=136.6ms topLocalitiesCached=155.9ms locality="" q="" count=20
+ GET / 200 in 363ms (next.js: 8ms, proxy.ts: 133ms, application-code: 222ms)
+ GET /api/suggestions?city=delhi&lat=28.749&lng=77.114 200 in 269ms (proxy.ts: 133ms)
+[perf] suggestions nearby=130.3ms total=130.3ms mode=nearby city="delhi" count=10
+[perf] librariesPage searchLibraries=320.0ms localities=136.8ms libraryCardImages=0.4ms city="delhi" q="Nearby" locality="" mode=nearby usedRpc=true count=10
+ GET /delhi/libraries?nearby=1&lat=28.7489&lng=77.1138&q=Nearby 200 in 563ms (next.js: 17ms, proxy.ts: 138ms, application-code: 407ms)
+[perf] home libraries=146.3ms topLocalitiesCached=144.1ms locality="" q="" count=20
+ GET / 200 in 374ms (next.js: 5ms, proxy.ts: 178ms, application-code: 192ms)
+[perf] home libraries=212.5ms topLocalitiesCached=147.8ms locality="Civil Lines" q="" count=20
+ GET /?locality=Civil+Lines 200 in 477ms (next.js: 4ms, proxy.ts: 201ms, application-code: 272ms)
+[perf] home libraries=158.6ms topLocalitiesCached=159.7ms locality="" q="" count=20
+ GET / 200 in 384ms (next.js: 5ms, proxy.ts: 156ms, application-code: 222ms)
+Suggestions error: Could not find the function public.search_suggestions(city_filter, max_results, query_term) in the schema cache
+[perf] suggestions rpc=254.7ms fallback=367.0ms total=622.3ms q="cp" city="delhi" fallback=1
+ GET /api/suggestions?q=cp&city=delhi 200 in 647ms (proxy.ts: 12ms)
+[perf] home libraries=4.7ms topLocalitiesCached=4.5ms locality="" q="" count=20
+ GET / 200 in 100ms (next.js: 6ms, proxy.ts: 12ms, application-code: 82ms)
+[perf] home libraries=9.7ms topLocalitiesCached=9.2ms locality="" q="" count=20
+ GET / 200 in 397ms (next.js: 4ms, proxy.ts: 311ms, application-code: 81ms)
+[perf] home libraries=6.3ms topLocalitiesCached=6.1ms locality="" q="" count=20
+ GET / 200 in 125ms (next.js: 7ms, proxy.ts: 14ms, application-code: 104ms)
+[perf] home libraries=10.3ms topLocalitiesCached=10.0ms locality="" q="" count=20
+ GET / 200 in 498ms (next.js: 4ms, proxy.ts: 392ms, application-code: 103ms)
+[perf] home libraries=8.5ms topLocalitiesCached=8.0ms locality="" q="" count=20
+ GET / 200 in 145ms (next.js: 9ms, proxy.ts: 19ms, application-code: 118ms)
+[perf] home libraries=7.7ms topLocalitiesCached=7.3ms locality="" q="" count=20
+ GET / 200 in 366ms (next.js: 4ms, proxy.ts: 241ms, application-code: 121ms)
+[perf] suggestions rpc=225.3ms legacyRpc=359.4ms total=585.0ms q="cp" city="delhi" legacyRpc=1 count=3
+ GET /api/suggestions?q=cp&city=delhi 200 in 1026ms (proxy.ts: 8ms)
+[browser] Image with src "https://ik.imagekit.io/librarynear/libraries/c37b71ce-c81c-4b82-966f-569776497f02/photo_1_KRO131vgO.jpg?tr=w-720,h-720,c-at_max,f-auto,q-72" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[?25h

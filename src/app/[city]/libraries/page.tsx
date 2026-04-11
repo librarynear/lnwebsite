@@ -1,28 +1,21 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { MapPin, SlidersHorizontal, SearchX, ArrowRight, Navigation } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
-import { getLibraryCoverImageMap } from "@/lib/library-images";
+import {
+  type LibraryCardData,
+  runLibraryCardQuery,
+  withCardImages,
+} from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { SearchBar } from "@/components/search-bar";
 import { LibraryFilters } from "@/components/library-filters";
-import { SaveButton } from "@/components/save-button";
-import type { Tables } from "@/types/supabase";
+import { DeferredSaveButton } from "@/components/deferred-save-button";
 import type { Metadata } from "next";
 
-type Library = Tables<"library_branches">;
-
-interface SearchResult {
-  id: string;
-  slug: string;
-  city: string;
-  display_name: string;
-  locality: string | null;
-  nearest_metro: string | null;
-  nearest_metro_distance_km: number | null;
-  verification_status: string | null;
-  profile_completeness_score: number | null;
+interface SearchResult extends LibraryCardData {
   distance_km?: number | null;
   rank?: number;
   coverImageUrl?: string | null;
@@ -55,6 +48,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: `Find the best study libraries in ${cityLabel}. Filter by locality, verify status, view fees and contact details.`,
   };
 }
+
+export const revalidate = 120;
 
 function formatDistance(distanceKm?: number | null) {
   if (typeof distanceKm !== "number") return null;
@@ -92,21 +87,19 @@ async function getNearbyLibraries(
     return [];
   }
 
-  let detailsQuery = supabaseServer
-    .from("library_branches")
-    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
-    .eq("is_active", true)
-    .ilike("city", city)
-    .in("slug", suggestions.map((row) => row.slug));
+  const detailRows = await runLibraryCardQuery((selectClause) => {
+    let detailsQuery = supabaseServer
+      .from("library_branches")
+      .select(selectClause)
+      .eq("is_active", true)
+      .ilike("city", city)
+      .in("slug", suggestions.map((row) => row.slug));
 
-  if (locality) detailsQuery = detailsQuery.eq("locality", locality);
-  if (verifiedOnly) detailsQuery = detailsQuery.eq("verification_status", "verified");
+    if (locality) detailsQuery = detailsQuery.eq("locality", locality);
+    if (verifiedOnly) detailsQuery = detailsQuery.eq("verification_status", "verified");
 
-  const { data: detailRows, error: detailError } = await detailsQuery;
-  if (detailError) {
-    console.error("Nearby library details error:", detailError.message);
-    return [];
-  }
+    return detailsQuery;
+  });
 
   const distanceBySlug = new Map(suggestions.map((row) => [row.slug, row.distance_km ?? null]));
   const libraryBySlug = new Map(
@@ -192,76 +185,78 @@ async function searchLibraries(
       return { results, usedRpc: true, mode: "search" };
     }
 
-    let fallbackQuery = supabaseServer
+    const fallback = await runLibraryCardQuery((selectClause) => {
+      let fallbackQuery = supabaseServer
+        .from("library_branches")
+        .select(selectClause)
+        .ilike("city", city)
+        .or(`display_name.ilike.%${q}%,name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%`)
+        .eq("is_active", true)
+        .limit(60);
+
+      if (locality) fallbackQuery = fallbackQuery.eq("locality", locality);
+      if (verifiedOnly) fallbackQuery = fallbackQuery.eq("verification_status", "verified");
+
+      switch (sort) {
+        case "name_asc":
+          fallbackQuery = fallbackQuery.order("display_name", { ascending: true });
+          break;
+        case "verified":
+          fallbackQuery = fallbackQuery.order("verification_status", { ascending: false });
+          break;
+        case "completeness":
+        default:
+          fallbackQuery = fallbackQuery.order("profile_completeness_score", { ascending: false });
+          break;
+      }
+
+      return fallbackQuery;
+    });
+
+    return { results: fallback as SearchResult[], usedRpc: false, mode: "search" };
+  }
+
+  const data = await runLibraryCardQuery((selectClause) => {
+    let browseQuery = supabaseServer
       .from("library_branches")
-      .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
+      .select(selectClause)
       .ilike("city", city)
-      .or(`display_name.ilike.%${q}%,name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%`)
       .eq("is_active", true)
       .limit(60);
 
-    if (locality) fallbackQuery = fallbackQuery.eq("locality", locality);
-    if (verifiedOnly) fallbackQuery = fallbackQuery.eq("verification_status", "verified");
+    if (locality) browseQuery = browseQuery.eq("locality", locality);
+    if (verifiedOnly) browseQuery = browseQuery.eq("verification_status", "verified");
 
     switch (sort) {
       case "name_asc":
-        fallbackQuery = fallbackQuery.order("display_name", { ascending: true });
+        browseQuery = browseQuery.order("display_name", { ascending: true });
         break;
       case "verified":
-        fallbackQuery = fallbackQuery.order("verification_status", { ascending: false });
+        browseQuery = browseQuery.order("verification_status", { ascending: false });
         break;
       case "completeness":
       default:
-        fallbackQuery = fallbackQuery.order("profile_completeness_score", { ascending: false });
+        browseQuery = browseQuery.order("profile_completeness_score", { ascending: false });
         break;
     }
 
-    const { data: fallback } = await fallbackQuery;
-    return { results: (fallback ?? []) as SearchResult[], usedRpc: false, mode: "search" };
-  }
+    return browseQuery;
+  });
 
-  let browseQuery = supabaseServer
-    .from("library_branches")
-    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
-    .ilike("city", city)
-    .eq("is_active", true)
-    .limit(60);
-
-  if (locality) browseQuery = browseQuery.eq("locality", locality);
-  if (verifiedOnly) browseQuery = browseQuery.eq("verification_status", "verified");
-
-  switch (sort) {
-    case "name_asc":
-      browseQuery = browseQuery.order("display_name", { ascending: true });
-      break;
-    case "verified":
-      browseQuery = browseQuery.order("verification_status", { ascending: false });
-      break;
-    case "completeness":
-    default:
-      browseQuery = browseQuery.order("profile_completeness_score", { ascending: false });
-      break;
-  }
-
-  const { data, error } = await browseQuery;
-  if (error) {
-    console.error("Browse error:", error.message);
-  }
-
-  return { results: (data ?? []) as SearchResult[], usedRpc: false, mode: "browse" };
+  return { results: data as SearchResult[], usedRpc: false, mode: "browse" };
 }
 
-async function getZeroResultSuggestions(city: string): Promise<Library[]> {
-  const { data } = await supabaseServer
-    .from("library_branches")
-    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score")
-    .ilike("city", city)
-    .eq("is_active", true)
-    .eq("verification_status", "verified")
-    .order("profile_completeness_score", { ascending: false })
-    .limit(8);
-
-  return (data ?? []) as Library[];
+async function getZeroResultSuggestions(city: string): Promise<LibraryCardData[]> {
+  return runLibraryCardQuery((selectClause) =>
+    supabaseServer
+      .from("library_branches")
+      .select(selectClause)
+      .ilike("city", city)
+      .eq("is_active", true)
+      .eq("verification_status", "verified")
+      .order("profile_completeness_score", { ascending: false })
+      .limit(8),
+  );
 }
 
 async function getLocalities(city: string): Promise<string[]> {
@@ -286,7 +281,59 @@ async function getLocalities(city: string): Promise<string[]> {
     .map(([name]) => name);
 }
 
-function LibraryCard({ lib, city, nearbyMode }: { lib: SearchResult; city: string; nearbyMode?: boolean }) {
+const getCachedSearchLibraries = unstable_cache(
+  async (
+    city: string,
+    q?: string,
+    locality?: string,
+    sort?: string,
+    verifiedOnly?: boolean,
+  ) => searchLibraries(city, q, locality, sort, verifiedOnly),
+  ["libraries-search-results"],
+  {
+    revalidate: 120,
+    tags: ["library-cards", "library-search-results"],
+  },
+);
+
+const getLibrariesSearchResults =
+  process.env.NODE_ENV === "development" ? searchLibraries : getCachedSearchLibraries;
+
+const getCachedLocalities = unstable_cache(
+  async (city: string) => getLocalities(city),
+  ["library-localities"],
+  {
+    revalidate: 120,
+    tags: ["library-localities", "home-top-localities"],
+  },
+);
+
+const getLibrariesLocalities =
+  process.env.NODE_ENV === "development" ? getLocalities : getCachedLocalities;
+
+const getCachedZeroResultSuggestions = unstable_cache(
+  async (city: string) => getZeroResultSuggestions(city),
+  ["zero-result-suggestions"],
+  {
+    revalidate: 120,
+    tags: ["library-cards", "zero-result-suggestions"],
+  },
+);
+
+const getLibrariesZeroResultSuggestions =
+  process.env.NODE_ENV === "development" ? getZeroResultSuggestions : getCachedZeroResultSuggestions;
+
+function LibraryCard({
+  lib,
+  city,
+  nearbyMode,
+  priority = false,
+}: {
+  lib: SearchResult;
+  city: string;
+  nearbyMode?: boolean;
+  priority?: boolean;
+}) {
   return (
     <Link href={`/${city}/library/${lib.slug}`} className="group flex flex-col gap-2 cursor-pointer">
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
@@ -295,6 +342,7 @@ function LibraryCard({ lib, city, nearbyMode }: { lib: SearchResult; city: strin
             src={lib.coverImageUrl}
             alt={`${lib.display_name} thumbnail`}
             fill
+            priority={priority}
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
@@ -303,7 +351,7 @@ function LibraryCard({ lib, city, nearbyMode }: { lib: SearchResult; city: strin
             <MapPin className="h-10 w-10 text-muted-foreground/20" />
           </div>
         )}
-        <SaveButton libraryId={lib.id} />
+        <DeferredSaveButton libraryId={lib.id} />
         {lib.verification_status === "verified" && (
           <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm">
             Verified
@@ -377,8 +425,8 @@ function ZeroResultState({
             Top verified libraries in {city.charAt(0).toUpperCase() + city.slice(1)}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
-            {suggestions.map((lib) => (
-              <LibraryCard key={lib.id} lib={lib} city={city} />
+            {suggestions.map((lib, index) => (
+              <LibraryCard key={lib.id} lib={lib} city={city} priority={index < 4} />
             ))}
           </div>
         </div>
@@ -397,9 +445,11 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
 
   const [searchMeasurement, localitiesMeasurement] = await Promise.all([
     measureAsync("searchLibraries", () =>
-      searchLibraries(city, q, locality, sort, verifiedOnly, nearbyMode, latitude, longitude),
+      nearbyMode
+        ? searchLibraries(city, q, locality, sort, verifiedOnly, nearbyMode, latitude, longitude)
+        : getLibrariesSearchResults(city, q, locality, sort, verifiedOnly),
     ),
-    measureAsync("localities", () => getLocalities(city)),
+    measureAsync("localities", () => getLibrariesLocalities(city)),
   ]);
 
   const { results: libraries, usedRpc, mode } = searchMeasurement.result;
@@ -407,23 +457,19 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
 
   const zeroResults = libraries.length === 0;
   const zeroSuggestionsMeasurement = zeroResults
-    ? await measureAsync("zeroResults", () => getZeroResultSuggestions(city))
+    ? await measureAsync("zeroResults", () => getLibrariesZeroResultSuggestions(city))
     : null;
   const suggestions = zeroSuggestionsMeasurement?.result ?? [];
 
-  const coverImagesMeasurement = await measureAsync("coverImages", () =>
-    getLibraryCoverImageMap([...libraries.map((lib) => lib.id), ...suggestions.map((lib) => lib.id)]),
-  );
-  const coverImageMap = coverImagesMeasurement.result;
+  const [librariesWithImagesMeasurement, suggestionsWithImagesMeasurement] = await Promise.all([
+    measureAsync("libraryCardImages", () => withCardImages(libraries)),
+    zeroResults
+      ? measureAsync("suggestionCardImages", () => withCardImages(suggestions))
+      : Promise.resolve(null),
+  ]);
 
-  const librariesWithCovers = libraries.map((lib) => ({
-    ...lib,
-    coverImageUrl: coverImageMap[lib.id] ?? null,
-  }));
-  const suggestionsWithCovers = suggestions.map((lib) => ({
-    ...lib,
-    coverImageUrl: coverImageMap[lib.id] ?? null,
-  })) as SearchResult[];
+  const librariesWithCovers = librariesWithImagesMeasurement.result;
+  const suggestionsWithCovers = suggestionsWithImagesMeasurement?.result ?? [];
 
   logPerf(
     "librariesPage",
@@ -431,7 +477,8 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
       searchMeasurement.metric,
       localitiesMeasurement.metric,
       ...(zeroSuggestionsMeasurement ? [zeroSuggestionsMeasurement.metric] : []),
-      coverImagesMeasurement.metric,
+      librariesWithImagesMeasurement.metric,
+      ...(suggestionsWithImagesMeasurement ? [suggestionsWithImagesMeasurement.metric] : []),
     ],
     `city="${city}" q="${q ?? ""}" locality="${locality ?? ""}" mode=${mode} usedRpc=${usedRpc} count=${libraries.length}`,
   );
@@ -548,8 +595,14 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
-                {librariesWithCovers.map((lib) => (
-                  <LibraryCard key={lib.id} lib={lib} city={city} nearbyMode={nearbyMode} />
+                {librariesWithCovers.map((lib, index) => (
+                  <LibraryCard
+                    key={lib.id}
+                    lib={lib}
+                    city={city}
+                    nearbyMode={nearbyMode}
+                    priority={index < 4}
+                  />
                 ))}
               </div>
             )}

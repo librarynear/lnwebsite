@@ -1,24 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
-import { getLibraryCoverImageMap } from "@/lib/library-images";
+import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
-import { SaveButton } from "@/components/save-button";
-import type { Tables } from "@/types/supabase";
+import { DeferredSaveButton } from "@/components/deferred-save-button";
 import type { Metadata } from "next";
-
-type Library = Pick<
-  Tables<"library_branches">,
-  | "id"
-  | "slug"
-  | "city"
-  | "display_name"
-  | "nearest_metro"
-  | "nearest_metro_distance_km"
-  | "verification_status"
->;
 
 interface PageProps {
   params: Promise<{ city: string; slug: string }>;
@@ -32,18 +21,29 @@ function slugToLocalityName(slug: string): string {
     .join(" ");
 }
 
-async function getLibrariesByLocality(city: string, locality: string): Promise<Library[]> {
-  const { data, error } = await supabaseServer
-    .from("library_branches")
-    .select("id,slug,city,display_name,nearest_metro,nearest_metro_distance_km,verification_status")
-    .eq("is_active", true)
-    .ilike("city", city)
-    .ilike("locality", locality)
-    .order("profile_completeness_score", { ascending: false });
-
-  if (error || !data) return [];
-  return data;
+async function getLibrariesByLocality(city: string, locality: string): Promise<LibraryCardData[]> {
+  return runLibraryCardQuery((selectClause) =>
+    supabaseServer
+      .from("library_branches")
+      .select(selectClause)
+      .eq("is_active", true)
+      .ilike("city", city)
+      .ilike("locality", locality)
+      .order("profile_completeness_score", { ascending: false }),
+  );
 }
+
+const getCachedLibrariesByLocality = unstable_cache(
+  async (city: string, locality: string) => getLibrariesByLocality(city, locality),
+  ["libraries-by-locality"],
+  {
+    revalidate: 120,
+    tags: ["library-cards"],
+  },
+);
+
+const getLocalityLibraries =
+  process.env.NODE_ENV === "development" ? getLibrariesByLocality : getCachedLibrariesByLocality;
 
 export async function generateStaticParams() {
   if (process.env.NODE_ENV === "development") {
@@ -71,7 +71,7 @@ export async function generateStaticParams() {
   return params;
 }
 
-export const revalidate = 3600;
+export const revalidate = 120;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city, slug } = await params;
@@ -89,16 +89,11 @@ export default async function LocalityPage({ params }: PageProps) {
 
   const librariesMeasurement = await measureAsync(
     "librariesByLocality",
-    () => getLibrariesByLocality(city, locality),
+    () => getLocalityLibraries(city, locality),
   );
-  const libraries = librariesMeasurement.result;
+  const libraries = librariesMeasurement.result.map(withCardImage);
   if (libraries.length === 0) notFound();
-  const coverImagesMeasurement = await measureAsync(
-    "coverImages",
-    () => getLibraryCoverImageMap(libraries.map((lib) => lib.id)),
-  );
-  const coverImageMap = coverImagesMeasurement.result;
-  logPerf("locality", [librariesMeasurement.metric, coverImagesMeasurement.metric], `city="${city}" locality="${locality}" count=${libraries.length}`);
+  logPerf("locality", [librariesMeasurement.metric], `city="${city}" locality="${locality}" count=${libraries.length}`);
 
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
 
@@ -147,18 +142,19 @@ export default async function LocalityPage({ params }: PageProps) {
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-          {libraries.map((lib) => (
+          {libraries.map((lib, index) => (
             <Link
               href={`/${city}/library/${lib.slug}`}
               key={lib.id}
               className="group flex flex-col gap-2 cursor-pointer"
             >
               <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
-                {coverImageMap[lib.id] ? (
+                {lib.coverImageUrl ? (
                   <Image
-                    src={coverImageMap[lib.id]}
+                    src={lib.coverImageUrl}
                     alt={`${lib.display_name} thumbnail`}
                     fill
+                    priority={index < 4}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
@@ -167,7 +163,7 @@ export default async function LocalityPage({ params }: PageProps) {
                     <MapPin className="h-10 w-10 text-muted-foreground/20" />
                   </div>
                 )}
-                <SaveButton libraryId={lib.id} />
+                <DeferredSaveButton libraryId={lib.id} />
                 {lib.verification_status === "verified" && (
                   <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm">
                     Verified

@@ -59,6 +59,10 @@ function printDivider() {
   console.log("-".repeat(90));
 }
 
+function isMissingSuggestionFastPath(errorMessage: string) {
+  return /Could not find the function public\.search_suggestions/i.test(errorMessage);
+}
+
 async function run() {
   const cases = getCasesFromArgs();
 
@@ -96,13 +100,26 @@ async function run() {
     }
 
     const suggestionsStartedAt = Date.now();
-    const { data: suggestions, error: suggestionsError } = await supabase.rpc(
+    let { data: suggestions, error: suggestionsError } = await supabase.rpc(
       "search_suggestions" as never,
       {
         query_term: testCase.q,
+        city_filter: testCase.city,
+        max_results: 10,
       } as never,
     );
     const suggestionsMs = Date.now() - suggestionsStartedAt;
+
+    if (suggestionsError && isMissingSuggestionFastPath(suggestionsError.message)) {
+      const legacyResponse = await supabase.rpc(
+        "search_suggestions" as never,
+        {
+          query_term: testCase.q,
+        } as never,
+      );
+      suggestions = legacyResponse.data;
+      suggestionsError = legacyResponse.error;
+    }
 
     if (suggestionsError) {
       console.error(`search_suggestions failed: ${suggestionsError.message}`);

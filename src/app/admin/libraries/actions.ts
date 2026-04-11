@@ -1,9 +1,21 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase-server";
+import type { TablesUpdate } from "@/types/supabase";
+import {
+  getLibraryCacheTarget,
+  revalidateLibraryContent,
+} from "@/lib/revalidate-library-content";
+
+type FeePlanInput = {
+  duration_label?: string | null;
+  seat_type?: string | null;
+  price?: string | number | null;
+};
 
 export async function updateLibraryBranch(id: string, formData: FormData) {
+  const previousTarget = await getLibraryCacheTarget(id);
+
   const payload = {
     display_name: formData.get("display_name") as string,
     locality: formData.get("locality") as string,
@@ -22,19 +34,18 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   };
 
   const feePlansJson = formData.get("fee_plans_json") as string;
-  let feePlans: any[] = [];
+  let feePlans: FeePlanInput[] = [];
   if (feePlansJson) {
     try {
-      feePlans = JSON.parse(feePlansJson);
-    } catch (e) {
+      const parsed = JSON.parse(feePlansJson) as unknown;
+      feePlans = Array.isArray(parsed) ? (parsed as FeePlanInput[]) : [];
+    } catch {
       console.warn("Invalid fee plans JSON");
     }
   }
 
-  // Convert empty strings to null for text fields where appropriate, 
-  // though Supabase can handle empty strings for text.
-  const cleanedPayload: any = Object.fromEntries(
-    Object.entries(payload).map(([k, v]) => [k, v === "" ? null : v])
+  const cleanedPayload: TablesUpdate<"library_branches"> = Object.fromEntries(
+    Object.entries(payload).map(([k, v]) => [k, v === "" ? null : v]),
   );
 
   const { error } = await supabaseServer
@@ -52,27 +63,23 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   
   // 2. Insert new plans
   if (feePlans.length > 0) {
-    const plansToInsert = feePlans.map(plan => {
-      const duration = plan.duration_label || 'Monthly';
-      const seat = plan.seat_type || 'Unreserved';
+    const plansToInsert = feePlans.map((plan) => {
+      const duration = plan.duration_label || "Monthly";
+      const seat = plan.seat_type || "Unreserved";
       return {
         library_branch_id: id,
         duration_label: duration,
         plan_name: `${duration} - ${seat}`,
-        price: plan.price ? parseFloat(plan.price) : 0,
-        seat_type: seat
+        price: plan.price ? parseFloat(String(plan.price)) : 0,
+        seat_type: seat,
       };
     });
     await supabaseServer.from("library_fee_plans").insert(plansToInsert);
   }
 
-  // Revalidate the admin page and the specific library page
-  revalidatePath("/admin/libraries");
-  
-  // Since we don't safely know the dynamic slug here, revalidating everything or we could return success.
-  // The layout/page for consumer UI is cached per path, so it might take 1hr to naturally revalidate, 
-  // but let's revalidate the entire app router cache for simplicity.
-  revalidatePath("/", "layout"); 
+  const nextTarget = await getLibraryCacheTarget(id);
+  revalidateLibraryContent(previousTarget);
+  revalidateLibraryContent(nextTarget);
 
   return { success: true };
 }

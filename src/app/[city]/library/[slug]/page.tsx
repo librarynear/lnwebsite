@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { MapPin, Clock, ShieldCheck, Share2, Heart, ExternalLink, Navigation } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabaseServer } from "@/lib/supabase-server";
+import { getOptimizedImageUrl } from "@/lib/library-images";
+import { logPerf, measureAsync } from "@/lib/perf";
 import { EnquiryForm } from "@/components/enquiry-form";
 import type { Tables } from "@/types/supabase";
 import type { Metadata } from "next";
@@ -15,6 +18,78 @@ import { MapEmbed } from "@/components/map-embed";
 
 type LibraryBranch = Tables<"library_branches">;
 type FeePlan = Tables<"library_fee_plans">;
+type LibraryImage = Pick<Tables<"library_images">, "imagekit_url" | "sort_order" | "is_cover">;
+
+type LibraryDetailData = Pick<
+  LibraryBranch,
+  | "id"
+  | "slug"
+  | "city"
+  | "display_name"
+  | "locality"
+  | "district"
+  | "formatted_address"
+  | "full_address"
+  | "latitude"
+  | "longitude"
+  | "map_link"
+  | "nearest_metro"
+  | "nearest_metro_distance_km"
+  | "verification_status"
+  | "opening_time"
+  | "closing_time"
+  | "pin_code"
+  | "description"
+  | "amenities_text"
+  | "total_seats"
+  | "phone_number"
+  | "state"
+> & {
+  library_fee_plans: FeePlan[] | null;
+  library_images: LibraryImage[] | null;
+};
+
+const LIBRARY_DETAIL_SELECT = `
+  id,
+  slug,
+  city,
+  display_name,
+  locality,
+  district,
+  formatted_address,
+  full_address,
+  latitude,
+  longitude,
+  map_link,
+  nearest_metro,
+  nearest_metro_distance_km,
+  verification_status,
+  opening_time,
+  closing_time,
+  pin_code,
+  description,
+  amenities_text,
+  total_seats,
+  phone_number,
+  state,
+  library_fee_plans (
+    id,
+    library_branch_id,
+    plan_name,
+    price,
+    currency,
+    description,
+    duration_label,
+    seat_type,
+    sort_order,
+    is_active
+  ),
+  library_images (
+    imagekit_url,
+    sort_order,
+    is_cover
+  )
+`;
 
 interface PageProps {
   params: Promise<{ city: string; slug: string }>;
@@ -32,44 +107,54 @@ export async function generateStaticParams() {
   return (data ?? []).map((b) => ({ city: b.city.toLowerCase(), slug: b.slug }));
 }
 
-export const revalidate = 3600; // Re-generate every hour if data changes
+export const revalidate = 120;
 
-async function getLibrary(slug: string): Promise<LibraryBranch | null> {
+function normalizeLibraryDetail(data: LibraryDetailData): LibraryDetailData {
+  const library_fee_plans = (data.library_fee_plans ?? [])
+    .filter((plan) => plan.is_active !== false)
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+
+  const library_images = [...(data.library_images ?? [])].sort((a, b) => {
+    const aPriority = a.is_cover ? 0 : 1;
+    const bPriority = b.is_cover ? 0 : 1;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    return (a.sort_order ?? 999) - (b.sort_order ?? 999);
+  });
+
+  return {
+    ...data,
+    library_fee_plans,
+    library_images,
+  };
+}
+
+async function getLibraryDetailData(slug: string): Promise<LibraryDetailData | null> {
   const { data, error } = await supabaseServer
     .from("library_branches")
-    .select("*")
+    .select(LIBRARY_DETAIL_SELECT)
     .eq("slug", slug)
+    .eq("is_active", true)
     .single();
 
   if (error || !data) return null;
-  return data;
+  return normalizeLibraryDetail(data as LibraryDetailData);
 }
 
-async function getFeePlans(libraryId: string): Promise<FeePlan[]> {
-  const { data, error } = await supabaseServer
-    .from("library_fee_plans")
-    .select("*")
-    .eq("library_branch_id", libraryId)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+const getCachedLibraryDetailData = unstable_cache(
+  async (slug: string) => getLibraryDetailData(slug),
+  ["library-detail-data"],
+  {
+    revalidate: 120,
+    tags: ["library-detail", "library-cards"],
+  },
+);
 
-  if (error || !data) return [];
-  return data;
-}
-
-async function getLibraryImages(libraryId: string): Promise<string[]> {
-  const { data } = await supabaseServer
-    .from("library_images")
-    .select("imagekit_url")
-    .eq("library_branch_id", libraryId)
-    .order("sort_order", { ascending: true });
-
-  return data?.map(d => d.imagekit_url) ?? [];
-}
+const getLibraryDetailForRoute =
+  process.env.NODE_ENV === "development" ? getLibraryDetailData : getCachedLibraryDetailData;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const lib = await getLibrary(slug);
+  const lib = await getLibraryDetailForRoute(slug);
   if (!lib) return { title: "Library Not Found" };
   return {
     title: `${lib.display_name} | StudyStash`,
@@ -89,14 +174,25 @@ function parseAmenities(amenitiesText: string | null): string[] {
 export default async function LibraryDetailPage({ params }: PageProps) {
   const { city, slug } = await params;
 
-  const lib = await getLibrary(slug);
+  const libraryMeasurement = await measureAsync(
+    "libraryDetailData",
+    () => getLibraryDetailForRoute(slug),
+  );
+  const lib = libraryMeasurement.result;
   if (!lib) notFound();
 
-  const [feePlans, images] = await Promise.all([
-    getFeePlans(lib.id),
-    getLibraryImages(lib.id),
-  ]);
+  const feePlans = lib.library_fee_plans ?? [];
+  const images = (lib.library_images ?? [])
+    .map((image, index) =>
+      getOptimizedImageUrl(image.imagekit_url, index === 0 ? "detailHero" : "detailThumb"),
+    )
+    .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
   const amenities = parseAmenities(lib.amenities_text);
+  logPerf(
+    "libraryDetail",
+    [libraryMeasurement.metric],
+    `slug="${slug}" city="${city}" images=${images.length} feePlans=${feePlans.length}`,
+  );
 
   const walkingMins = lib.nearest_metro_distance_km
     ? Math.round(lib.nearest_metro_distance_km * 12)

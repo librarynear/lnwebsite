@@ -4,41 +4,27 @@ import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { supabaseServer } from "@/lib/supabase-server";
-import { getLibraryCoverImageMap } from "@/lib/library-images";
+import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
-import { SaveButton } from "@/components/save-button";
+import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { SearchBar } from "@/components/search-bar";
-import type { Tables } from "@/types/supabase";
 
-type LibraryCardData = Pick<
-  Tables<"library_branches">,
-  | "id"
-  | "slug"
-  | "city"
-  | "display_name"
-  | "locality"
-  | "nearest_metro"
-  | "nearest_metro_distance_km"
-  | "verification_status"
->;
+export const revalidate = 120;
 
 async function getLibraries(locality?: string, q?: string): Promise<LibraryCardData[]> {
-  let query = supabaseServer
-    .from("library_branches")
-    .select("id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status")
-    .eq("is_active", true)
-    .order("profile_completeness_score", { ascending: false })
-    .limit(20);
+  return runLibraryCardQuery((selectClause) => {
+    let query = supabaseServer
+      .from("library_branches")
+      .select(selectClause)
+      .eq("is_active", true)
+      .order("profile_completeness_score", { ascending: false })
+      .limit(20);
 
-  if (locality) query = query.eq("locality", locality);
-  if (q) query = query.or(`name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%,display_name.ilike.%${q}%`);
+    if (locality) query = query.eq("locality", locality);
+    if (q) query = query.or(`name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%,display_name.ilike.%${q}%`);
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("Failed to fetch libraries:", error.message);
-    return [];
-  }
-  return data ?? [];
+    return query;
+  });
 }
 
 async function getTopLocalities(): Promise<string[]> {
@@ -57,7 +43,7 @@ async function getTopLocalities(): Promise<string[]> {
 
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
+    .slice(0, 25)
     .map(([name]) => name);
 }
 
@@ -65,10 +51,25 @@ const getCachedTopLocalities = unstable_cache(
   async () => getTopLocalities(),
   ["home-top-localities"],
   {
-    revalidate: 60,
+    revalidate: 120,
     tags: ["home-top-localities"],
   },
 );
+
+const getCachedLibraries = unstable_cache(
+  async (locality?: string, q?: string) => getLibraries(locality, q),
+  ["home-libraries"],
+  {
+    revalidate: 120,
+    tags: ["library-cards"],
+  },
+);
+
+const getHomeTopLocalities =
+  process.env.NODE_ENV === "development" ? getTopLocalities : getCachedTopLocalities;
+
+const getHomeLibraries =
+  process.env.NODE_ENV === "development" ? getLibraries : getCachedLibraries;
 
 interface HomeProps {
   searchParams: Promise<{ locality?: string; q?: string }>;
@@ -78,17 +79,12 @@ export default async function Home({ searchParams }: HomeProps) {
   const { locality, q } = await searchParams;
 
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
-    measureAsync("libraries", () => getLibraries(locality, q)),
-    measureAsync("topLocalitiesCached", () => getCachedTopLocalities()),
+    measureAsync("libraries", () => getHomeLibraries(locality, q)),
+    measureAsync("topLocalitiesCached", () => getHomeTopLocalities()),
   ]);
-  const libraries = librariesMeasurement.result;
+  const libraries = librariesMeasurement.result.map(withCardImage);
   const topLocalities = topLocalitiesMeasurement.result;
-  const coverImagesMeasurement = await measureAsync(
-    "coverImages",
-    () => getLibraryCoverImageMap(libraries.map((lib) => lib.id)),
-  );
-  const coverImageMap = coverImagesMeasurement.result;
-  logPerf("home", [librariesMeasurement.metric, topLocalitiesMeasurement.metric, coverImagesMeasurement.metric], `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`);
+  logPerf("home", [librariesMeasurement.metric, topLocalitiesMeasurement.metric], `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -102,31 +98,30 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
       </section>
 
-      {/* LOCALITY FILTER TABS */}
-      <div className="w-full border-b border-border/50 sticky top-20 bg-white z-30">
-        <div className="container mx-auto px-6 md:px-10 flex items-center gap-8 overflow-x-auto no-scrollbar py-4">
+      <div className="w-full border-b border-border/50 sticky top-20 bg-white z-30 shadow-sm">
+        <div className="container mx-auto px-6 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
 
           {/* All tab */}
           <Link
             href="/"
-            className={`flex flex-col items-center gap-1.5 cursor-pointer transition-colors min-w-max pb-1 border-b-2 ${!locality ? "text-black border-black" : "text-muted-foreground border-transparent hover:border-black hover:text-black"
+            className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-medium tracking-wide transition-all min-w-max ${!locality
+                ? "bg-primary text-white shadow-sm"
+                : "bg-white text-muted-foreground border border-primary/30 hover:border-primary hover:bg-primary/5 hover:text-primary"
               }`}
           >
-            <MapPin className="h-6 w-6" />
-            <span className="text-xs font-medium">All Delhi</span>
+            All Delhi
           </Link>
 
           {topLocalities.map((loc) => (
             <Link
               key={loc}
               href={`/?locality=${encodeURIComponent(loc)}`}
-              className={`flex flex-col items-center gap-1.5 cursor-pointer transition-colors min-w-max pb-1 border-b-2 ${locality === loc
-                ? "text-black border-black"
-                : "text-muted-foreground border-transparent hover:border-black hover:text-black"
+              className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-normal tracking-wide transition-all min-w-max ${locality === loc
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-white text-muted-foreground border border-primary/30 hover:border-primary hover:bg-primary/5 hover:text-primary"
                 }`}
             >
-              <MapPin className="h-6 w-6" />
-              <span className="text-xs font-medium">{loc}</span>
+              {loc}
             </Link>
           ))}
         </div>
@@ -157,18 +152,19 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-            {libraries.map((lib) => (
+            {libraries.map((lib, index) => (
               <Link
                 href={`/${lib.city.toLowerCase()}/library/${lib.slug}`}
                 key={lib.id}
                 className="group flex flex-col gap-2 cursor-pointer"
               >
                 <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
-                  {coverImageMap[lib.id] ? (
+                  {lib.coverImageUrl ? (
                     <Image
-                      src={coverImageMap[lib.id]}
+                      src={lib.coverImageUrl}
                       alt={`${lib.display_name} thumbnail`}
                       fill
+                      priority={index < 4}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     />
@@ -177,7 +173,7 @@ export default async function Home({ searchParams }: HomeProps) {
                       <MapPin className="h-10 w-10 text-muted-foreground/20" />
                     </div>
                   )}
-                  <SaveButton libraryId={lib.id} />
+                  <DeferredSaveButton libraryId={lib.id} />
                   {lib.verification_status === "verified" && (
                     <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm">
                       Verified

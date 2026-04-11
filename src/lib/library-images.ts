@@ -2,6 +2,23 @@ import { supabaseServer } from "@/lib/supabase-server";
 import type { Tables } from "@/types/supabase";
 
 type LibraryImage = Tables<"library_images">;
+type ImageVariant = "card" | "detailHero" | "detailThumb";
+
+const IMAGEKIT_TRANSFORMS: Record<ImageVariant, string> = {
+  card: "tr=w-720,h-720,c-at_max,f-auto,q-72",
+  detailHero: "tr=w-1400,h-1400,c-at_max,f-auto,q-78",
+  detailThumb: "tr=w-900,h-900,c-at_max,f-auto,q-75",
+};
+
+export function getOptimizedImageUrl(url: string | null | undefined, variant: ImageVariant = "card"): string | null {
+  if (!url) return null;
+
+  const transform = IMAGEKIT_TRANSFORMS[variant];
+  if (!transform) return url;
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${transform}`;
+}
 
 function compareLibraryImages(a: Partial<LibraryImage>, b: Partial<LibraryImage>): number {
   const coverRankA = a.is_cover ? 0 : 1;

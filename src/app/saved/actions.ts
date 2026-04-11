@@ -1,26 +1,25 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase-server";
-import { getLibraryCoverImageMap } from "@/lib/library-images";
+import {
+  runLibraryCardQuery,
+  withCardImages,
+} from "@/lib/library-card-data";
 
 export async function getSavedLibraries(ids: string[]) {
   if (!ids || ids.length === 0) return [];
 
-  const { data, error } = await supabaseServer
-    .from("library_branches")
-    .select("id, slug, city, display_name, locality, nearest_metro, nearest_metro_distance_km, verification_status")
-    .in("id", ids);
+  const data = await runLibraryCardQuery((selectClause) =>
+    supabaseServer
+      .from("library_branches")
+      .select(selectClause)
+      .in("id", ids),
+  );
 
-  if (error) {
-    console.error("Error fetching saved libraries:", error);
-    return [];
-  }
+  const librariesWithImages = await withCardImages(data);
+  const libraryById = new Map(librariesWithImages.map((library) => [library.id, library]));
 
-  const libraries = data ?? [];
-  const coverImageMap = await getLibraryCoverImageMap(libraries.map((library) => library.id));
-
-  return libraries.map((library) => ({
-    ...library,
-    coverImageUrl: coverImageMap[library.id] ?? null,
-  }));
+  return ids
+    .map((id) => libraryById.get(id))
+    .filter((library): library is NonNullable<typeof library> => Boolean(library));
 }

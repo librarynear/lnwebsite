@@ -99,6 +99,7 @@ export type Database = {
           branch: string | null
           city: string
           closing_time: string | null
+          cover_image_url: string | null
           created_at: string | null
           created_source: string | null
           display_name: string
@@ -135,6 +136,7 @@ export type Database = {
           branch?: string | null
           city: string
           closing_time?: string | null
+          cover_image_url?: string | null
           created_at?: string | null
           created_source?: string | null
           display_name: string
@@ -170,6 +172,7 @@ export type Database = {
           branch?: string | null
           city?: string
           closing_time?: string | null
+          cover_image_url?: string | null
           created_at?: string | null
           created_source?: string | null
           display_name?: string

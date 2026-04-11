@@ -1,7 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase-server";
+import {
+  getLibraryCacheTarget,
+  revalidateLibraryContent,
+} from "@/lib/revalidate-library-content";
 
 export async function uploadLibraryImage(libraryId: string, formData: FormData) {
   const file = formData.get("file") as File;
@@ -31,7 +34,7 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
       return { success: false, error: "Failed to upload to ImageKit" };
     }
 
-    const { url, fileId } = await uploadResponse.json();
+    const { url } = await uploadResponse.json();
 
     // 2. Insert into Supabase
     const { error: dbError } = await supabaseServer.from("library_images").insert({
@@ -44,24 +47,39 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
       return { success: false, error: "Failed to save image record to database" };
     }
 
-    revalidatePath("/admin/libraries");
-    revalidatePath("/", "layout");
+    revalidateLibraryContent(await getLibraryCacheTarget(libraryId));
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Upload error:", err);
-    return { success: false, error: err.message || "An unexpected error occurred" };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "An unexpected error occurred",
+    };
   }
 }
 
 export async function deleteLibraryImage(imageId: string) {
+  const { data: imageRecord, error: fetchError } = await supabaseServer
+    .from("library_images")
+    .select("library_branch_id")
+    .eq("id", imageId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { success: false, error: fetchError.message };
+  }
+
   const { error } = await supabaseServer.from("library_images").delete().eq("id", imageId);
   
   if (error) {
     return { success: false, error: error.message };
   }
   
-  revalidatePath("/admin/libraries");
-  revalidatePath("/", "layout");
+  revalidateLibraryContent(
+    imageRecord?.library_branch_id
+      ? await getLibraryCacheTarget(imageRecord.library_branch_id)
+      : null,
+  );
   return { success: true };
 }

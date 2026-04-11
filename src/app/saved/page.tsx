@@ -5,46 +5,63 @@ import Image from "next/image";
 import { useSavedStore } from "@/store/use-saved-store";
 import { getSavedLibraries } from "./actions";
 import Link from "next/link";
-import { SaveButton } from "@/components/save-button";
+import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { MapPin, ArrowRight } from "lucide-react";
+
+type SavedLibrary = Awaited<ReturnType<typeof getSavedLibraries>>[number];
 
 export default function SavedPage() {
   const { savedLibraryIds } = useSavedStore();
-  const [libraries, setLibraries] = useState<any[]>([]);
+  const [libraries, setLibraries] = useState<SavedLibrary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const frame = window.requestAnimationFrame(() => {
+      setHydrated(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-
-    if (savedLibraryIds.length === 0) {
-      setLibraries([]);
-      setLoading(false);
-      return;
-    }
+    if (!hydrated) return;
 
     let isMounted = true;
-    getSavedLibraries(savedLibraryIds).then((data) => {
-      // Re-sort data to match the order in savedLibraryIds (newest first usually)
-      if (isMounted) {
-        const sortedData = [...data].sort((a, b) => {
-          return savedLibraryIds.indexOf(b.id) - savedLibraryIds.indexOf(a.id);
-        });
-        setLibraries(sortedData);
-        setLoading(false);
+
+    const loadLibraries = async () => {
+      if (savedLibraryIds.length === 0) {
+        if (isMounted) {
+          setLibraries([]);
+          setLoading(false);
+        }
+        return;
       }
-    });
+
+      if (isMounted) {
+        setLoading(true);
+      }
+
+      const data = await getSavedLibraries(savedLibraryIds);
+      if (!isMounted) {
+        return;
+      }
+
+      const sortedData = [...data].sort((a, b) => {
+        return savedLibraryIds.indexOf(b.id) - savedLibraryIds.indexOf(a.id);
+      });
+      setLibraries(sortedData);
+      setLoading(false);
+    };
+
+    void loadLibraries();
 
     return () => {
       isMounted = false;
     };
-  }, [savedLibraryIds, mounted]);
+  }, [savedLibraryIds, hydrated]);
 
-  if (!mounted) return null; // Wait for hydration to avoid mismatch
+  if (!hydrated) return null;
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl min-h-[70vh]">
@@ -79,7 +96,7 @@ export default function SavedPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {libraries.map((lib) => (
+          {libraries.map((lib, index) => (
             <Link
               key={lib.id}
               href={`/${lib.city.toLowerCase()}/library/${lib.slug}`}
@@ -91,6 +108,7 @@ export default function SavedPage() {
                     src={lib.coverImageUrl}
                     alt={`${lib.display_name} thumbnail`}
                     fill
+                    priority={index < 4}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 25vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
@@ -99,7 +117,7 @@ export default function SavedPage() {
                     <MapPin className="h-10 w-10 text-muted-foreground/20" />
                   </div>
                 )}
-                <SaveButton libraryId={lib.id} />
+                <DeferredSaveButton libraryId={lib.id} />
                 {lib.verification_status === "verified" && (
                   <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm">
                     Verified
