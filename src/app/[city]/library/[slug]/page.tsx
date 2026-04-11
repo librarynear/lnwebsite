@@ -22,6 +22,10 @@ interface PageProps {
 
 // Pre-render all library pages at build time
 export async function generateStaticParams() {
+  if (process.env.NODE_ENV === "development") {
+    return [];
+  }
+
   const { data } = await supabaseServer
     .from("library_branches")
     .select("city, slug");

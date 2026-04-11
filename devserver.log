@@ -1,0 +1,685 @@
+
+> tmp-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.46:3000
+- Environments: .env.local
+✓ Ready in 536ms
+Creating turbopack project {
+  dir: 'C:\\Users\\thees\\Compound\\Desktop\\Library Near\\Library Near Website',
+  testMode: true
+}
+
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+[perf] home libraries=848.7ms topLocalitiesCached=891.5ms coverImages=756.9ms locality="" q="" count=20
+ GET / 200 in 7.3s (next.js: 306ms, proxy.ts: 1239ms, application-code: 5.8s)
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+○ Compiling /[city]/library/[slug] ...
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+✓ Finished writing to filesystem cache in 30.2s
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tw-animate-css' in 'C:\Users\thees\Compound\Desktop\Library Near'
+    [2m[at finishWithoutResolve (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:587:18)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:679:14][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m
+    [2m[at eval (eval at create (C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\thees\Compound\Desktop\Library Near\Library Near Website\node_modules\enhanced-resolve\lib\Resolver.js:740:5][0m {
+  details: "resolve 'tw-animate-css' in 'C:\\Users\\thees\\Compound\\Desktop\\Library Near'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\thees\\package.json (relative path: ./Compound/Desktop/Library Near)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\thees\\Compound\\Desktop\\Library Near\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\thees\\Compound\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\thees\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\thees\\package.json (relative path: ./node_modules/tw-animate-css)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\thees\\node_modules\\tw-animate-css.css doesn't exist\n" +
+    "        C:\\Users\\thees\\node_modules\\tw-animate-css doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}

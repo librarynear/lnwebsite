@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { supabaseServer } from "@/lib/supabase-server";
@@ -60,6 +61,15 @@ async function getTopLocalities(): Promise<string[]> {
     .map(([name]) => name);
 }
 
+const getCachedTopLocalities = unstable_cache(
+  async () => getTopLocalities(),
+  ["home-top-localities"],
+  {
+    revalidate: 60,
+    tags: ["home-top-localities"],
+  },
+);
+
 interface HomeProps {
   searchParams: Promise<{ locality?: string; q?: string }>;
 }
@@ -69,7 +79,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
     measureAsync("libraries", () => getLibraries(locality, q)),
-    measureAsync("topLocalities", () => getTopLocalities()),
+    measureAsync("topLocalitiesCached", () => getCachedTopLocalities()),
   ]);
   const libraries = librariesMeasurement.result;
   const topLocalities = topLocalitiesMeasurement.result;
