@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseServer } from "@/lib/supabase-server";
+import { calculateLibraryProfileCompleteness } from "@/lib/library-profile-score";
 import type { Tables } from "@/types/supabase";
 
 type FeePlan = Tables<"library_fee_plans">;
@@ -15,6 +16,7 @@ export type LibraryOpsFilters = {
   q?: string;
   city?: string;
   locality?: string;
+  verified?: string;
   sort?: string;
   page?: number;
   allowedLocalities?: string[];
@@ -24,6 +26,7 @@ export async function getLibraryOpsPage({
   q,
   city,
   locality,
+  verified,
   sort,
   page = 1,
   allowedLocalities,
@@ -62,21 +65,45 @@ export async function getLibraryOpsPage({
     query = query.in("locality", allowedLocalities);
   }
 
-  if (sort === "score_asc") {
-    query = query.order("profile_completeness_score", { ascending: true });
-  } else if (sort === "name_asc") {
-    query = query.order("display_name", { ascending: true });
-  } else if (sort === "recent") {
-    query = query.order("updated_at", { ascending: false });
-  } else {
-    query = query.order("profile_completeness_score", { ascending: false });
+  if (verified === "verified") {
+    query = query.eq("verification_status", "verified");
+  } else if (verified === "unverified") {
+    query = query.neq("verification_status", "verified");
   }
 
-  const { data, count, error } = await query.range(from, to);
+  const { data, count, error } = await query;
+
+  const libraries = ((data ?? []) as AdminLibraryBranch[]).map((library) => ({
+    ...library,
+    profile_completeness_score: calculateLibraryProfileCompleteness(library),
+  }));
+
+  const sortedLibraries = [...libraries];
+  if (sort === "score_asc") {
+    sortedLibraries.sort(
+      (a, b) =>
+        (a.profile_completeness_score ?? 0) - (b.profile_completeness_score ?? 0) ||
+        a.display_name.localeCompare(b.display_name),
+    );
+  } else if (sort === "name_asc") {
+    sortedLibraries.sort((a, b) => a.display_name.localeCompare(b.display_name));
+  } else if (sort === "recent") {
+    sortedLibraries.sort(
+      (a, b) => new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime(),
+    );
+  } else {
+    sortedLibraries.sort(
+      (a, b) =>
+        (b.profile_completeness_score ?? 0) - (a.profile_completeness_score ?? 0) ||
+        a.display_name.localeCompare(b.display_name),
+    );
+  }
+
+  const paginatedLibraries = sortedLibraries.slice(from, to + 1);
 
   return {
-    libraries: (data ?? []) as AdminLibraryBranch[],
-    totalCount: count ?? 0,
+    libraries: paginatedLibraries,
+    totalCount: count ?? sortedLibraries.length,
     pageSize,
     error,
   };

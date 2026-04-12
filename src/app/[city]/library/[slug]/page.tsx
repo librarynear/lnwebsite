@@ -342,16 +342,6 @@ export default async function LibraryDetailPage({ params }: PageProps) {
                   <span className="font-semibold text-black">{lib.total_seats}</span> total seats
                 </div>
               )}
-              {lib.pin_code && (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-black">PIN</span> {lib.pin_code}
-                </div>
-              )}
-              {lib.district && (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-black">{lib.district}</span> district
-                </div>
-              )}
             </div>
           </section>
 

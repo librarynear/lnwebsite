@@ -2,6 +2,7 @@
 
 import { supabaseServer } from "@/lib/supabase-server";
 import type { Tables } from "@/types/supabase";
+import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
 import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
@@ -54,6 +55,7 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
       return { success: false, error: "Failed to save image record to database" };
     }
 
+    await refreshLibraryProfileCompletenessScore(libraryId);
     revalidateLibraryContent(await getLibraryCacheTarget(libraryId));
 
     return { success: true, image: insertedImage };
@@ -83,6 +85,10 @@ export async function deleteLibraryImage(imageId: string) {
     return { success: false, error: error.message };
   }
   
+  if (imageRecord?.library_branch_id) {
+    await refreshLibraryProfileCompletenessScore(imageRecord.library_branch_id);
+  }
+
   revalidateLibraryContent(
     imageRecord?.library_branch_id
       ? await getLibraryCacheTarget(imageRecord.library_branch_id)

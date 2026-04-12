@@ -1,7 +1,7 @@
 -- 1. Add the column
 ALTER TABLE library_branches ADD COLUMN IF NOT EXISTS description TEXT;
 
--- 2. Populate "Maa Saraswati Library, Shakarpur" as the perfect test subject
+-- 2. Populate "Maa Saraswati Library, Shakarpur" as a reference seeded library
 UPDATE library_branches
 SET 
   description = 'Maa Saraswati Library offers a premium, peaceful, and fully soundproof study environment designed specifically for UPSC, CA, and Medical aspirants. Located in the heart of Shakarpur, our facility features ergonomic chairs, custom wide desks, high-speed fiber internet, and individual reading lights. We maintain a strict noise-free discipline policy to ensure maximum focus. The premises are fully air-conditioned, with a dedicated pantry, clean washrooms, and RO drinking water. Our goal is to provide you with the most comfortable space to crack your toughest exams without any distractions.',

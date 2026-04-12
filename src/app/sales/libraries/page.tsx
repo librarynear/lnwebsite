@@ -6,11 +6,12 @@ import { getLibraryOpsPage } from "@/lib/library-ops";
 import { requireApprovedStaff } from "@/lib/staff-access";
 import { supabaseServer } from "@/lib/supabase-server";
 
-function buildPageHref(page: number, q?: string, city?: string, sort?: string) {
+function buildPageHref(page: number, q?: string, city?: string, sort?: string, verified?: string) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (city) params.set("city", city);
   if (sort) params.set("sort", sort);
+  if (verified) params.set("verified", verified);
   params.set("page", String(page));
   return `/sales/libraries?${params.toString()}`;
 }
@@ -18,10 +19,10 @@ function buildPageHref(page: number, q?: string, city?: string, sort?: string) {
 export default async function SalesLibrariesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; city?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; city?: string; sort?: string; verified?: string; page?: string }>;
 }) {
   const staff = await requireApprovedStaff(["sales", "admin"]);
-  const { q, city, sort, page } = await searchParams;
+  const { q, city, sort, verified, page } = await searchParams;
   const currentPage = Math.max(1, Number(page ?? "1") || 1);
 
   const { data: assignments } = await supabaseServer
@@ -37,6 +38,7 @@ export default async function SalesLibrariesPage({
   const { libraries, totalCount, pageSize, error } = await getLibraryOpsPage({
     q,
     city,
+    verified,
     sort,
     page: currentPage,
     allowedLocalities,
@@ -92,6 +94,16 @@ export default async function SalesLibrariesPage({
             <option value="score_asc">Sort: Score (Lo-Hi)</option>
             <option value="name_asc">Sort: Name (A-Z)</option>
             <option value="recent">Sort: Recently Updated</option>
+          </select>
+
+          <select
+            name="verified"
+            defaultValue={verified || ""}
+            className="w-full sm:w-44 py-2 px-3 border border-border rounded-lg text-sm bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            <option value="">All verification</option>
+            <option value="verified">Verified only</option>
+            <option value="unverified">Not verified</option>
           </select>
 
           <button type="submit" className="hidden" aria-hidden="true" />
@@ -194,12 +206,12 @@ export default async function SalesLibrariesPage({
         </p>
         <div className="flex items-center gap-2">
           {currentPage > 1 && (
-            <Link href={buildPageHref(currentPage - 1, q, city, sort)} className="rounded-lg border border-border px-3 py-1.5 hover:bg-muted">
+            <Link href={buildPageHref(currentPage - 1, q, city, sort, verified)} className="rounded-lg border border-border px-3 py-1.5 hover:bg-muted">
               Previous
             </Link>
           )}
           {currentPage < totalPages && (
-            <Link href={buildPageHref(currentPage + 1, q, city, sort)} className="rounded-lg border border-border px-3 py-1.5 hover:bg-muted">
+            <Link href={buildPageHref(currentPage + 1, q, city, sort, verified)} className="rounded-lg border border-border px-3 py-1.5 hover:bg-muted">
               Next
             </Link>
           )}

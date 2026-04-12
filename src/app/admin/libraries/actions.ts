@@ -2,6 +2,7 @@
 
 import { supabaseServer } from "@/lib/supabase-server";
 import type { TablesUpdate } from "@/types/supabase";
+import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
 import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
@@ -83,6 +84,8 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     });
     await supabaseServer.from("library_fee_plans").insert(plansToInsert);
   }
+
+  await refreshLibraryProfileCompletenessScore(id);
 
   const nextTarget = await getLibraryCacheTarget(id);
   revalidateLibraryContent(previousTarget);
