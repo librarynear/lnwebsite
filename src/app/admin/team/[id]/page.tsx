@@ -3,6 +3,25 @@ import { requireApprovedStaff } from "@/lib/staff-access";
 import { supabaseServer } from "@/lib/supabase-server";
 import { assignLocality, removeLocalityAssignment, saveStaffAccess } from "../actions";
 
+function formatActionType(actionType: string) {
+  switch (actionType) {
+    case "library_updated":
+      return "Library details updated";
+    case "verification_updated":
+      return "Verification status changed";
+    default:
+      return actionType.replace(/_/g, " ");
+  }
+}
+
+function formatFieldName(field: string) {
+  return field
+    .replace(/^last_/, "")
+    .replace(/_id$/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default async function AdminTeamMemberPage({
   params,
 }: {
@@ -103,15 +122,33 @@ export default async function AdminTeamMemberPage({
             <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
           ) : (
             (activityLogs ?? []).map((log) => (
-              <div key={log.id} className="rounded-lg border border-border px-4 py-3 text-sm">
-                <div className="flex items-center justify-between gap-4">
+              <div key={log.id} className="rounded-lg border border-border px-4 py-4 text-sm">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-semibold text-black">{log.action_type}</p>
-                    <p className="text-muted-foreground mt-1">
-                      {log.changed_fields?.length ? `Fields: ${log.changed_fields.join(", ")}` : "No field list recorded"}
-                    </p>
+                    <p className="font-semibold text-black">{formatActionType(log.action_type)}</p>
+                    {log.verification_status ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Set status to <span className="font-medium text-black">{log.verification_status === "verified" ? "Verified" : "Not Verified"}</span>
+                      </p>
+                    ) : null}
+                    {log.changed_fields?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {log.changed_fields
+                          .filter((field) => !field.startsWith("last_"))
+                          .map((field) => (
+                            <span
+                              key={field}
+                              className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
+                            >
+                              {formatFieldName(field)}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">No field list recorded</p>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="shrink-0 text-right text-xs text-muted-foreground">
                     {new Date(log.created_at || "").toLocaleString()}
                   </div>
                 </div>

@@ -11,6 +11,13 @@ export type StaffRole = "admin" | "sales";
 type StaffUser = Tables<"staff_users">;
 type Profile = Tables<"profiles">;
 
+function getBootstrapAdminEmails() {
+  return (process.env.ADMIN_BOOTSTRAP_EMAILS ?? "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export async function getCurrentStaffContext() {
   const supabase = await createClient();
   const {
@@ -34,12 +41,18 @@ export async function getCurrentStaffContext() {
   ]);
 
   const bootstrapAdmin = (approvedAdminCount ?? 0) === 0;
+  const userEmail = user.email?.toLowerCase() ?? "";
+  const bootstrapAdminAllowed =
+    bootstrapAdmin &&
+    userEmail.length > 0 &&
+    getBootstrapAdminEmails().includes(userEmail);
 
   return {
     user,
     staffUser: (staffUser as StaffUser | null) ?? null,
     profile: (profile as Profile | null) ?? null,
     bootstrapAdmin,
+    bootstrapAdminAllowed,
   };
 }
 
@@ -50,7 +63,7 @@ export async function requireApprovedStaff(allowedRoles: StaffRole[]) {
     redirect("/profile");
   }
 
-  if (context.bootstrapAdmin && allowedRoles.includes("admin")) {
+  if (context.bootstrapAdminAllowed && allowedRoles.includes("admin")) {
     return {
       ...context,
       effectiveRole: "admin" as StaffRole,
