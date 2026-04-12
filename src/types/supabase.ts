@@ -4,735 +4,294 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
-      leads: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          id: string
-          library_branch_id: string
-          message: string | null
-          name: string
-          phone_number: string
-          preferred_contact_method: string | null
-          source_page: string | null
-          status: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          library_branch_id: string
-          message?: string | null
-          name: string
-          phone_number: string
-          preferred_contact_method?: string | null
-          source_page?: string | null
-          status?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          library_branch_id?: string
-          message?: string | null
-          name?: string
-          phone_number?: string
-          preferred_contact_method?: string | null
-          source_page?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
       library_branches: {
         Row: {
-          amenities_text: string | null
-          branch: string | null
-          city: string
-          closing_time: string | null
-          cover_image_url: string | null
-          created_at: string | null
-          created_source: string | null
-          display_name: string
-          district: string | null
-          formatted_address: string | null
-          full_address: string | null
-          id: string
-          is_active: boolean | null
-          last_admin_reviewed_at: string | null
-          last_confirmed_at: string | null
-          last_owner_updated_at: string | null
-          latitude: number | null
-          locality: string | null
-          longitude: number | null
-          map_link: string | null
-          name: string
-          nearest_metro: string | null
-          nearest_metro_distance_km: number | null
-          nearest_metro_line: string | null
-          description: string | null
-          opening_time: string | null
-          phone_number: string | null
-          pin_code: string
-          profile_completeness_score: number | null
-          slug: string
-          state: string | null
-          total_seats: number | null
-          updated_at: string | null
-          verification_status: string | null
-          whatsapp_number: string | null
-        }
-        Insert: {
-          amenities_text?: string | null
-          branch?: string | null
-          city: string
-          closing_time?: string | null
-          cover_image_url?: string | null
-          created_at?: string | null
-          created_source?: string | null
-          display_name: string
-          district?: string | null
-          formatted_address?: string | null
-          full_address?: string | null
-          id?: string
-          is_active?: boolean | null
-          last_admin_reviewed_at?: string | null
-          last_confirmed_at?: string | null
-          last_owner_updated_at?: string | null
-          latitude?: number | null
-          locality?: string | null
-          longitude?: number | null
-          map_link?: string | null
-          name: string
-          nearest_metro?: string | null
-          nearest_metro_distance_km?: number | null
-          nearest_metro_line?: string | null
-          opening_time?: string | null
-          phone_number?: string | null
-          pin_code: string
-          profile_completeness_score?: number | null
-          slug: string
-          state?: string | null
-          total_seats?: number | null
-          updated_at?: string | null
-          verification_status?: string | null
-          whatsapp_number?: string | null
-        }
-        Update: {
-          amenities_text?: string | null
-          branch?: string | null
-          city?: string
-          closing_time?: string | null
-          cover_image_url?: string | null
-          created_at?: string | null
-          created_source?: string | null
-          display_name?: string
-          district?: string | null
-          formatted_address?: string | null
-          full_address?: string | null
-          id?: string
-          is_active?: boolean | null
-          last_admin_reviewed_at?: string | null
-          last_confirmed_at?: string | null
-          last_owner_updated_at?: string | null
-          latitude?: number | null
-          locality?: string | null
-          longitude?: number | null
-          map_link?: string | null
-          name?: string
-          nearest_metro?: string | null
-          nearest_metro_distance_km?: number | null
-          nearest_metro_line?: string | null
-          opening_time?: string | null
-          phone_number?: string | null
-          pin_code?: string
-          profile_completeness_score?: number | null
-          slug?: string
-          state?: string | null
-          total_seats?: number | null
-          updated_at?: string | null
-          verification_status?: string | null
-          whatsapp_number?: string | null
-        }
-        Relationships: []
-      }
+          id: string;
+          slug: string;
+          name: string;
+          branch: string | null;
+          display_name: string;
+          pin_code: string;
+          city: string;
+          state: string | null;
+          locality: string | null;
+          district: string | null;
+          formatted_address: string | null;
+          full_address: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          map_link: string | null;
+          nearest_metro: string | null;
+          nearest_metro_line: string | null;
+          nearest_metro_distance_km: number | null;
+          whatsapp_number: string | null;
+          phone_number: string | null;
+          total_seats: number | null;
+          opening_time: string | null;
+          closing_time: string | null;
+          amenities_text: string | null;
+          description?: string | null;
+          verification_status: string | null;
+          profile_completeness_score: number | null;
+          is_active: boolean | null;
+          created_source: string | null;
+          last_confirmed_at: string | null;
+          last_admin_reviewed_at: string | null;
+          last_owner_updated_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          cover_image_url?: string | null;
+          cover_image_updated_at?: string | null;
+          last_sales_reviewed_at?: string | null;
+          last_sales_reviewer_id?: string | null;
+          last_verification_updated_at?: string | null;
+          last_verification_updated_by?: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_branches"]["Row"]> & {
+          slug: string;
+          name: string;
+          display_name: string;
+          pin_code: string;
+          city: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_branches"]["Row"]>;
+        Relationships: [];
+      };
       library_fee_plans: {
         Row: {
-          created_at: string | null
-          currency: string | null
-          description: string | null
-          duration_label: string | null
-          id: string
-          is_active: boolean | null
-          library_branch_id: string
-          plan_name: string
-          plan_type: string | null
-          price: number
-          seat_type: string | null
-          sort_order: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          duration_label?: string | null
-          id?: string
-          is_active?: boolean | null
-          library_branch_id: string
-          plan_name: string
-          plan_type?: string | null
-          price: number
-          seat_type?: string | null
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          duration_label?: string | null
-          id?: string
-          is_active?: boolean | null
-          library_branch_id?: string
-          plan_name?: string
-          plan_type?: string | null
-          price?: number
-          seat_type?: string | null
-          sort_order?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "library_fee_plans_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "library_fee_plans_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
+          id: string;
+          library_branch_id: string;
+          plan_name: string;
+          plan_type: string | null;
+          duration_label: string | null;
+          price: number;
+          currency: string | null;
+          seat_type: string | null;
+          description: string | null;
+          is_active: boolean | null;
+          sort_order: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_fee_plans"]["Row"]> & {
+          library_branch_id: string;
+          plan_name: string;
+          price: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_fee_plans"]["Row"]>;
+        Relationships: [];
+      };
       library_images: {
         Row: {
-          alt_text: string | null
-          created_at: string | null
-          id: string
-          imagekit_url: string
-          is_cover: boolean | null
-          library_branch_id: string
-          sort_order: number | null
-        }
-        Insert: {
-          alt_text?: string | null
-          created_at?: string | null
-          id?: string
-          imagekit_url: string
-          is_cover?: boolean | null
-          library_branch_id: string
-          sort_order?: number | null
-        }
-        Update: {
-          alt_text?: string | null
-          created_at?: string | null
-          id?: string
-          imagekit_url?: string
-          is_cover?: boolean | null
-          library_branch_id?: string
-          sort_order?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "library_images_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "library_images_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
+          id: string;
+          library_branch_id: string;
+          imagekit_url: string;
+          alt_text: string | null;
+          is_cover: boolean | null;
+          sort_order: number | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_images"]["Row"]> & {
+          library_branch_id: string;
+          imagekit_url: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_images"]["Row"]>;
+        Relationships: [];
+      };
       library_social_links: {
         Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          label: string | null
-          library_branch_id: string
-          platform: string
-          updated_at: string | null
-          url: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          label?: string | null
-          library_branch_id: string
-          platform: string
-          updated_at?: string | null
-          url: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          label?: string | null
-          library_branch_id?: string
-          platform?: string
-          updated_at?: string | null
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "library_social_links_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "library_social_links_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
+          id: string;
+          library_branch_id: string;
+          platform: string;
+          url: string;
+          label: string | null;
+          is_active: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_social_links"]["Row"]> & {
+          library_branch_id: string;
+          platform: string;
+          url: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_social_links"]["Row"]>;
+        Relationships: [];
+      };
       place_aliases: {
         Row: {
-          alias_text: string
-          canonical_name: string
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          place_type: string
-          source: string | null
-        }
-        Insert: {
-          alias_text: string
-          canonical_name: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          place_type: string
-          source?: string | null
-        }
-        Update: {
-          alias_text?: string
-          canonical_name?: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          place_type?: string
-          source?: string | null
-        }
-        Relationships: []
-      }
+          id: string;
+          place_type: string;
+          canonical_name: string;
+          alias_text: string;
+          is_active: boolean | null;
+          source: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["place_aliases"]["Row"]> & {
+          place_type: string;
+          canonical_name: string;
+          alias_text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["place_aliases"]["Row"]>;
+        Relationships: [];
+      };
+      leads: {
+        Row: {
+          id: string;
+          library_branch_id: string;
+          name: string;
+          phone_number: string;
+          email: string | null;
+          message: string | null;
+          preferred_contact_method: string | null;
+          status: string | null;
+          source_page: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["leads"]["Row"]> & {
+          library_branch_id: string;
+          name: string;
+          phone_number: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["leads"]["Row"]>;
+        Relationships: [];
+      };
       profiles: {
         Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
-          user_type: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-          user_type?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string | null
-          user_type?: string | null
-        }
-        Relationships: []
-      }
-      owner_library_submissions: {
-        Row: {
-          amenities_text: string | null
-          city: string
-          closing_time: string | null
-          created_at: string | null
-          description: string | null
-          display_name: string
-          district: string | null
-          full_address: string | null
-          id: string
-          locality: string | null
-          map_link: string | null
-          nearest_metro: string | null
-          opening_time: string | null
-          phone_number: string
-          pin_code: string | null
-          reviewed_at: string | null
-          reviewer_notes: string | null
-          state: string | null
-          status: string
-          submitted_library_branch_id: string | null
-          total_seats: number | null
-          updated_at: string | null
-          user_id: string
-          whatsapp_number: string | null
-        }
-        Insert: {
-          amenities_text?: string | null
-          city: string
-          closing_time?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_name: string
-          district?: string | null
-          full_address?: string | null
-          id?: string
-          locality?: string | null
-          map_link?: string | null
-          nearest_metro?: string | null
-          opening_time?: string | null
-          phone_number: string
-          pin_code?: string | null
-          reviewed_at?: string | null
-          reviewer_notes?: string | null
-          state?: string | null
-          status?: string
-          submitted_library_branch_id?: string | null
-          total_seats?: number | null
-          updated_at?: string | null
-          user_id: string
-          whatsapp_number?: string | null
-        }
-        Update: {
-          amenities_text?: string | null
-          city?: string
-          closing_time?: string | null
-          created_at?: string | null
-          description?: string | null
-          display_name?: string
-          district?: string | null
-          full_address?: string | null
-          id?: string
-          locality?: string | null
-          map_link?: string | null
-          nearest_metro?: string | null
-          opening_time?: string | null
-          phone_number?: string
-          pin_code?: string | null
-          reviewed_at?: string | null
-          reviewer_notes?: string | null
-          state?: string | null
-          status?: string
-          submitted_library_branch_id?: string | null
-          total_seats?: number | null
-          updated_at?: string | null
-          user_id?: string
-          whatsapp_number?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "owner_library_submissions_submitted_library_branch_id_fkey"
-            columns: ["submitted_library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "owner_library_submissions_submitted_library_branch_id_fkey"
-            columns: ["submitted_library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
+          user_type: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & {
+          id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
+        Relationships: [];
+      };
       user_saved_libraries: {
         Row: {
-          created_at: string | null
-          id: string
-          library_branch_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          library_branch_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          library_branch_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_saved_libraries_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "library_branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_saved_libraries_library_branch_id_fkey"
-            columns: ["library_branch_id"]
-            isOneToOne: false
-            referencedRelation: "search_branches"
-            referencedColumns: ["branch_id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      search_branches: {
+          id: string;
+          user_id: string;
+          library_branch_id: string;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_saved_libraries"]["Row"]> & {
+          user_id: string;
+          library_branch_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_saved_libraries"]["Row"]>;
+        Relationships: [];
+      };
+      owner_library_submissions: {
         Row: {
-          amenities_text: string | null
-          branch_id: string | null
-          display_name: string | null
-          district: string | null
-          fts_document: unknown
-          locality: string | null
-          name: string | null
-          nearest_metro: string | null
-          pin_code: string | null
-          profile_completeness_score: number | null
-          slug: string | null
-          trgm_document: string | null
-          verification_status: string | null
-        }
-        Relationships: []
-      }
-    }
-    Functions: {
-      search_libraries: {
-        Args: { limit_val?: number; query_term: string }
-        Returns: {
-          branch_id: string
-          display_name: string
-          district: string
-          locality: string
-          name: string
-          nearest_metro: string
-          score: number
-          slug: string
-          verification_status: string
-        }[]
-      }
-      search_suggestions: {
-        Args: { city_filter?: string | null; max_results?: number; query_term: string }
-        Returns: {
-          city: string
-          label: string
-          slug: string
-          type: string
-        }[]
-      }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
-      unaccent: { Args: { "": string }; Returns: string }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+          id: string;
+          user_id: string;
+          status: string;
+          display_name: string;
+          city: string;
+          locality: string | null;
+          district: string | null;
+          state: string | null;
+          pin_code: string | null;
+          full_address: string | null;
+          nearest_metro: string | null;
+          phone_number: string;
+          whatsapp_number: string | null;
+          opening_time: string | null;
+          closing_time: string | null;
+          total_seats: number | null;
+          map_link: string | null;
+          description: string | null;
+          amenities_text: string | null;
+          submitted_library_branch_id: string | null;
+          reviewer_notes: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          reviewed_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["owner_library_submissions"]["Row"]> & {
+          user_id: string;
+          display_name: string;
+          city: string;
+          phone_number: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["owner_library_submissions"]["Row"]>;
+        Relationships: [];
+      };
+      staff_users: {
+        Row: {
+          user_id: string;
+          role: string;
+          is_approved: boolean;
+          approved_by: string | null;
+          approved_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["staff_users"]["Row"]> & {
+          user_id: string;
+          role: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_users"]["Row"]>;
+        Relationships: [];
+      };
+      sales_locality_assignments: {
+        Row: {
+          id: string;
+          user_id: string;
+          city: string;
+          locality: string;
+          assigned_by: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["sales_locality_assignments"]["Row"]> & {
+          user_id: string;
+          city: string;
+          locality: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["sales_locality_assignments"]["Row"]>;
+        Relationships: [];
+      };
+      library_activity_logs: {
+        Row: {
+          id: string;
+          library_branch_id: string;
+          actor_user_id: string | null;
+          action_type: string;
+          verification_status: string | null;
+          changed_fields: string[] | null;
+          notes: string | null;
+          created_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_activity_logs"]["Row"]> & {
+          library_branch_id: string;
+          action_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_activity_logs"]["Row"]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"];
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+export type TablesInsert<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"];
 
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
-  public: {
-    Enums: {},
-  },
-} as const
+export type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"];

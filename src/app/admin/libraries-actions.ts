@@ -5,13 +5,18 @@ import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
+import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
 
-export async function toggleLibraryVerification(id: string, currentStatus: string | null) {
-  const newStatus = currentStatus === "verified" ? "unverified" : "verified";
+export async function setLibraryVerificationStatus(id: string, newStatus: "verified" | "unverified") {
+  const actorUserId = await getCurrentActorUserId();
   
   const { error } = await supabaseServer
     .from("library_branches")
-    .update({ verification_status: newStatus })
+    .update({
+      verification_status: newStatus,
+      last_verification_updated_at: new Date().toISOString(),
+      last_verification_updated_by: actorUserId,
+    })
     .eq("id", id);
 
   if (error) {
@@ -20,6 +25,12 @@ export async function toggleLibraryVerification(id: string, currentStatus: strin
   }
 
   revalidateLibraryContent(await getLibraryCacheTarget(id));
+  await logLibraryActivity({
+    libraryBranchId: id,
+    actionType: "verification_updated",
+    verificationStatus: newStatus,
+    changedFields: ["verification_status"],
+  });
 
   return { ok: true, newStatus };
 }

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { EditLibraryModal } from "./edit-modal";
-import { VerificationStatusSelect } from "./verification-status-select";
+import { EditLibraryModal } from "@/app/admin/libraries/edit-modal";
+import { VerificationStatusSelect } from "@/app/admin/libraries/verification-status-select";
 import { getLibraryOpsPage } from "@/lib/library-ops";
 import { requireApprovedStaff } from "@/lib/staff-access";
+import { supabaseServer } from "@/lib/supabase-server";
 
 function buildPageHref(page: number, q?: string, city?: string, sort?: string) {
   const params = new URLSearchParams();
@@ -11,24 +12,34 @@ function buildPageHref(page: number, q?: string, city?: string, sort?: string) {
   if (city) params.set("city", city);
   if (sort) params.set("sort", sort);
   params.set("page", String(page));
-  return `/admin/libraries?${params.toString()}`;
+  return `/sales/libraries?${params.toString()}`;
 }
 
-export default async function AdminLibrariesPage({
+export default async function SalesLibrariesPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; city?: string; sort?: string; page?: string }>;
 }) {
-  await requireApprovedStaff(["admin"]);
-
+  const staff = await requireApprovedStaff(["sales", "admin"]);
   const { q, city, sort, page } = await searchParams;
   const currentPage = Math.max(1, Number(page ?? "1") || 1);
+
+  const { data: assignments } = await supabaseServer
+    .from("sales_locality_assignments")
+    .select("locality, city")
+    .eq("user_id", staff.user.id);
+
+  const normalizedAssignments = (assignments ?? []).filter((assignment) => !city || assignment.city === city);
+  const allowedLocalities = staff.effectiveRole === "sales"
+    ? normalizedAssignments.map((assignment) => assignment.locality)
+    : undefined;
 
   const { libraries, totalCount, pageSize, error } = await getLibraryOpsPage({
     q,
     city,
     sort,
     page: currentPage,
+    allowedLocalities,
   });
 
   if (error) {
@@ -41,9 +52,9 @@ export default async function AdminLibrariesPage({
     <div className="p-8">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black mb-1">Libraries Editor</h1>
+          <h1 className="text-2xl font-bold text-black mb-1">Assigned Libraries</h1>
           <p className="text-muted-foreground text-sm">
-            Clean, verify, and review libraries. Showing 100 libraries per page.
+            Review libraries page by page. Showing 100 libraries per page.
           </p>
         </div>
 
@@ -87,6 +98,12 @@ export default async function AdminLibrariesPage({
         </form>
       </div>
 
+      {staff.effectiveRole === "sales" && (
+        <div className="mb-5 rounded-xl border border-border bg-white px-4 py-3 text-sm text-muted-foreground">
+          Assigned localities: {normalizedAssignments.length > 0 ? normalizedAssignments.map((item) => `${item.locality}, ${item.city}`).join(" | ") : "No locality assignments yet"}
+        </div>
+      )}
+
       <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -106,7 +123,7 @@ export default async function AdminLibrariesPage({
               {libraries.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
-                    No libraries found.
+                    No libraries found for your current filters.
                   </td>
                 </tr>
               ) : (

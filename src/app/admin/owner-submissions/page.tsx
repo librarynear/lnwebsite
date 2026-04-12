@@ -1,0 +1,174 @@
+import { CheckCircle2, Clock3, HelpCircle, XCircle } from "lucide-react";
+import { supabaseServer } from "@/lib/supabase-server";
+import { requireApprovedStaff } from "@/lib/staff-access";
+import {
+  approveOwnerSubmission,
+  rejectOwnerSubmission,
+  requestChangesOwnerSubmission,
+} from "./actions";
+
+type OwnerSubmission = {
+  id: string;
+  display_name: string;
+  city: string;
+  locality: string | null;
+  phone_number: string | null;
+  status: string;
+  created_at: string | null;
+  reviewer_notes: string | null;
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending_review: "Pending review",
+  needs_changes: "Needs changes",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const label = STATUS_LABELS[status] ?? status;
+  const color =
+    status === "approved"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : status === "rejected"
+        ? "bg-rose-50 text-rose-700 border-rose-200"
+        : status === "needs_changes"
+          ? "bg-amber-50 text-amber-700 border-amber-200"
+          : "bg-slate-50 text-slate-700 border-slate-200";
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${color}`}>
+      {label}
+    </span>
+  );
+}
+
+export default async function OwnerSubmissionsAdminPage() {
+  await requireApprovedStaff(["admin"]);
+
+  const { data: submissions, error } = await supabaseServer
+    .from("owner_library_submissions")
+    .select("id, display_name, city, locality, phone_number, status, created_at, reviewer_notes")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return <div className="p-8 text-red-500">Error loading owner submissions: {error.message}</div>;
+  }
+
+  const allSubmissions = (submissions ?? []) as OwnerSubmission[];
+  const pending = allSubmissions.filter((submission) => submission.status === "pending_review");
+
+  return (
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-black mb-1">Owner Submissions</h1>
+          <p className="text-muted-foreground text-sm">
+            Review owner listings before they go live.
+          </p>
+        </div>
+        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold border border-blue-200">
+          {pending.length} Pending
+        </div>
+      </div>
+
+      <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
+        <table className="w-full text-left text-sm whitespace-nowrap">
+          <thead className="bg-muted/50 border-b border-border text-muted-foreground font-medium">
+            <tr>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4">Library</th>
+              <th className="px-6 py-4">City</th>
+              <th className="px-6 py-4">Contact</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {allSubmissions.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                  No owner submissions yet.
+                </td>
+              </tr>
+            ) : (
+              allSubmissions.map((submission) => (
+                <tr key={submission.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-6 py-4 text-muted-foreground">
+                    {new Date(submission.created_at || "").toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-semibold text-black">{submission.display_name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {[submission.locality, submission.city].filter(Boolean).join(", ")}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground">{submission.city}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{submission.phone_number ?? "—"}</td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={submission.status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <form action={approveOwnerSubmission}>
+                        <input type="hidden" name="id" value={submission.id} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Approve
+                        </button>
+                      </form>
+                      <form action={requestChangesOwnerSubmission} className="flex items-center gap-2">
+                        <input type="hidden" name="id" value={submission.id} />
+                        <input
+                          name="notes"
+                          placeholder="Notes"
+                          defaultValue={submission.reviewer_notes ?? ""}
+                          className="w-40 rounded-md border border-border px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                        >
+                          <HelpCircle className="h-3.5 w-3.5" />
+                          Request changes
+                        </button>
+                      </form>
+                      <form action={rejectOwnerSubmission} className="flex items-center gap-2">
+                        <input type="hidden" name="id" value={submission.id} />
+                        <input
+                          name="notes"
+                          placeholder="Notes"
+                          defaultValue={submission.reviewer_notes ?? ""}
+                          className="w-36 rounded-md border border-border px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          Reject
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-border bg-white p-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-black font-semibold mb-2">
+          <Clock3 className="h-4 w-4" />
+          Approval workflow
+        </div>
+        Approving creates a live library record and immediately revalidates public pages. Requesting changes keeps the
+        submission visible to the owner in their dashboard.
+      </div>
+    </div>
+  );
+}

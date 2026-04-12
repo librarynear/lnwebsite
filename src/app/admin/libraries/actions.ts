@@ -6,6 +6,7 @@ import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
+import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
 
 type FeePlanInput = {
   duration_label?: string | null;
@@ -15,6 +16,7 @@ type FeePlanInput = {
 
 export async function updateLibraryBranch(id: string, formData: FormData) {
   const previousTarget = await getLibraryCacheTarget(id);
+  const actorUserId = await getCurrentActorUserId();
 
   const payload = {
     display_name: formData.get("display_name") as string,
@@ -31,6 +33,8 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     description: formData.get("description") as string,
     amenities_text: formData.get("amenities_text") as string,
     map_link: formData.get("map_link") as string,
+    whatsapp_number: formData.get("whatsapp_number") as string,
+    total_seats: formData.get("total_seats") ? parseInt(formData.get("total_seats") as string, 10) : null,
   };
 
   const feePlansJson = formData.get("fee_plans_json") as string;
@@ -47,6 +51,9 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   const cleanedPayload: TablesUpdate<"library_branches"> = Object.fromEntries(
     Object.entries(payload).map(([k, v]) => [k, v === "" ? null : v]),
   );
+
+  cleanedPayload.last_sales_reviewed_at = new Date().toISOString();
+  cleanedPayload.last_sales_reviewer_id = actorUserId;
 
   const { error } = await supabaseServer
     .from("library_branches")
@@ -80,6 +87,11 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   const nextTarget = await getLibraryCacheTarget(id);
   revalidateLibraryContent(previousTarget);
   revalidateLibraryContent(nextTarget);
+  await logLibraryActivity({
+    libraryBranchId: id,
+    actionType: "library_updated",
+    changedFields: Object.keys(cleanedPayload),
+  });
 
   return { success: true };
 }

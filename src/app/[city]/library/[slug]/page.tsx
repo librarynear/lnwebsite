@@ -105,7 +105,8 @@ export async function generateStaticParams() {
   const { data } = await supabaseServer
     .from("library_branches")
     .select("city, slug");
-  return (data ?? []).map((b) => ({ city: b.city.toLowerCase(), slug: b.slug }));
+  const rows = (data as Array<Pick<LibraryBranch, "city" | "slug">>) ?? [];
+  return rows.map((b) => ({ city: b.city.toLowerCase(), slug: b.slug }));
 }
 
 export const revalidate = 120;

@@ -35,9 +35,10 @@ async function getTopLocalities(): Promise<string[]> {
     .not("locality", "is", null);
 
   if (error || !data) return [];
+  const localityRows = data as Array<{ locality: string | null }>;
 
   const counts: Record<string, number> = {};
-  for (const row of data) {
+  for (const row of localityRows) {
     if (row.locality) counts[row.locality] = (counts[row.locality] ?? 0) + 1;
   }
 

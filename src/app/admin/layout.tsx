@@ -1,6 +1,6 @@
 import { logout } from "./actions";
 import Link from "next/link";
-import { Search, Users, Building2, LogOut, BarChart3 } from "lucide-react";
+import { Search, Users, Building2, LogOut, BarChart3, ClipboardCheck, UserRoundCog } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,11 +30,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Libraries Editor
           </Link>
           <Link
+            href="/admin/owner-submissions"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-black"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Owner Submissions
+          </Link>
+          <Link
             href="/admin/analytics"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-black"
           >
             <BarChart3 className="w-4 h-4" />
             Analytics
+          </Link>
+          <Link
+            href="/admin/team"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-muted transition-colors text-black"
+          >
+            <UserRoundCog className="w-4 h-4" />
+            Team
           </Link>
         </nav>
 

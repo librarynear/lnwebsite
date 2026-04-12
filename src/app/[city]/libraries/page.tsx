@@ -268,9 +268,10 @@ async function getLocalities(city: string): Promise<string[]> {
     .not("locality", "is", null);
 
   if (!data) return [];
+  const localityRows = data as Array<{ locality: string | null }>;
 
   const counts: Record<string, number> = {};
-  for (const row of data) {
+  for (const row of localityRows) {
     if (row.locality) {
       counts[row.locality] = (counts[row.locality] ?? 0) + 1;
     }

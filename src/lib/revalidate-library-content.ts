@@ -2,12 +2,9 @@ import "server-only";
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { supabaseServer } from "@/lib/supabase-server";
+import type { Tables } from "@/types/supabase";
 
-type LibraryCacheTarget = {
-  city: string;
-  slug: string;
-  locality: string | null;
-};
+type LibraryCacheTarget = Pick<Tables<"library_branches">, "city" | "slug" | "locality">;
 
 function localityToSlug(locality: string) {
   return locality.trim().toLowerCase().replace(/\s+/g, "-");
@@ -25,7 +22,7 @@ export async function getLibraryCacheTarget(id: string): Promise<LibraryCacheTar
     return null;
   }
 
-  return data ?? null;
+  return (data as LibraryCacheTarget | null) ?? null;
 }
 
 export function revalidateLibraryContent(target?: LibraryCacheTarget | null) {

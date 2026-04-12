@@ -5,6 +5,7 @@ import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import { logPerf, measureAsync } from "@/lib/perf";
+import type { Tables } from "@/types/supabase";
 
 type OwnerSubmissionRow = {
   id: string;
@@ -14,6 +15,7 @@ type OwnerSubmissionRow = {
   city: string;
   created_at: string | null;
 };
+type ProfileSummary = Pick<Tables<"profiles">, "full_name" | "avatar_url" | "email">;
 
 export const metadata = {
   title: "Profile",
@@ -80,7 +82,8 @@ export default async function ProfilePage() {
     ]),
   );
 
-  const [{ data: profile }, { count: savedCount }, submissionsResponse] = profileMeasurement.result;
+  const [{ data: profileData }, { count: savedCount }, submissionsResponse] = profileMeasurement.result;
+  const profile = (profileData as ProfileSummary | null) ?? null;
 
   const displayName =
     profile?.full_name ??

@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { supabaseServer } from "@/lib/supabase-server";
+import type { Tables } from "@/types/supabase";
 
 export const runtime = "edge";
 export const alt = "Library Details";
@@ -8,6 +9,8 @@ export const size = {
   height: 630,
 };
 export const contentType = "image/png";
+
+type OgLibrary = Pick<Tables<"library_branches">, "display_name" | "locality" | "verification_status">;
 
 export default async function Image({
   params,
@@ -20,11 +23,12 @@ export default async function Image({
   const cityFormatted = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
 
   // Fetch library details
-  const { data: library } = await supabaseServer
+  const { data: libraryData } = await supabaseServer
     .from("library_branches")
     .select("display_name, locality, verification_status")
     .eq("slug", slug)
     .single();
+  const library = (libraryData as OgLibrary | null) ?? null;
 
   const title = library?.display_name || "Study Library";
   const locality = library?.locality || "Top Rated";

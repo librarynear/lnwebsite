@@ -54,11 +54,12 @@ export async function generateStaticParams() {
     .from("library_branches")
     .select("city, locality")
     .not("locality", "is", null);
+  const rows = (data as Array<{ city: string; locality: string | null }>) ?? [];
 
   const seen = new Set<string>();
   const params: { city: string; slug: string }[] = [];
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     if (!row.locality) continue;
     const key = `${row.city.toLowerCase()}-${row.locality}`;
     if (seen.has(key)) continue;

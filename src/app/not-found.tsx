@@ -6,7 +6,7 @@ export default function NotFound() {
     <div className="flex-1 w-full flex flex-col items-center justify-center bg-[#E5EDF4] px-4 py-8 md:py-12 min-h-[70vh]">
       {/* 404 Text Background */}
       <h1
-        className="text-[100px] md:text-[140px] font-black leading-none mb-[-25px] md:mb-[-35px] z-0 tracking-widest relative"
+        className="text-[100px] md:text-[140px] font-black leading-none -mb-6.25 md:-mb-8.75 z-0 tracking-widest relative"
         style={{
           color: "white",
           WebkitTextStroke: "6px #111827",

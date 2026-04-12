@@ -1,7 +1,20 @@
 import { supabaseServer } from "@/lib/supabase-server";
 import { LeadStatusSelect } from "./lead-status-select";
+import { requireApprovedStaff } from "@/lib/staff-access";
+import type { Tables } from "@/types/supabase";
+
+type LeadLibrary = {
+  display_name: string;
+  slug: string;
+  city: string;
+};
+type LeadRow = Tables<"leads"> & {
+  library_branches?: LeadLibrary | null;
+};
 
 export default async function AdminLeadsPage() {
+  await requireApprovedStaff(["admin"]);
+
   const { data: leads, error } = await supabaseServer
     .from("leads")
     .select(`
@@ -18,7 +31,7 @@ export default async function AdminLeadsPage() {
     return <div className="p-8 text-red-500">Error loading leads: {error.message}</div>;
   }
 
-  const allLeads = leads ?? [];
+  const allLeads = (leads as LeadRow[] | null) ?? [];
   const newLeadsCount = allLeads.filter(l => !l.status || l.status === "new").length;
 
   return (
@@ -52,9 +65,9 @@ export default async function AdminLeadsPage() {
                   No leads yet.
                 </td>
               </tr>
-            ) : (
+              ) : (
               allLeads.map((lead) => {
-                const lib = lead.library_branches as any;
+                const lib = lead.library_branches as LeadLibrary | null;
                 const libName = lib?.display_name || "Unknown Library";
                 return (
                   <tr key={lead.id} className="hover:bg-muted/50 transition-colors">
