@@ -128,7 +128,7 @@ export default async function Image({
             color: "#64748b", // slate-500
           }}
         >
-          StudyStash.com
+          LibraryNear.com
         </div>
       </div>
     ),

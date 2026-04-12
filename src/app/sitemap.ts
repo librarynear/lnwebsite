@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 export const revalidate = 86400; // Regenerate once per day
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://studystash.in";
+  const base = "https://LibraryNear.in";
 
   // Static routes
   const statics: MetadataRoute.Sitemap = [

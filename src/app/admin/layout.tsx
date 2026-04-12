@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="bg-primary text-white p-1 rounded-md">
             <Search className="w-4 h-4" strokeWidth={3} />
           </div>
-          StudyStash Admin
+          LibraryNear Admin
         </div>
 
         <nav className="flex-1 px-4 py-6 flex flex-col gap-2">

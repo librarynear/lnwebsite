@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
@@ -7,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase-server";
 import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
+import { IntentLink } from "@/components/intent-link";
 import type { Metadata } from "next";
 
 interface PageProps {
@@ -106,7 +106,7 @@ export default async function LocalityPage({ params }: PageProps) {
       "@type": "ListItem",
       position: i + 1,
       name: lib.display_name,
-      url: `https://studystash.in/${city}/library/${lib.slug}`,
+      url: `https://LibraryNear.in/${city}/library/${lib.slug}`,
     })),
   };
 
@@ -120,11 +120,11 @@ export default async function LocalityPage({ params }: PageProps) {
       <div className="container mx-auto px-6 md:px-10 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link href="/" className="hover:underline">Home</Link>
+          <IntentLink href="/" className="hover:underline">Home</IntentLink>
           <span>/</span>
-          <Link href={`/${city}`} className="hover:underline capitalize">{cityLabel}</Link>
+          <IntentLink href={`/${city}`} className="hover:underline capitalize">{cityLabel}</IntentLink>
           <span>/</span>
-          <Link href={`/${city}/libraries`} className="hover:underline">Libraries</Link>
+          <IntentLink href={`/${city}/libraries`} className="hover:underline">Libraries</IntentLink>
           <span>/</span>
           <span className="text-black font-medium">{locality}</span>
         </div>
@@ -143,7 +143,7 @@ export default async function LocalityPage({ params }: PageProps) {
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
           {libraries.map((lib, index) => (
-            <Link
+            <IntentLink
               href={`/${city}/library/${lib.slug}`}
               key={lib.id}
               className="group flex flex-col gap-2 cursor-pointer"
@@ -182,7 +182,7 @@ export default async function LocalityPage({ params }: PageProps) {
                   </p>
                 )}
               </div>
-            </Link>
+            </IntentLink>
           ))}
         </div>
 
@@ -192,12 +192,12 @@ export default async function LocalityPage({ params }: PageProps) {
           <p className="text-muted-foreground text-sm mb-5">
             Search across all localities, filter by amenities, and find your perfect study spot.
           </p>
-          <Link
+          <IntentLink
             href={`/${city}/libraries`}
             className="inline-flex items-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-full hover:bg-primary/90 transition-colors"
           >
             Browse all libraries
-          </Link>
+          </IntentLink>
         </div>
       </div>
     </div>

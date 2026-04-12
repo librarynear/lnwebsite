@@ -5,19 +5,26 @@ import {
   runLibraryCardQuery,
   withCardImages,
 } from "@/lib/library-card-data";
+import { logPerf, measureAsync } from "@/lib/perf";
 
 export async function getSavedLibraries(ids: string[]) {
   if (!ids || ids.length === 0) return [];
 
-  const data = await runLibraryCardQuery((selectClause) =>
-    supabaseServer
-      .from("library_branches")
-      .select(selectClause)
-      .in("id", ids),
+  const queryMeasurement = await measureAsync("savedLibrariesQuery", () =>
+    runLibraryCardQuery((selectClause) =>
+      supabaseServer
+        .from("library_branches")
+        .select(selectClause)
+        .in("id", ids),
+    ),
   );
 
-  const librariesWithImages = await withCardImages(data);
+  const imageMeasurement = await measureAsync("savedLibraryImages", () =>
+    withCardImages(queryMeasurement.result),
+  );
+  const librariesWithImages = imageMeasurement.result;
   const libraryById = new Map(librariesWithImages.map((library) => [library.id, library]));
+  logPerf("savedLibraries", [queryMeasurement.metric, imageMeasurement.metric], `ids=${ids.length} count=${librariesWithImages.length}`);
 
   return ids
     .map((id) => libraryById.get(id))

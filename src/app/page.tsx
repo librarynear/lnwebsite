@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
@@ -7,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase-server";
 import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
+import { IntentLink } from "@/components/intent-link";
 import { SearchBar } from "@/components/search-bar";
 
 export const revalidate = 120;
@@ -102,7 +102,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <div className="container mx-auto px-6 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
 
           {/* All tab */}
-          <Link
+          <IntentLink
             href="/"
             className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-medium tracking-wide transition-all min-w-max ${!locality
                 ? "bg-primary text-white shadow-sm"
@@ -110,10 +110,10 @@ export default async function Home({ searchParams }: HomeProps) {
               }`}
           >
             All Delhi
-          </Link>
+          </IntentLink>
 
           {topLocalities.map((loc) => (
-            <Link
+            <IntentLink
               key={loc}
               href={`/?locality=${encodeURIComponent(loc)}`}
               className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-normal tracking-wide transition-all min-w-max ${locality === loc
@@ -122,7 +122,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 }`}
             >
               {loc}
-            </Link>
+            </IntentLink>
           ))}
         </div>
       </div>
@@ -138,9 +138,9 @@ export default async function Home({ searchParams }: HomeProps) {
                 : `${libraries.length > 0 ? "20+" : "0"} libraries in Delhi`}
           </h2>
           {(locality || q) && (
-            <Link href="/" className="text-sm text-primary font-medium hover:underline">
+            <IntentLink href="/" className="text-sm text-primary font-medium hover:underline">
               Clear all
-            </Link>
+            </IntentLink>
           )}
         </div>
 
@@ -153,7 +153,7 @@ export default async function Home({ searchParams }: HomeProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
             {libraries.map((lib, index) => (
-              <Link
+              <IntentLink
                 href={`/${lib.city.toLowerCase()}/library/${lib.slug}`}
                 key={lib.id}
                 className="group flex flex-col gap-2 cursor-pointer"
@@ -197,7 +197,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     </p>
                   )}
                 </div>
-              </Link>
+              </IntentLink>
             ))}
           </div>
         )}

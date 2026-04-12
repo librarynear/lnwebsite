@@ -391,6 +391,168 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          user_type: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_type?: string | null
+        }
+        Relationships: []
+      }
+      owner_library_submissions: {
+        Row: {
+          amenities_text: string | null
+          city: string
+          closing_time: string | null
+          created_at: string | null
+          description: string | null
+          display_name: string
+          district: string | null
+          full_address: string | null
+          id: string
+          locality: string | null
+          map_link: string | null
+          nearest_metro: string | null
+          opening_time: string | null
+          phone_number: string
+          pin_code: string | null
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          state: string | null
+          status: string
+          submitted_library_branch_id: string | null
+          total_seats: number | null
+          updated_at: string | null
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          amenities_text?: string | null
+          city: string
+          closing_time?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          district?: string | null
+          full_address?: string | null
+          id?: string
+          locality?: string | null
+          map_link?: string | null
+          nearest_metro?: string | null
+          opening_time?: string | null
+          phone_number: string
+          pin_code?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          state?: string | null
+          status?: string
+          submitted_library_branch_id?: string | null
+          total_seats?: number | null
+          updated_at?: string | null
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          amenities_text?: string | null
+          city?: string
+          closing_time?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          district?: string | null
+          full_address?: string | null
+          id?: string
+          locality?: string | null
+          map_link?: string | null
+          nearest_metro?: string | null
+          opening_time?: string | null
+          phone_number?: string
+          pin_code?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          state?: string | null
+          status?: string
+          submitted_library_branch_id?: string | null
+          total_seats?: number | null
+          updated_at?: string | null
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owner_library_submissions_submitted_library_branch_id_fkey"
+            columns: ["submitted_library_branch_id"]
+            isOneToOne: false
+            referencedRelation: "library_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "owner_library_submissions_submitted_library_branch_id_fkey"
+            columns: ["submitted_library_branch_id"]
+            isOneToOne: false
+            referencedRelation: "search_branches"
+            referencedColumns: ["branch_id"]
+          },
+        ]
+      }
+      user_saved_libraries: {
+        Row: {
+          created_at: string | null
+          id: string
+          library_branch_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          library_branch_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          library_branch_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_saved_libraries_library_branch_id_fkey"
+            columns: ["library_branch_id"]
+            isOneToOne: false
+            referencedRelation: "library_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_saved_libraries_library_branch_id_fkey"
+            columns: ["library_branch_id"]
+            isOneToOne: false
+            referencedRelation: "search_branches"
+            referencedColumns: ["branch_id"]
+          },
+        ]
+      }
     }
     Views: {
       search_branches: {
@@ -425,6 +587,15 @@ export type Database = {
           score: number
           slug: string
           verification_status: string
+        }[]
+      }
+      search_suggestions: {
+        Args: { city_filter?: string | null; max_results?: number; query_term: string }
+        Returns: {
+          city: string
+          label: string
+          slug: string
+          type: string
         }[]
       }
       show_limit: { Args: never; Returns: number }

@@ -4,28 +4,19 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useSavedStore } from "@/store/use-saved-store";
 import { getSavedLibraries } from "./actions";
-import Link from "next/link";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { MapPin, ArrowRight } from "lucide-react";
+import { IntentLink } from "@/components/intent-link";
 
 type SavedLibrary = Awaited<ReturnType<typeof getSavedLibraries>>[number];
 
 export default function SavedPage() {
-  const { savedLibraryIds } = useSavedStore();
+  const { hasHydrated, savedLibraryIds } = useSavedStore();
   const [libraries, setLibraries] = useState<SavedLibrary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setHydrated(true);
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
+    if (!hasHydrated) return;
 
     let isMounted = true;
 
@@ -59,9 +50,9 @@ export default function SavedPage() {
     return () => {
       isMounted = false;
     };
-  }, [savedLibraryIds, hydrated]);
+  }, [hasHydrated, savedLibraryIds]);
 
-  if (!hydrated) return null;
+  if (!hasHydrated) return null;
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16 max-w-7xl min-h-[70vh]">
@@ -87,17 +78,17 @@ export default function SavedPage() {
           <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
             Click the heart icon on any library to save it here for later to build your shortlist.
           </p>
-          <Link 
+          <IntentLink 
             href="/delhi/libraries"
             className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl font-medium hover:scale-105 active:scale-95 transition-transform"
           >
             Explore Libraries <ArrowRight className="h-4 w-4" />
-          </Link>
+          </IntentLink>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {libraries.map((lib, index) => (
-            <Link
+            <IntentLink
               key={lib.id}
               href={`/${lib.city.toLowerCase()}/library/${lib.slug}`}
               className="group block relative"
@@ -138,7 +129,7 @@ export default function SavedPage() {
                   </p>
                 )}
               </div>
-            </Link>
+            </IntentLink>
           ))}
         </div>
       )}

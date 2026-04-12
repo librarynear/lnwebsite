@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin", "/api/"],
       },
     ],
-    sitemap: "https://studystash.in/sitemap.xml",
+    sitemap: "https://LibraryNear.in/sitemap.xml",
   };
 }

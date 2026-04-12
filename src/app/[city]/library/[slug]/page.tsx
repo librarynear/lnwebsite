@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
-import { MapPin, Clock, ShieldCheck, Share2, Heart, ExternalLink, Navigation } from "lucide-react";
+import { MapPin, Clock, ShieldCheck, ExternalLink, Navigation } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { FeePlansList } from "@/components/fee-plans-list";
 import { AmenitiesGrid } from "@/components/amenities-grid";
 import { MapEmbed } from "@/components/map-embed";
+import { LibraryDetailActions } from "@/components/library-detail-actions";
 
 type LibraryBranch = Tables<"library_branches">;
 type FeePlan = Tables<"library_fee_plans">;
@@ -157,7 +158,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const lib = await getLibraryDetailForRoute(slug);
   if (!lib) return { title: "Library Not Found" };
   return {
-    title: `${lib.display_name} | StudyStash`,
+    title: `${lib.display_name} | LibraryNear`,
     description: `Study at ${lib.display_name} in ${lib.locality ?? lib.district ?? lib.city}. ${lib.nearest_metro ? `Near ${lib.nearest_metro}.` : ""} Check fees, amenities, and directions.`,
   };
 }
@@ -264,14 +265,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto">
-            <Button variant="outline" size="sm" className="flex-1 md:flex-none rounded-lg font-semibold">
-              <Share2 className="w-4 h-4 mr-1.5" /> Share
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1 md:flex-none rounded-lg font-semibold">
-              <Heart className="w-4 h-4 mr-1.5" /> Save
-            </Button>
-          </div>
+          <LibraryDetailActions libraryId={lib.id} libraryName={lib.display_name} />
         </div>
       </div>
 
