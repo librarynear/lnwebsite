@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, MapPinned, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, MapPinned, ShieldCheck } from "lucide-react";
 
 export const metadata = {
   title: "About",
@@ -25,14 +25,17 @@ export default function AboutPage() {
       <section className="container mx-auto grid gap-6 px-6 py-12 md:grid-cols-3 md:px-10">
         {[
           {
+            icon: MapPinned,
             title: "Built for discovery",
             body: "Search by locality, metro, or nearby distance and quickly compare study options that are actually relevant.",
           },
           {
+            icon: ShieldCheck,
             title: "Built for trust",
             body: "Owner-submitted libraries are reviewed before they go live, so public listings stay cleaner and more reliable.",
           },
           {
+            icon: Building2,
             title: "Built for owners too",
             body: "Owners can list their libraries, manage submissions, and reach students already searching in their area.",
           },
