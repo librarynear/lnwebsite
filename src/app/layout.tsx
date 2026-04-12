@@ -7,6 +7,9 @@ import { Footer } from "@/components/footer";
 import { AuthSavedSync } from "@/components/auth/auth-saved-sync";
 import { NavigationFeedback } from "@/components/navigation-feedback";
 import { Suspense } from "react";
+import { getSiteUrl } from "@/lib/site-url";
+
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   title: {
@@ -15,13 +18,14 @@ export const metadata: Metadata = {
   },
   description:
     "Discover and compare study libraries, reading rooms, and private coaching halls near you. Filter by locality, metro station, amenities, and fees.",
-  metadataBase: new URL("https://LibraryNear.in"),
+  metadataBase: new URL(siteUrl),
   openGraph: {
     type: "website",
     siteName: "LibraryNear",
     title: "LibraryNear — Find the Best Libraries Near You",
     description:
       "Discover and compare study libraries near you. Filter by locality, metro, amenities, and fees.",
+    url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",

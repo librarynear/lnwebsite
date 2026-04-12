@@ -3,9 +3,9 @@ import Image from "next/image";
 import { MapPin, Phone, Mail } from "lucide-react";
 
 const socialLinks = [
-  { label: "YouTube", href: null },
-  { label: "Twitter", href: null },
-  { label: "Instagram", href: null },
+  { label: "YouTube", href: "https://youtube.com/@librarynear?si=YMZlHbfRVbL0MP7e" },
+  { label: "Twitter", href: "https://x.com/Librarynear_com" },
+  { label: "Instagram", href: "https://www.instagram.com/librarynear.com1/" },
 ] as const;
 
 function SocialIcon({ label }: { label: (typeof socialLinks)[number]["label"] }) {

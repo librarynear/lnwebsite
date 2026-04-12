@@ -7,11 +7,15 @@ import { useSavedStore } from "@/store/use-saved-store";
 type LibraryDetailActionsProps = {
   libraryId: string;
   libraryName: string;
+  locality?: string | null;
+  city?: string | null;
 };
 
 export function LibraryDetailActions({
   libraryId,
   libraryName,
+  locality,
+  city,
 }: LibraryDetailActionsProps) {
   const { isSaved, toggleSaved } = useSavedStore();
   const [sharing, setSharing] = useState(false);
@@ -23,10 +27,17 @@ export function LibraryDetailActions({
 
     try {
       const shareUrl = window.location.href;
+      const locationLabel = locality || city;
+      const shareTitle = locationLabel
+        ? `${libraryName}, ${locationLabel} | LibraryNear`
+        : `${libraryName} | LibraryNear`;
+      const shareText = locationLabel
+        ? `Check out ${libraryName} in ${locationLabel} on LibraryNear`
+        : `Check out ${libraryName} on LibraryNear`;
       if (navigator.share) {
         await navigator.share({
-          title: libraryName,
-          text: `Check out ${libraryName} on LibraryNear`,
+          title: shareTitle,
+          text: shareText,
           url: shareUrl,
         });
       } else if (navigator.clipboard?.writeText) {

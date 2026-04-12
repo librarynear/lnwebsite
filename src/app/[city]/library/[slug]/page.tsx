@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { MapPin, Clock, ShieldCheck, ExternalLink, Navigation } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +15,8 @@ import { FeePlansList } from "@/components/fee-plans-list";
 import { AmenitiesGrid } from "@/components/amenities-grid";
 import { MapEmbed } from "@/components/map-embed";
 import { LibraryDetailActions } from "@/components/library-detail-actions";
+import { LibraryPhotoGallery } from "@/components/library-photo-gallery";
+import { getSiteUrl } from "@/lib/site-url";
 
 type LibraryBranch = Tables<"library_branches">;
 type FeePlan = Tables<"library_fee_plans">;
@@ -155,12 +156,53 @@ const getLibraryDetailForRoute =
   process.env.NODE_ENV === "development" ? getLibraryDetailData : getCachedLibraryDetailData;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { city, slug } = await params;
   const lib = await getLibraryDetailForRoute(slug);
   if (!lib) return { title: "Library Not Found" };
+
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/${city}/library/${slug}`;
+  const previewImage =
+    (lib.library_images?.[0]?.imagekit_url
+      ? getOptimizedImageUrl(lib.library_images[0].imagekit_url, "detailHero")
+      : null) || `${siteUrl}/logo.png`;
+  const previewTitle = `${lib.display_name}${lib.locality ? `, ${lib.locality}` : ""} | LibraryNear`;
+  const previewDescription = [
+    `Study at ${lib.display_name}`,
+    lib.locality ?? lib.district ?? lib.city,
+    lib.nearest_metro ? `Near ${lib.nearest_metro}` : null,
+    "See photos, fees, amenities, and directions.",
+  ]
+    .filter(Boolean)
+    .join(". ");
+
   return {
-    title: `${lib.display_name} | LibraryNear`,
-    description: `Study at ${lib.display_name} in ${lib.locality ?? lib.district ?? lib.city}. ${lib.nearest_metro ? `Near ${lib.nearest_metro}.` : ""} Check fees, amenities, and directions.`,
+    title: previewTitle,
+    description: previewDescription,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      type: "website",
+      url: pageUrl,
+      title: previewTitle,
+      description: previewDescription,
+      siteName: "LibraryNear",
+      images: [
+        {
+          url: previewImage,
+          width: 1200,
+          height: 800,
+          alt: `${lib.display_name} on LibraryNear`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: previewTitle,
+      description: previewDescription,
+      images: [previewImage],
+    },
   };
 }
 
@@ -266,7 +308,12 @@ export default async function LibraryDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <LibraryDetailActions libraryId={lib.id} libraryName={lib.display_name} />
+          <LibraryDetailActions
+            libraryId={lib.id}
+            libraryName={lib.display_name}
+            locality={lib.locality}
+            city={lib.city}
+          />
         </div>
       </div>
 
@@ -276,73 +323,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-10">
 
-          {/* Photo Grid */}
-          <div className="grid grid-cols-2 gap-3 h-[340px]">
-            {images.length > 0 ? (
-              <>
-                <div className="col-span-1 row-span-2 rounded-xl overflow-hidden border border-border/40 bg-muted relative">
-                  <Image
-                    src={images[0]}
-                    alt={`${lib.display_name} cover`}
-                    fill
-                    className="object-cover"
-                    priority
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                  />
-                </div>
-                <div className="rounded-xl overflow-hidden border border-border/40 bg-muted relative">
-                  {images[1] ? (
-                    <Image
-                      src={images[1]}
-                      alt={`${lib.display_name} photo 2`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 20vw"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <MapPin className="h-8 w-8 text-muted-foreground/20" />
-                    </div>
-                  )}
-                </div>
-                <div className="relative rounded-xl overflow-hidden border border-border/40 bg-muted">
-                  {images[2] ? (
-                    <Image
-                      src={images[2]}
-                      alt={`${lib.display_name} photo 3`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 20vw"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <MapPin className="h-8 w-8 text-muted-foreground/20" />
-                    </div>
-                  )}
-                  {images.length > 3 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-xs font-semibold text-white">
-                      +{images.length - 3} more photos
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="col-span-1 rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border/40 row-span-2">
-                  <MapPin className="h-12 w-12 text-muted-foreground/20" />
-                </div>
-                <div className="rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border/40">
-                  <MapPin className="h-8 w-8 text-muted-foreground/20" />
-                </div>
-                <div className="rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border/40 cursor-pointer hover:bg-muted/70 transition-colors relative group">
-                  <MapPin className="h-8 w-8 text-muted-foreground/20" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
-                    <span className="text-xs font-semibold underline">View all photos</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <LibraryPhotoGallery images={images} libraryName={lib.display_name} />
 
           {/* About */}
           <section>

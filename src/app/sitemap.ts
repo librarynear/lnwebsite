@@ -1,10 +1,11 @@
 import { supabaseServer } from "@/lib/supabase-server";
+import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 
 export const revalidate = 86400; // Regenerate once per day
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://LibraryNear.in";
+  const base = getSiteUrl();
 
   // Static routes
   const statics: MetadataRoute.Sitemap = [

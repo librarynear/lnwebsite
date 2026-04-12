@@ -5,6 +5,7 @@ import { MapPin } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
 import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
+import { getSiteUrl } from "@/lib/site-url";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { IntentLink } from "@/components/intent-link";
 import type { Metadata } from "next";
@@ -98,6 +99,7 @@ export default async function LocalityPage({ params }: PageProps) {
 
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
 
+  const siteUrl = getSiteUrl();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -107,7 +109,7 @@ export default async function LocalityPage({ params }: PageProps) {
       "@type": "ListItem",
       position: i + 1,
       name: lib.display_name,
-      url: `https://LibraryNear.in/${city}/library/${lib.slug}`,
+      url: `${siteUrl}/${city}/library/${lib.slug}`,
     })),
   };
 
