@@ -12,10 +12,6 @@ export default function AboutPage() {
       <section className="border-b border-border/60 bg-white">
         <div className="container mx-auto px-6 py-14 md:px-10 md:py-18">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              About LibraryNear
-            </div>
             <h1 className="mt-5 text-4xl font-bold tracking-tight text-black md:text-5xl">
               We help students discover the right place to study, and help library owners get discovered.
             </h1>
@@ -29,17 +25,14 @@ export default function AboutPage() {
       <section className="container mx-auto grid gap-6 px-6 py-12 md:grid-cols-3 md:px-10">
         {[
           {
-            icon: MapPinned,
             title: "Built for discovery",
             body: "Search by locality, metro, or nearby distance and quickly compare study options that are actually relevant.",
           },
           {
-            icon: ShieldCheck,
             title: "Built for trust",
             body: "Owner-submitted libraries are reviewed before they go live, so public listings stay cleaner and more reliable.",
           },
           {
-            icon: Building2,
             title: "Built for owners too",
             body: "Owners can list their libraries, manage submissions, and reach students already searching in their area.",
           },

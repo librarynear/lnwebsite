@@ -70,10 +70,6 @@ export default async function ForOwnersPage({
       <section className="bg-[#0F74C5]">
         <div className="container mx-auto grid gap-10 px-6 py-14 md:grid-cols-[1.15fr_0.85fr] md:px-10 md:py-18">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              LibraryNear For Owners
-            </div>
             <h1 className="mt-5 max-w-2xl text-4xl font-bold tracking-tight text-white md:text-5xl">
               Bring your library in front of students who are already searching nearby.
             </h1>
