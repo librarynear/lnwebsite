@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { supabaseServer } from "@/lib/supabase-server";
 import { requireApprovedStaff } from "@/lib/staff-access";
 import { addStaffByEmail, saveStaffAccess } from "./actions";
@@ -86,9 +87,12 @@ export default async function AdminTeamPage() {
             <option value="false">Pending</option>
             <option value="true">Approved</option>
           </select>
-          <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white">
+          <FormSubmitButton
+            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+            pendingLabel="Adding..."
+          >
             Add staff
-          </button>
+          </FormSubmitButton>
         </form>
         <p className="mt-3 text-xs text-muted-foreground">
           The email must belong to a user who has already signed in once, so they exist in `profiles`.
@@ -142,9 +146,12 @@ export default async function AdminTeamPage() {
                           <option value="false">Pending</option>
                           <option value="true">Approved</option>
                         </select>
-                        <button type="submit" className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white">
+                        <FormSubmitButton
+                          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white"
+                          pendingLabel="Saving..."
+                        >
                           Save
-                        </button>
+                        </FormSubmitButton>
                       </form>
                     </td>
                     <td className="px-6 py-4">

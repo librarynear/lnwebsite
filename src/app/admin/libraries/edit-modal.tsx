@@ -20,6 +20,29 @@ interface EditLibraryModalProps {
   library: AdminLibraryBranch;
 }
 
+const AMENITY_OPTIONS = [
+  "AC",
+  "Wi-Fi",
+  "RO Water",
+  "Washroom",
+  "Power Backup",
+  "CCTV",
+  "Locker",
+  "Parking",
+  "Tea/Coffee",
+  "Security Guard",
+  "Charging Points",
+  "Silent Zone",
+];
+
+function parseAmenities(amenitiesText: string | null | undefined) {
+  if (!amenitiesText) return [];
+  return amenitiesText
+    .split(/[,•|\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function EditLibraryModal({ library }: EditLibraryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +56,7 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
   const [images, setImages] = useState<LibraryImage[]>(
     library.library_images ? [...library.library_images] : []
   );
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(parseAmenities(library.amenities_text));
 
   const addPlan = () => {
     setPlans([...plans, { duration_label: "Monthly", price: 0, seat_type: "Unreserved" }]);
@@ -42,36 +66,45 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
     setPlans(plans.filter((_, i) => i !== index));
   };
 
-  const updatePlan = (index: number, field: keyof FeePlan, value: any) => {
+  const updatePlan = (index: number, field: keyof FeePlan, value: string | number | null) => {
     const newPlans = [...plans];
     newPlans[index] = { ...newPlans[index], [field]: value };
     setPlans(newPlans);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
+    if (!e.target.files?.length || isUploading) return;
     
     setIsUploading(true);
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append("file", file);
 
-    const result = await uploadLibraryImage(library.id, formData);
-    
-    // We expect the page to revalidate but for instant UI we could just reload or assume it's there
-    if (result.success) {
-       // A cheap way to force the table to refresh the images list since it revalidated server-side is to reload
-       window.location.reload();
-    } else {
-      alert("Upload failed: " + result.error);
+    try {
+      const result = await uploadLibraryImage(library.id, formData);
+
+      if (result.success && result.image) {
+        setImages((current) => [...current, result.image]);
+      } else {
+        alert("Upload failed: " + result.error);
+      }
+    } catch (error) {
+      alert(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
   const handleDeleteImage = async (imageId: string) => {
     if (!confirm("Are you sure you want to delete this photo?")) return;
+    const previousImages = images;
     setImages(images.filter(img => img.id !== imageId));
-    await deleteLibraryImage(imageId);
+    const result = await deleteLibraryImage(imageId);
+    if (!result.success) {
+      setImages(previousImages);
+      alert(`Delete failed: ${result.error}`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -194,8 +227,25 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amenities Text <span className="text-normal font-normal lowercase">(comma separated)</span></label>
-                  <input name="amenities_text" defaultValue={library.amenities_text || ""} className="w-full px-3 py-2 border rounded-md text-sm focus:ring-1 focus:ring-primary outline-none placeholder:text-muted-foreground/50" placeholder="AC, Wi-Fi, Water" />
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amenities</label>
+                  <input type="hidden" name="amenities_text" value={selectedAmenities.join(", ")} />
+                  <select
+                    multiple
+                    value={selectedAmenities}
+                    onChange={(e) =>
+                      setSelectedAmenities(Array.from(e.target.selectedOptions, (option) => option.value))
+                    }
+                    className="min-h-36 w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    {Array.from(new Set([...AMENITY_OPTIONS, ...selectedAmenities])).map((amenity) => (
+                      <option key={amenity} value={amenity}>
+                        {amenity}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Hold `Ctrl` or `Cmd` to select multiple amenities.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-1.5">
@@ -281,7 +331,7 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
                         className={`inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md px-3 h-7 text-xs cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
                       >
                         {isUploading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5 mr-1" />}
-                        Add Photo
+                        {isUploading ? "Uploading..." : "Add Photo"}
                       </label>
                     </div>
                   </div>

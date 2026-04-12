@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button";
 type FormSubmitButtonProps = {
   children: ReactNode;
   className?: string;
+  pendingLabel?: string;
 };
 
-export function FormSubmitButton({ children, className }: FormSubmitButtonProps) {
+export function FormSubmitButton({
+  children,
+  className,
+  pendingLabel = "Submitting...",
+}: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
 
   return (
@@ -21,7 +26,7 @@ export function FormSubmitButton({ children, className }: FormSubmitButtonProps)
       aria-disabled={pending}
     >
       {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      {pending ? "Submitting..." : children}
+      {pending ? pendingLabel : children}
     </Button>
   );
 }

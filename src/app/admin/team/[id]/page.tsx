@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { requireApprovedStaff } from "@/lib/staff-access";
 import { supabaseServer } from "@/lib/supabase-server";
 import { assignLocality, removeLocalityAssignment, saveStaffAccess } from "../actions";
+import { AssignmentForm } from "./assignment-form";
 
 function formatActionType(actionType: string) {
   switch (actionType) {
@@ -30,11 +32,19 @@ export default async function AdminTeamMemberPage({
   await requireApprovedStaff(["admin"]);
   const { id } = await params;
 
-  const [{ data: profile }, { data: staff }, { data: assignments }, { data: activityLogs }] = await Promise.all([
+  const [{ data: profile }, { data: staff }, { data: assignments }, { data: activityLogs }, { data: localityRows }] =
+    await Promise.all([
     supabaseServer.from("profiles").select("*").eq("id", id).maybeSingle(),
     supabaseServer.from("staff_users").select("*").eq("user_id", id).maybeSingle(),
     supabaseServer.from("sales_locality_assignments").select("*").eq("user_id", id).order("city"),
     supabaseServer.from("library_activity_logs").select("*").eq("actor_user_id", id).order("created_at", { ascending: false }).limit(25),
+    supabaseServer
+      .from("library_branches")
+      .select("city, locality")
+      .not("city", "is", null)
+      .not("locality", "is", null)
+      .order("city")
+      .order("locality"),
   ]);
 
   if (!profile) notFound();
@@ -42,6 +52,13 @@ export default async function AdminTeamMemberPage({
   const totalActions = (activityLogs ?? []).length;
   const verifiedActions = (activityLogs ?? []).filter((item) => item.action_type === "verification_updated").length;
   const editActions = (activityLogs ?? []).filter((item) => item.action_type === "library_updated").length;
+  const assignmentOptions = Array.from(
+    new Map(
+      (localityRows ?? [])
+        .filter((row) => row.city && row.locality)
+        .map((row) => [`${row.city}::${row.locality}`, { city: row.city!, locality: row.locality! }]),
+    ).values(),
+  );
 
   return (
     <div className="p-8 space-y-8">
@@ -63,9 +80,12 @@ export default async function AdminTeamMemberPage({
               <option value="false">Pending</option>
               <option value="true">Approved</option>
             </select>
-            <button type="submit" className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white">
+            <FormSubmitButton
+              className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+              pendingLabel="Saving..."
+            >
               Save access
-            </button>
+            </FormSubmitButton>
           </form>
           <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
             <div className="rounded-lg bg-muted/40 p-3">
@@ -85,14 +105,15 @@ export default async function AdminTeamMemberPage({
 
         <div className="rounded-xl border border-border bg-white p-6">
           <h2 className="text-lg font-bold text-black mb-4">Locality assignments</h2>
-          <form action={assignLocality} className="flex flex-wrap items-center gap-3 mb-4">
-            <input type="hidden" name="user_id" value={profile.id} />
-            <input name="city" placeholder="City" className="rounded-md border border-border px-3 py-2 text-sm" />
-            <input name="locality" placeholder="Locality" className="rounded-md border border-border px-3 py-2 text-sm" />
-            <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white">
-              Assign
-            </button>
-          </form>
+          <AssignmentForm
+            userId={profile.id}
+            options={assignmentOptions}
+            existingAssignments={(assignments ?? []).map((assignment) => ({
+              city: assignment.city,
+              locality: assignment.locality,
+            }))}
+            action={assignLocality}
+          />
 
           <div className="space-y-2">
             {(assignments ?? []).length === 0 ? (
@@ -104,9 +125,12 @@ export default async function AdminTeamMemberPage({
                   <form action={removeLocalityAssignment}>
                     <input type="hidden" name="assignment_id" value={assignment.id} />
                     <input type="hidden" name="user_id" value={profile.id} />
-                    <button type="submit" className="text-rose-600 hover:underline">
+                    <FormSubmitButton
+                      className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-rose-600 shadow-none hover:underline"
+                      pendingLabel="Removing..."
+                    >
                       Remove
-                    </button>
+                    </FormSubmitButton>
                   </form>
                 </div>
               ))

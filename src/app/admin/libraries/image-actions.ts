@@ -1,10 +1,13 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabase-server";
+import type { Tables } from "@/types/supabase";
 import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
+
+type LibraryImage = Tables<"library_images">;
 
 export async function uploadLibraryImage(libraryId: string, formData: FormData) {
   const file = formData.get("file") as File;
@@ -37,10 +40,14 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
     const { url } = await uploadResponse.json();
 
     // 2. Insert into Supabase
-    const { error: dbError } = await supabaseServer.from("library_images").insert({
-      library_branch_id: libraryId,
-      imagekit_url: url,
-    });
+    const { data: insertedImage, error: dbError } = await supabaseServer
+      .from("library_images")
+      .insert({
+        library_branch_id: libraryId,
+        imagekit_url: url,
+      })
+      .select("*")
+      .single<LibraryImage>();
 
     if (dbError) {
       console.error("Supabase insert error:", dbError);
@@ -49,7 +56,7 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
 
     revalidateLibraryContent(await getLibraryCacheTarget(libraryId));
 
-    return { success: true };
+    return { success: true, image: insertedImage };
   } catch (err: unknown) {
     console.error("Upload error:", err);
     return {
