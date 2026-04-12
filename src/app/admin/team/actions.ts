@@ -32,6 +32,43 @@ export async function saveStaffAccess(formData: FormData): Promise<void> {
   redirect(`/admin/team/${userId}`);
 }
 
+export async function addStaffByEmail(formData: FormData): Promise<void> {
+  const email = ((formData.get("email") as string) ?? "").trim().toLowerCase();
+  const role = ((formData.get("role") as string) ?? "sales").trim();
+  const isApproved = formData.get("is_approved") === "true";
+  const actorUserId = await getCurrentActorUserId();
+
+  if (!email || !role) {
+    redirect("/admin/team");
+  }
+
+  const { data: profile } = await supabaseServer
+    .from("profiles")
+    .select("id, email")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (!profile?.id) {
+    redirect("/admin/team");
+  }
+
+  const { error } = await supabaseServer.from("staff_users").upsert({
+    user_id: profile.id,
+    role,
+    is_approved: isApproved,
+    approved_by: isApproved ? actorUserId : null,
+    approved_at: isApproved ? new Date().toISOString() : null,
+  });
+
+  if (error) {
+    redirect("/admin/team");
+  }
+
+  revalidatePath("/admin/team");
+  revalidatePath(`/admin/team/${profile.id}`);
+  redirect(`/admin/team/${profile.id}`);
+}
+
 export async function assignLocality(formData: FormData): Promise<void> {
   const userId = formData.get("user_id") as string;
   const city = formData.get("city") as string;
