@@ -124,10 +124,10 @@ export default async function AdminLibrariesPage({
               ) : (
                 libraries.map((lib) => (
                   <tr key={lib.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-black max-w-[220px] truncate" title={lib.display_name}>
+                    <td className="px-6 py-4 font-semibold text-black max-w-55 truncate" title={lib.display_name}>
                       {lib.display_name}
                     </td>
-                    <td className="px-6 py-4 text-muted-foreground max-w-[180px] truncate">{lib.locality || "-"}</td>
+                    <td className="px-6 py-4 text-muted-foreground max-w-45 truncate">{lib.locality || "-"}</td>
                     <td className="px-6 py-4 text-muted-foreground capitalize">{lib.city}</td>
                     <td className="px-6 py-4 text-muted-foreground">{lib.phone_number || "-"}</td>
                     <td className="px-6 py-4 text-muted-foreground">

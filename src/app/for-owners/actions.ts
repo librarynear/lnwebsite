@@ -11,19 +11,28 @@ type OwnerFeePlan = {
   price?: number;
 };
 
+const MAX_OWNER_PHOTOS = 8;
+const MAX_OWNER_PHOTO_BYTES = 8 * 1024 * 1024;
+
 async function uploadOwnerSubmissionImage(file: File, userId: string) {
+  const imagekitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+  if (!imagekitPrivateKey) {
+    throw new Error("ImageKit private key is not configured");
+  }
+
   const imagekitFormData = new FormData();
   imagekitFormData.append("file", file);
-  imagekitFormData.append("fileName", file.name || "owner_submission.jpg");
+  imagekitFormData.append("fileName", file.name.replace(/[^\w.-]+/g, "-") || "owner_submission.jpg");
   imagekitFormData.append("folder", `/owner-submissions/${userId}/`);
 
-  const authHeader = "Basic " + Buffer.from(`${process.env.IMAGEKIT_PRIVATE_KEY}:`).toString("base64");
+  const authHeader = "Basic " + Buffer.from(`${imagekitPrivateKey}:`).toString("base64");
   const response = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
     method: "POST",
     headers: {
       Authorization: authHeader,
     },
     body: imagekitFormData,
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!response.ok) {
@@ -77,9 +86,19 @@ export async function submitOwnerLibrary(formData: FormData) {
   const feePlans = parseFeePlans(formData);
   const imageFiles = formData
     .getAll("photos")
-    .filter((file): file is File => file instanceof File && file.size > 0)
-    .slice(0, 8);
+    .filter((file): file is File => file instanceof File && file.size > 0);
   let imageUrls: string[] = [];
+
+  if (imageFiles.length > MAX_OWNER_PHOTOS) {
+    redirect("/for-owners?error=too_many_images");
+  }
+
+  const invalidImageFile = imageFiles.find(
+    (file) => !file.type.startsWith("image/") || file.size > MAX_OWNER_PHOTO_BYTES,
+  );
+  if (invalidImageFile) {
+    redirect("/for-owners?error=invalid_image");
+  }
 
   try {
     imageUrls = await Promise.all(

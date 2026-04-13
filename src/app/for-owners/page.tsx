@@ -6,6 +6,7 @@ import { FormSubmitButton } from "@/components/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { submitOwnerLibrary } from "@/app/for-owners/actions";
 import { OwnerFeePlansInput } from "@/app/for-owners/owner-fee-plans-input";
+import { OwnerPhotosInput } from "@/app/for-owners/owner-photos-input";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import { logPerf, measureAsync } from "@/lib/perf";
 
@@ -46,6 +47,21 @@ function statusLabel(status: string) {
       return "Needs changes";
     default:
       return "Under review";
+  }
+}
+
+function errorMessage(error?: string) {
+  switch (error) {
+    case "image_upload_failed":
+      return "We could not upload the photos right now. Please try again with smaller images or submit without photos first.";
+    case "too_many_images":
+      return "Please upload up to 8 photos only.";
+    case "invalid_image":
+      return "Please upload image files only, up to 8 MB each.";
+    case "missing_required_fields":
+      return "Please fill the required fields and try again.";
+    default:
+      return "We could not submit your listing just yet. Please review the required fields and try again.";
   }
 }
 
@@ -187,7 +203,7 @@ export default async function ForOwnersPage({
 
               {error && (
                 <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  We could not submit your listing just yet. Please review the required fields and try again.
+                  {errorMessage(error)}
                 </div>
               )}
 
@@ -321,20 +337,7 @@ export default async function ForOwnersPage({
 
                 <OwnerFeePlansInput />
 
-                <div className="space-y-2">
-                  <label htmlFor="photos" className="text-sm font-medium text-black">Photos</label>
-                  <Input
-                    id="photos"
-                    name="photos"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="h-auto rounded-2xl border-border/80 bg-slate-50/50 py-2 shadow-sm focus-visible:ring-primary/30"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Add a few clear photos of seating, entrance, and study area. These stay under review until approval.
-                  </p>
-                </div>
+                <OwnerPhotosInput />
 
                 <FormSubmitButton className="mt-4 h-12 w-full md:w-auto rounded-full bg-[#0F74C5] hover:bg-[#0F74C5]/90 px-8 text-sm font-semibold shadow-md">
                   Submit for review
