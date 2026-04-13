@@ -7,6 +7,7 @@ import type { Suggestion } from "@/app/api/suggestions/route";
 
 interface SearchBarProps {
   city?: string;
+  compact?: boolean;
 }
 
 type NearbyCoords = {
@@ -65,7 +66,7 @@ function groupSuggestions(suggestions: Suggestion[]) {
   return groups;
 }
 
-export function SearchBar({ city = "delhi" }: SearchBarProps) {
+export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
   const router = useRouter();
   const currentParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -493,11 +494,15 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
     <div ref={containerRef} className="relative w-full">
       <form
         onSubmit={handleSearch}
-        className="flex items-center w-full bg-white rounded-full shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] border border-border hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] transition-shadow pl-8 pr-2 py-2"
+        className={`flex items-center w-full bg-white rounded-full border border-border transition-shadow ${
+          compact
+            ? "shadow-none pl-5 pr-1.5 py-1.5"
+            : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] pl-5 pr-1.5 py-1.5 md:pl-8 md:pr-2 md:py-2"
+        }`}
       >
-        <div className="flex-1 flex flex-col justify-center min-w-0 py-1">
-          <span className="text-[11px] font-bold tracking-wider text-black">Where</span>
-          <div className="flex min-h-8 items-center gap-2">
+        <div className={`flex-1 flex flex-col justify-center min-w-0 ${compact ? "" : "py-1"}`}>
+          {!compact ? <span className="text-[10px] font-bold tracking-wider text-black md:text-[11px]">Where</span> : null}
+          <div className={`${compact ? "min-h-8" : "min-h-7 md:min-h-8"} flex items-center gap-2`}>
             <input
               ref={inputRef}
               type="text"
@@ -505,8 +510,10 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
               onFocus={() => suggestions.length > 0 && setOpen(true)}
-              placeholder="Locality, metro station, or library name..."
-              className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground truncate min-w-0"
+              placeholder={compact ? "Search libraries near you" : "Locality, metro station, or library name..."}
+              className={`flex-1 bg-transparent outline-none placeholder:text-muted-foreground truncate min-w-0 ${
+                compact ? "text-[13px] font-medium" : "text-[13px] md:text-sm"
+              }`}
               autoComplete="off"
             />
             {query && (
@@ -526,11 +533,12 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
             type="button"
             onClick={handleNearMeClick}
             disabled={nearbyLoading}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold tracking-wide transition-all ${
-              nearbyMode
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border text-xs font-semibold tracking-wide transition-all ${
+              compact ? "h-8 px-2.5" : "h-8 px-2.5 md:h-9 md:px-3"
+            } ${nearbyMode
                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                 : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-            } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
+              } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
             aria-label="Find libraries near me"
             title="Find libraries near me"
           >
@@ -551,7 +559,7 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
           </button>
           <button
             type="submit"
-            className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm"
+            className={`${compact ? "h-10 w-10" : "h-10 w-10 md:h-12 md:w-12"} rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm`}
             aria-label="Search"
           >
             {loading ? (
@@ -569,56 +577,54 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
           {(() => {
             let runningIndex = -1;
             return ORDERED_TYPES.map((type) => {
-            const items = grouped[type];
-            if (!items?.length) return null;
-            const Icon = TYPE_ICON[type];
-            return (
-              <div key={type}>
-                <div className="px-4 pt-3 pb-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {GROUP_LABEL[type]}
-                  </p>
+              const items = grouped[type];
+              if (!items?.length) return null;
+              const Icon = TYPE_ICON[type];
+              return (
+                <div key={type}>
+                  <div className="px-4 pt-3 pb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {GROUP_LABEL[type]}
+                    </p>
+                  </div>
+                  {items.map((s, i) => (
+                    (() => {
+                      runningIndex += 1;
+                      const itemIndex = runningIndex;
+                      const isActive = itemIndex === highlightedIndex;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onMouseEnter={() => {
+                            prefetchSuggestionRoute(s);
+                            setHighlightedIndex(itemIndex);
+                          }}
+                          onClick={() => handleSuggestionClick(s)}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${isActive ? "bg-muted/80" : "hover:bg-muted/60"
+                            }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-white shadow-sm" : "bg-muted"
+                            }`}>
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium text-black truncate">{s.label}</div>
+                            {s.type === "nearby" && typeof s.distance_km === "number" && (
+                              <div className="text-[11px] text-muted-foreground">
+                                {formatDistance(s.distance_km)}
+                              </div>
+                            )}
+                          </div>
+                          <span className="ml-auto text-xs text-muted-foreground shrink-0 capitalize">{s.city}</span>
+                        </button>
+                      );
+                    })()
+                  ))}
                 </div>
-                {items.map((s, i) => (
-                  (() => {
-                    runningIndex += 1;
-                    const itemIndex = runningIndex;
-                    const isActive = itemIndex === highlightedIndex;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onMouseEnter={() => {
-                          prefetchSuggestionRoute(s);
-                          setHighlightedIndex(itemIndex);
-                        }}
-                        onClick={() => handleSuggestionClick(s)}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${
-                          isActive ? "bg-muted/80" : "hover:bg-muted/60"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          isActive ? "bg-white shadow-sm" : "bg-muted"
-                        }`}>
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-black truncate">{s.label}</div>
-                          {s.type === "nearby" && typeof s.distance_km === "number" && (
-                            <div className="text-[11px] text-muted-foreground">
-                              {formatDistance(s.distance_km)}
-                            </div>
-                          )}
-                        </div>
-                        <span className="ml-auto text-xs text-muted-foreground shrink-0 capitalize">{s.city}</span>
-                      </button>
-                    );
-                  })()
-                ))}
-              </div>
-            );
-          });
-        })()}
+              );
+            });
+          })()}
           <div className="px-4 py-2.5 border-t border-border/50">
             <button
               type="button"

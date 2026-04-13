@@ -7,6 +7,8 @@ import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
+import type { Json } from "@/types/supabase";
+import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
 
 type SubmissionPayload = {
   id: string;
@@ -18,6 +20,9 @@ type SubmissionPayload = {
   pin_code: string | null;
   full_address: string | null;
   nearest_metro: string | null;
+  nearest_metro_distance_km: number | null;
+  latitude: number | null;
+  longitude: number | null;
   phone_number: string | null;
   whatsapp_number: string | null;
   opening_time: string | null;
@@ -26,6 +31,8 @@ type SubmissionPayload = {
   map_link: string | null;
   description: string | null;
   amenities_text: string | null;
+  image_urls: string[] | null;
+  fee_plans: Json | null;
 };
 
 function slugify(value: string) {
@@ -42,7 +49,7 @@ async function getSubmission(id: string): Promise<SubmissionPayload | null> {
   const { data, error } = await supabaseServer
     .from("owner_library_submissions")
     .select(
-      "id, display_name, city, locality, district, state, pin_code, full_address, nearest_metro, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text",
+      "id, display_name, city, locality, district, state, pin_code, full_address, nearest_metro, nearest_metro_distance_km, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text, image_urls, fee_plans",
     )
     .eq("id", id)
     .maybeSingle();
@@ -94,6 +101,9 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
       district: submission.district,
       full_address: submission.full_address,
       nearest_metro: submission.nearest_metro,
+      nearest_metro_distance_km: submission.nearest_metro_distance_km,
+      latitude: submission.latitude,
+      longitude: submission.longitude,
       phone_number: submission.phone_number,
       whatsapp_number: submission.whatsapp_number,
       opening_time: submission.opening_time,
@@ -116,6 +126,41 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
     console.error("Failed to create library from submission:", insertError?.message);
     redirect("/admin/owner-submissions");
   }
+
+  if (Array.isArray(submission.image_urls) && submission.image_urls.length > 0) {
+    await supabaseServer.from("library_images").insert(
+      submission.image_urls.map((imageUrl, index) => ({
+        library_branch_id: library.id,
+        imagekit_url: imageUrl,
+        is_cover: index === 0,
+        sort_order: index,
+      })),
+    );
+  }
+
+  const feePlans = Array.isArray(submission.fee_plans)
+    ? submission.fee_plans
+    : [];
+  if (feePlans.length > 0) {
+    await supabaseServer.from("library_fee_plans").insert(
+      feePlans.map((plan, index) => {
+        const feePlan = plan as { duration_label?: string; seat_type?: string; price?: number };
+        const duration = feePlan.duration_label || "Monthly";
+        const seatType = feePlan.seat_type || "Unreserved";
+        return {
+          library_branch_id: library.id,
+          plan_name: `${duration} - ${seatType}`,
+          duration_label: duration,
+          seat_type: seatType,
+          price: Number(feePlan.price) || 0,
+          sort_order: index,
+          is_active: true,
+        };
+      }),
+    );
+  }
+
+  await refreshLibraryProfileCompletenessScore(library.id);
 
   const { error: updateError } = await supabaseServer
     .from("owner_library_submissions")

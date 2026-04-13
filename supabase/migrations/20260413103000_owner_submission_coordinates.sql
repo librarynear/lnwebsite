@@ -1,0 +1,4 @@
+ALTER TABLE public.owner_library_submissions
+  ADD COLUMN IF NOT EXISTS nearest_metro_distance_km DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;

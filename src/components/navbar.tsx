@@ -14,23 +14,23 @@ export async function Navbar() {
 
   const { data: profileData } = user
     ? await supabase
-        .from("profiles")
-        .select("full_name, avatar_url, email")
-        .eq("id", user.id)
-        .maybeSingle()
+      .from("profiles")
+      .select("full_name, avatar_url, email")
+      .eq("id", user.id)
+      .maybeSingle()
     : { data: null };
   const profile = (profileData as NavbarProfile | null) ?? null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-white">
-      <div className="container mx-auto flex h-20 items-center justify-between px-6 md:px-10">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-10">
         <IntentLink href="/" className="flex items-center gap-2 group">
           <Image
             src="/logo.png"
             alt="LibraryNear Logo"
             width={132}
             height={40}
-            className="h-10 w-auto object-contain shrink-0"
+            className="h-8 w-auto object-contain shrink-0 md:h-10"
             priority
           />
           <span className="text-2xl tracking-tight hidden sm:block">
@@ -38,10 +38,10 @@ export async function Navbar() {
           </span>
         </IntentLink>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <IntentLink
             href="/for-owners"
-            className="text-[13px] font-semibold rounded-full border border-primary text-primary hover:bg-primary/5 px-4 py-1.5 transition-colors"
+            className="text-xs font-semibold rounded-full border border-primary text-primary hover:bg-primary/5 px-3 py-1.5 transition-colors md:px-4 md:text-[13px]"
           >
             List Your Library
           </IntentLink>
@@ -49,18 +49,18 @@ export async function Navbar() {
             user={
               user
                 ? {
-                    name:
-                      profile?.full_name ??
-                      (user.user_metadata?.full_name as string | undefined) ??
-                      (user.user_metadata?.name as string | undefined) ??
-                      null,
-                    email: profile?.email ?? user.email ?? null,
-                    avatarUrl:
-                      profile?.avatar_url ??
-                      (user.user_metadata?.avatar_url as string | undefined) ??
-                      (user.user_metadata?.picture as string | undefined) ??
-                      null,
-                  }
+                  name:
+                    profile?.full_name ??
+                    (user.user_metadata?.full_name as string | undefined) ??
+                    (user.user_metadata?.name as string | undefined) ??
+                    null,
+                  email: profile?.email ?? user.email ?? null,
+                  avatarUrl:
+                    profile?.avatar_url ??
+                    (user.user_metadata?.avatar_url as string | undefined) ??
+                    (user.user_metadata?.picture as string | undefined) ??
+                    null,
+                }
                 : null
             }
           />

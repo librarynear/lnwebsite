@@ -1,12 +1,28 @@
-import { CheckCircle2, Clock3, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock3, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { submitOwnerLibrary } from "@/app/for-owners/actions";
+import { OwnerFeePlansInput } from "@/app/for-owners/owner-fee-plans-input";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import { logPerf, measureAsync } from "@/lib/perf";
+
+const AMENITY_OPTIONS = [
+  "AC",
+  "Wi-Fi",
+  "RO Water",
+  "Washroom",
+  "Power Backup",
+  "CCTV",
+  "Locker",
+  "Parking",
+  "Tea/Coffee",
+  "Security Guard",
+  "Charging Points",
+  "Silent Zone",
+];
 
 type OwnerSubmissionRow = {
   id: string;
@@ -175,33 +191,35 @@ export default async function ForOwnersPage({
                 </div>
               )}
 
-              <form action={submitOwnerLibrary} className="grid gap-4">
+              <form action={submitOwnerLibrary} className="grid gap-5">
+                <div className="border-b border-border pb-2">
+                  <h3 className="text-sm font-semibold text-black">Core Details</h3>
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="display_name" className="text-sm font-medium text-black">Library name</label>
+                    <label htmlFor="display_name" className="text-sm font-medium text-black">Display name</label>
                     <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="phone_number" className="text-sm font-medium text-black">Contact number</label>
-                    <Input id="phone_number" name="phone_number" placeholder="10-digit mobile number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <label htmlFor="city" className="text-sm font-medium text-black">City</label>
-                    <Input id="city" name="city" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="locality" className="text-sm font-medium text-black">Locality</label>
                     <Input id="locality" name="locality" placeholder="Mukherjee Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="nearest_metro" className="text-sm font-medium text-black">Nearest metro</label>
-                    <Input id="nearest_metro" name="nearest_metro" placeholder="Rajendra Place" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="city" className="text-sm font-medium text-black">City</label>
+                    <Input id="city" name="city" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="district" className="text-sm font-medium text-black">District</label>
+                    <Input id="district" name="district" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
                 </div>
 
+                <div className="border-b border-border pb-2 pt-2">
+                  <h3 className="text-sm font-semibold text-black">Location Details</h3>
+                </div>
                 <div className="space-y-2">
                   <label htmlFor="full_address" className="text-sm font-medium text-black">Full address</label>
                   <textarea
@@ -213,11 +231,7 @@ export default async function ForOwnersPage({
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="space-y-2">
-                    <label htmlFor="district" className="text-sm font-medium text-black">District</label>
-                    <Input id="district" name="district" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <label htmlFor="state" className="text-sm font-medium text-black">State</label>
                     <Input id="state" name="state" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
@@ -227,41 +241,71 @@ export default async function ForOwnersPage({
                     <Input id="pin_code" name="pin_code" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
                   <div className="space-y-2">
+                    <label htmlFor="nearest_metro" className="text-sm font-medium text-black">Nearest metro</label>
+                    <Input id="nearest_metro" name="nearest_metro" placeholder="Rajendra Place" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="nearest_metro_distance_km" className="text-sm font-medium text-black">Metro distance (KM)</label>
+                    <Input id="nearest_metro_distance_km" name="nearest_metro_distance_km" type="number" step="0.01" placeholder="e.g. 1.2" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="map_link" className="text-sm font-medium text-black">Google Maps link</label>
+                    <Input id="map_link" name="map_link" placeholder="https://maps.google.com/..." className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <p className="text-xs text-muted-foreground">
+                      If the link contains coordinates, we will extract latitude and longitude automatically.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-b border-border pb-2 pt-2">
+                  <h3 className="text-sm font-semibold text-black">Facilities & Logistics</h3>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time</label>
+                    <Input id="opening_time" name="opening_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time</label>
+                    <Input id="closing_time" name="closing_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label htmlFor="phone_number" className="text-sm font-medium text-black">Phone</label>
+                    <Input id="phone_number" name="phone_number" placeholder="10-digit mobile number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="whatsapp_number" className="text-sm font-medium text-black">WhatsApp</label>
+                    <Input id="whatsapp_number" name="whatsapp_number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  </div>
+                  <div className="space-y-2">
                     <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats</label>
                     <Input id="total_seats" name="total_seats" type="number" min="0" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time</label>
-                    <Input id="opening_time" name="opening_time" placeholder="06:00 AM" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time</label>
-                    <Input id="closing_time" name="closing_time" placeholder="11:00 PM" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="whatsapp_number" className="text-sm font-medium text-black">WhatsApp number</label>
-                    <Input id="whatsapp_number" name="whatsapp_number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="map_link" className="text-sm font-medium text-black">Google Maps link</label>
-                    <Input id="map_link" name="map_link" placeholder="https://maps.google.com/..." className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
-                  <label htmlFor="amenities_text" className="text-sm font-medium text-black">Amenities</label>
-                  <Input
-                    id="amenities_text"
-                    name="amenities_text"
-                    placeholder="WiFi, AC, individual desks, water, washroom"
-                    className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
-                  />
+                  <label htmlFor="amenities" className="text-sm font-medium text-black">Amenities</label>
+                  <select
+                    id="amenities"
+                    name="amenities"
+                    multiple
+                    className="min-h-36 w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm shadow-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                  >
+                    {AMENITY_OPTIONS.map((amenity) => (
+                      <option key={amenity} value={amenity}>
+                        {amenity}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Hold Ctrl or Cmd to select multiple amenities.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -273,6 +317,23 @@ export default async function ForOwnersPage({
                     placeholder="Tell students what makes your library a great place to study."
                     className="w-full rounded-2xl border border-border/80 bg-slate-50/50 shadow-sm px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                   />
+                </div>
+
+                <OwnerFeePlansInput />
+
+                <div className="space-y-2">
+                  <label htmlFor="photos" className="text-sm font-medium text-black">Photos</label>
+                  <Input
+                    id="photos"
+                    name="photos"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="h-auto rounded-2xl border-border/80 bg-slate-50/50 py-2 shadow-sm focus-visible:ring-primary/30"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Add a few clear photos of seating, entrance, and study area. These stay under review until approval.
+                  </p>
                 </div>
 
                 <FormSubmitButton className="mt-4 h-12 w-full md:w-auto rounded-full bg-[#0F74C5] hover:bg-[#0F74C5]/90 px-8 text-sm font-semibold shadow-md">

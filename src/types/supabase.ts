@@ -204,6 +204,9 @@ export type Database = {
           pin_code: string | null;
           full_address: string | null;
           nearest_metro: string | null;
+          nearest_metro_distance_km: number | null;
+          latitude: number | null;
+          longitude: number | null;
           phone_number: string;
           whatsapp_number: string | null;
           opening_time: string | null;
@@ -212,6 +215,8 @@ export type Database = {
           map_link: string | null;
           description: string | null;
           amenities_text: string | null;
+          image_urls: string[] | null;
+          fee_plans: Json | null;
           submitted_library_branch_id: string | null;
           reviewer_notes: string | null;
           created_at: string | null;

@@ -6,8 +6,8 @@ import { supabaseServer } from "@/lib/supabase-server";
 import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
+import { HomeSearchShell } from "@/components/home-search-shell";
 import { IntentLink } from "@/components/intent-link";
-import { SearchBar } from "@/components/search-bar";
 
 export const revalidate = 120;
 
@@ -27,6 +27,18 @@ async function getLibraries(locality?: string, q?: string): Promise<LibraryCardD
   });
 }
 
+const getCachedLibraries = unstable_cache(
+  async (locality?: string, q?: string) => getLibraries(locality, q),
+  ["home-libraries"],
+  {
+    revalidate: 120,
+    tags: ["library-cards"],
+  },
+);
+
+const getHomeLibraries =
+  process.env.NODE_ENV === "development" ? getLibraries : getCachedLibraries;
+
 async function getTopLocalities(): Promise<string[]> {
   const { data, error } = await supabaseServer
     .from("library_branches")
@@ -34,12 +46,17 @@ async function getTopLocalities(): Promise<string[]> {
     .eq("is_active", true)
     .not("locality", "is", null);
 
-  if (error || !data) return [];
-  const localityRows = data as Array<{ locality: string | null }>;
+  if (error) {
+    console.warn("Unable to load homepage locality strip", error.message);
+    return [];
+  }
 
   const counts: Record<string, number> = {};
-  for (const row of localityRows) {
-    if (row.locality) counts[row.locality] = (counts[row.locality] ?? 0) + 1;
+  for (const row of data ?? []) {
+    const normalizedLocality = row.locality?.trim();
+    if (normalizedLocality) {
+      counts[normalizedLocality] = (counts[normalizedLocality] ?? 0) + 1;
+    }
   }
 
   return Object.entries(counts)
@@ -53,24 +70,12 @@ const getCachedTopLocalities = unstable_cache(
   ["home-top-localities"],
   {
     revalidate: 120,
-    tags: ["home-top-localities"],
-  },
-);
-
-const getCachedLibraries = unstable_cache(
-  async (locality?: string, q?: string) => getLibraries(locality, q),
-  ["home-libraries"],
-  {
-    revalidate: 120,
     tags: ["library-cards"],
   },
 );
 
 const getHomeTopLocalities =
   process.env.NODE_ENV === "development" ? getTopLocalities : getCachedTopLocalities;
-
-const getHomeLibraries =
-  process.env.NODE_ENV === "development" ? getLibraries : getCachedLibraries;
 
 interface HomeProps {
   searchParams: Promise<{ locality?: string; q?: string }>;
@@ -81,48 +86,45 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
     measureAsync("libraries", () => getHomeLibraries(locality, q)),
-    measureAsync("topLocalitiesCached", () => getHomeTopLocalities()),
+    measureAsync("topLocalities", () => getHomeTopLocalities()),
   ]);
   const libraries = librariesMeasurement.result.map(withCardImage);
   const topLocalities = topLocalitiesMeasurement.result;
-  logPerf("home", [librariesMeasurement.metric, topLocalitiesMeasurement.metric], `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`);
+  logPerf(
+    "home",
+    [librariesMeasurement.metric, topLocalitiesMeasurement.metric],
+    `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`,
+  );
 
   return (
     <div className="flex flex-col min-h-screen">
+      <Suspense fallback={null}>
+        <HomeSearchShell />
+      </Suspense>
 
-      {/* SEARCH BAR */}
-      <section className="w-full pt-8 pb-10 flex flex-col items-center justify-center bg-white border-b border-border/40">
-        <div className="w-full max-w-[560px] px-4">
-          <Suspense fallback={null}>
-            <SearchBar />
-          </Suspense>
-        </div>
-      </section>
-
-      <div className="w-full border-b border-border/50 sticky top-20 bg-white z-30 shadow-sm">
-        <div className="container mx-auto px-6 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
-
-          {/* All tab */}
+      <div className="w-full border-b border-border/50 bg-white shadow-sm">
+        <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
           <IntentLink
             href="/"
-            className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-medium tracking-wide transition-all min-w-max ${!locality
-                ? "bg-primary text-white shadow-sm"
-                : "bg-white text-muted-foreground border border-primary/30 hover:border-primary hover:bg-primary/5 hover:text-primary"
-              }`}
+            className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors md:px-5 md:py-2.5 md:text-sm ${
+              !locality && !q
+                ? "bg-primary text-white shadow-md shadow-primary/20"
+                : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
+            }`}
           >
             All Delhi
           </IntentLink>
-
-          {topLocalities.map((loc) => (
+          {topLocalities.map((topLocality) => (
             <IntentLink
-              key={loc}
-              href={`/?locality=${encodeURIComponent(loc)}`}
-              className={`flex items-center justify-center px-4 py-2 rounded-full text-[13px] font-normal tracking-wide transition-all min-w-max ${locality === loc
-                  ? "bg-primary text-white shadow-sm"
-                  : "bg-white text-muted-foreground border border-primary/30 hover:border-primary hover:bg-primary/5 hover:text-primary"
-                }`}
+              key={topLocality}
+              href={`/?locality=${encodeURIComponent(topLocality)}`}
+              className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors md:px-5 md:py-2.5 md:text-sm ${
+                locality === topLocality
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
+              }`}
             >
-              {loc}
+              {topLocality}
             </IntentLink>
           ))}
         </div>

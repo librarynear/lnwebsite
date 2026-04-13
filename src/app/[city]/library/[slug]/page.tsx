@@ -334,7 +334,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
                 {lib.description}
               </p>
             )}
-            
+
             {/* Amenities Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm text-muted-foreground">
               {lib.total_seats && (
