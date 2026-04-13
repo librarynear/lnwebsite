@@ -47,7 +47,8 @@ export async function getLibraryOpsPage({
 
   let query = supabaseServer
     .from("library_branches")
-    .select("*, library_fee_plans(*), library_images(*)", { count: "exact" });
+    .select("*, library_fee_plans(*), library_images(*)", { count: "exact" })
+    .eq("is_active", true);
 
   if (q) {
     query = query.or(`display_name.ilike.%${q}%,locality.ilike.%${q}%,phone_number.ilike.%${q}%`);

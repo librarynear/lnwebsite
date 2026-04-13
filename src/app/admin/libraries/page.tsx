@@ -154,7 +154,7 @@ export default async function AdminLibrariesPage({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-4">
-                        <EditLibraryModal library={lib} />
+                        <EditLibraryModal library={lib} allowDelete />
                         <Link
                           href={`/${lib.city.toLowerCase()}/library/${lib.slug}`}
                           target="_blank"

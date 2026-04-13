@@ -8,6 +8,7 @@ import {
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
 import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
+import { requireApprovedStaff } from "@/lib/staff-access";
 
 type FeePlanInput = {
   duration_label?: string | null;
@@ -94,6 +95,33 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     libraryBranchId: id,
     actionType: "library_updated",
     changedFields: Object.keys(cleanedPayload),
+  });
+
+  return { success: true };
+}
+
+export async function deleteLibraryBranch(id: string) {
+  await requireApprovedStaff(["admin"]);
+
+  const previousTarget = await getLibraryCacheTarget(id);
+
+  const { error } = await supabaseServer
+    .from("library_branches")
+    .update({
+      is_active: false,
+      last_admin_reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidateLibraryContent(previousTarget);
+  await logLibraryActivity({
+    libraryBranchId: id,
+    actionType: "library_deleted",
+    changedFields: ["is_active"],
   });
 
   return { success: true };

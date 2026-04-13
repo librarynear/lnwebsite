@@ -495,9 +495,9 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
         onSubmit={handleSearch}
         className="flex items-center w-full bg-white rounded-full shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] border border-border hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] transition-shadow pl-8 pr-2 py-2"
       >
-        <div className="flex-1 flex flex-col justify-center min-w-0">
+        <div className="flex-1 flex flex-col justify-center min-w-0 py-1">
           <span className="text-[11px] font-bold tracking-wider text-black">Where</span>
-          <div className="flex items-center gap-2">
+          <div className="flex min-h-8 items-center gap-2">
             <input
               ref={inputRef}
               type="text"
@@ -506,7 +506,7 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
               onKeyDown={handleInputKeyDown}
               onFocus={() => suggestions.length > 0 && setOpen(true)}
               placeholder="Locality, metro station, or library name..."
-              className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground truncate pt-0.5 min-w-0"
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground truncate min-w-0"
               autoComplete="off"
             />
             {query && (
@@ -519,46 +519,48 @@ export function SearchBar({ city = "delhi" }: SearchBarProps) {
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={handleNearMeClick}
-              disabled={nearbyLoading}
-              className={`shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition-all mr-1 ${
-                nearbyMode
-                  ? "border-primary bg-primary/10 text-primary shadow-sm"
-                  : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-              } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
-              aria-label="Find libraries near me"
-              title="Find libraries near me"
-            >
-              {nearbyLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <NearbyGlyph className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">
-                {nearbyPhase === "locating"
-                  ? "Locating..."
-                  : nearbyPhase === "searching"
-                    ? "Finding..."
-                    : nearbyMode
-                      ? "Nearby"
-                      : "Near me"}
-              </span>
-            </button>
           </div>
         </div>
-        <button
-          type="submit"
-          className="h-12 w-12 ml-2 rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm"
-          aria-label="Search"
-        >
-          {loading ? (
-            <Loader2 className="h-5 w-5 animate-spin" strokeWidth={3} />
-          ) : (
-            <Search className="h-5 w-5" strokeWidth={3} />
-          )}
-        </button>
+        <div className="ml-3 flex shrink-0 items-center gap-2 self-stretch">
+          <button
+            type="button"
+            onClick={handleNearMeClick}
+            disabled={nearbyLoading}
+            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold tracking-wide transition-all ${
+              nearbyMode
+                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+            } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
+            aria-label="Find libraries near me"
+            title="Find libraries near me"
+          >
+            {nearbyLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <NearbyGlyph className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {nearbyPhase === "locating"
+                ? "Locating..."
+                : nearbyPhase === "searching"
+                  ? "Finding..."
+                  : nearbyMode
+                    ? "Nearby"
+                    : "Near me"}
+            </span>
+          </button>
+          <button
+            type="submit"
+            className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm"
+            aria-label="Search"
+          >
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" strokeWidth={3} />
+            ) : (
+              <Search className="h-5 w-5" strokeWidth={3} />
+            )}
+          </button>
+        </div>
       </form>
 
       {/* SUGGESTIONS DROPDOWN */}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Save, Edit3, Plus, Trash2, Loader2, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { updateLibraryBranch } from "./actions";
+import { deleteLibraryBranch, updateLibraryBranch } from "./actions";
 import { uploadLibraryImage, deleteLibraryImage } from "./image-actions";
 import type { Tables } from "@/types/supabase";
 import Image from "next/image";
@@ -18,6 +18,7 @@ type AdminLibraryBranch = Tables<"library_branches"> & {
 
 interface EditLibraryModalProps {
   library: AdminLibraryBranch;
+  allowDelete?: boolean;
 }
 
 const AMENITY_OPTIONS = [
@@ -43,10 +44,11 @@ function parseAmenities(amenitiesText: string | null | undefined) {
     .filter(Boolean);
 }
 
-export function EditLibraryModal({ library }: EditLibraryModalProps) {
+export function EditLibraryModal({ library, allowDelete = false }: EditLibraryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Deep copy so we don't mutate props directly
   const [plans, setPlans] = useState<Partial<FeePlan>[]>(
@@ -122,6 +124,21 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
       setIsOpen(false);
     } else {
       alert("Failed to update: " + result.error);
+    }
+  };
+
+  const handleDeleteLibrary = async () => {
+    if (!confirm(`Delete "${library.display_name}" from public listings and editor queues?`)) return;
+
+    setIsDeleting(true);
+    const result = await deleteLibraryBranch(library.id);
+    setIsDeleting(false);
+
+    if (result.success) {
+      setIsOpen(false);
+      window.location.reload();
+    } else {
+      alert("Failed to delete: " + result.error);
     }
   };
 
@@ -370,13 +387,38 @@ export function EditLibraryModal({ library }: EditLibraryModalProps) {
             </form>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3 bg-muted/10">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" form="edit-form" disabled={isSaving} className="font-semibold min-w-32">
-                {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2"/> Save Changes</>}
-              </Button>
+            <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-3 bg-muted/10">
+              <div>
+                {allowDelete ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => void handleDeleteLibrary()}
+                    disabled={isDeleting || isSaving}
+                    className="font-semibold"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Library
+                      </>
+                    )}
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" form="edit-form" disabled={isSaving || isDeleting} className="font-semibold min-w-32">
+                  {isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-2"/> Save Changes</>}
+                </Button>
+              </div>
             </div>
             
           </div>
