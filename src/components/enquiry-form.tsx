@@ -44,14 +44,14 @@ export function EnquiryForm({ libraryBranchId, phoneNumber, sourcePage }: Enquir
     <div className="border-t border-border/50 pt-5">
       <p className="font-semibold mb-1">Enquire directly</p>
       <p className="text-xs text-muted-foreground mb-4">
-        Leave your number and we'll connect you with this library.
+        Leave your number and we&apos;ll connect you with this library.
       </p>
 
       {status === "success" ? (
         <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
           <CheckCircle2 className="w-10 h-10 text-green-500" />
           <p className="font-semibold text-sm">Request received!</p>
-          <p className="text-xs text-muted-foreground">We'll reach out to you shortly.</p>
+          <p className="text-xs text-muted-foreground">We&apos;ll reach out to you shortly.</p>
           <button
             onClick={() => setStatus("idle")}
             className="mt-2 text-xs text-primary underline"

@@ -9,16 +9,24 @@ import {
 } from "@/lib/revalidate-library-content";
 import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
 import { requireApprovedStaff } from "@/lib/staff-access";
-
-type FeePlanInput = {
-  duration_label?: string | null;
-  seat_type?: string | null;
-  price?: string | number | null;
-};
+import {
+  buildLibraryFeePlanInsertRows,
+  parsePlanDraftsJson,
+} from "@/lib/library-plans";
+import { extractCoordinatesFromMapLink } from "@/lib/maps-coordinates";
 
 export async function updateLibraryBranch(id: string, formData: FormData) {
   const previousTarget = await getLibraryCacheTarget(id);
   const actorUserId = await getCurrentActorUserId();
+  const mapLink = (formData.get("map_link") as string) || "";
+  const extractedCoordinates = extractCoordinatesFromMapLink(mapLink);
+  const latitude = formData.get("latitude")
+    ? Number(formData.get("latitude"))
+    : extractedCoordinates?.latitude ?? null;
+  const longitude = formData.get("longitude")
+    ? Number(formData.get("longitude"))
+    : extractedCoordinates?.longitude ?? null;
+  const amenityValues = formData.getAll("amenities");
 
   const payload = {
     display_name: formData.get("display_name") as string,
@@ -29,26 +37,21 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     full_address: formData.get("full_address") as string,
     nearest_metro: formData.get("nearest_metro") as string,
     nearest_metro_distance_km: formData.get("nearest_metro_distance_km") ? parseFloat(formData.get("nearest_metro_distance_km") as string) : null,
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
     opening_time: formData.get("opening_time") as string,
     closing_time: formData.get("closing_time") as string,
     phone_number: formData.get("phone_number") as string,
     description: formData.get("description") as string,
-    amenities_text: formData.get("amenities_text") as string,
+    amenities_text: amenityValues.length > 0
+      ? amenityValues.map((value) => String(value).trim()).filter(Boolean).join(", ")
+      : (formData.get("amenities_text") as string),
     map_link: formData.get("map_link") as string,
     whatsapp_number: formData.get("whatsapp_number") as string,
     total_seats: formData.get("total_seats") ? parseInt(formData.get("total_seats") as string, 10) : null,
   };
 
-  const feePlansJson = formData.get("fee_plans_json") as string;
-  let feePlans: FeePlanInput[] = [];
-  if (feePlansJson) {
-    try {
-      const parsed = JSON.parse(feePlansJson) as unknown;
-      feePlans = Array.isArray(parsed) ? (parsed as FeePlanInput[]) : [];
-    } catch {
-      console.warn("Invalid fee plans JSON");
-    }
-  }
+  const feePlans = parsePlanDraftsJson(formData.get("fee_plans_json") as string);
 
   const cleanedPayload: TablesUpdate<"library_branches"> = Object.fromEntries(
     Object.entries(payload).map(([k, v]) => [k, v === "" ? null : v]),
@@ -72,17 +75,7 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   
   // 2. Insert new plans
   if (feePlans.length > 0) {
-    const plansToInsert = feePlans.map((plan) => {
-      const duration = plan.duration_label || "Monthly";
-      const seat = plan.seat_type || "Unreserved";
-      return {
-        library_branch_id: id,
-        duration_label: duration,
-        plan_name: `${duration} - ${seat}`,
-        price: plan.price ? parseFloat(String(plan.price)) : 0,
-        seat_type: seat,
-      };
-    });
+    const plansToInsert = buildLibraryFeePlanInsertRows(feePlans, id);
     await supabaseServer.from("library_fee_plans").insert(plansToInsert);
   }
 

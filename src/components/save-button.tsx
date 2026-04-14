@@ -2,18 +2,10 @@
 
 import { Heart } from "lucide-react";
 import { useSavedStore } from "@/store/use-saved-store";
-import { useEffect, useState } from "react";
 
 export function SaveButton({ libraryId }: { libraryId: string }) {
-  const [mounted, setMounted] = useState(false);
   const { isSaved, toggleSaved } = useSavedStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Prevent hydration mismatch by always rendering the default state on server
-  const active = mounted ? isSaved(libraryId) : false;
+  const active = isSaved(libraryId);
 
   return (
     <button

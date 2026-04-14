@@ -68,11 +68,18 @@ export type Database = {
           library_branch_id: string;
           plan_name: string;
           plan_type: string | null;
+          plan_category?: string | null;
+          duration_key?: string | null;
           duration_label: string | null;
           price: number;
+          base_price?: number | null;
+          discount_percentage?: number | null;
+          discounted_price?: number | null;
           currency: string | null;
           seat_type: string | null;
+          hours_per_day?: number | null;
           description: string | null;
+          offer_name?: string | null;
           is_active: boolean | null;
           sort_order: number | null;
           created_at: string | null;

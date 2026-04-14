@@ -5,25 +5,16 @@ import { IntentLink } from "@/components/intent-link";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { submitOwnerLibrary } from "@/app/for-owners/actions";
-import { OwnerFeePlansInput } from "@/app/for-owners/owner-fee-plans-input";
 import { OwnerPhotosInput } from "@/app/for-owners/owner-photos-input";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import { logPerf, measureAsync } from "@/lib/perf";
-
-const AMENITY_OPTIONS = [
-  "AC",
-  "Wi-Fi",
-  "RO Water",
-  "Washroom",
-  "Power Backup",
-  "CCTV",
-  "Locker",
-  "Parking",
-  "Tea/Coffee",
-  "Security Guard",
-  "Charging Points",
-  "Silent Zone",
-];
+import { PlansEditor } from "@/components/library-form/plans-editor";
+import { AmenitiesChecklist } from "@/components/library-form/amenities-checklist";
+import { MapCoordinatesFields } from "@/components/library-form/map-coordinates-fields";
+import { FormDraftPersistence } from "@/components/library-form/form-draft-persistence";
+import { OwnerSubmissionPlansForm } from "./owner-submission-plans-form";
+import type { Json } from "@/types/supabase";
+import { PhoneWhatsappFields } from "@/components/library-form/phone-whatsapp-fields";
 
 type OwnerSubmissionRow = {
   id: string;
@@ -32,6 +23,7 @@ type OwnerSubmissionRow = {
   city: string;
   locality: string | null;
   created_at: string | null;
+  fee_plans: Json | null;
 };
 
 export const metadata = {
@@ -68,9 +60,9 @@ function errorMessage(error?: string) {
 export default async function ForOwnersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ submitted?: string; error?: string }>;
+  searchParams: Promise<{ submitted?: string; error?: string; plans_updated?: string; plans_error?: string }>;
 }) {
-  const { submitted, error } = await searchParams;
+  const { submitted, error, plans_updated, plans_error } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -85,7 +77,7 @@ export default async function ForOwnersPage({
         (
           await supabase
             .from("owner_library_submissions")
-            .select("id, status, display_name, city, locality, created_at")
+            .select("id, status, display_name, city, locality, created_at, fee_plans")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
         ).data ?? [],
@@ -207,13 +199,18 @@ export default async function ForOwnersPage({
                 </div>
               )}
 
-              <form action={submitOwnerLibrary} className="grid gap-5">
+              <form action={submitOwnerLibrary} className="grid gap-5" id="owner-library-form">
+                <FormDraftPersistence
+                  formId="owner-library-form"
+                  storageKey="owner-library-form-draft"
+                  clearOnMount={submitted === "1"}
+                />
                 <div className="border-b border-border pb-2">
                   <h3 className="text-sm font-semibold text-black">Core Details</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="display_name" className="text-sm font-medium text-black">Display name</label>
+                    <label htmlFor="display_name" className="text-sm font-medium text-black">Display name <span className="text-destructive">*</span></label>
                     <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
@@ -224,7 +221,7 @@ export default async function ForOwnersPage({
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="city" className="text-sm font-medium text-black">City</label>
+                    <label htmlFor="city" className="text-sm font-medium text-black">City <span className="text-destructive">*</span></label>
                     <Input id="city" name="city" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
@@ -262,19 +259,12 @@ export default async function ForOwnersPage({
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="nearest_metro_distance_km" className="text-sm font-medium text-black">Metro distance (KM)</label>
-                    <Input id="nearest_metro_distance_km" name="nearest_metro_distance_km" type="number" step="0.01" placeholder="e.g. 1.2" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="map_link" className="text-sm font-medium text-black">Google Maps link</label>
-                    <Input id="map_link" name="map_link" placeholder="https://maps.google.com/..." className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                    <p className="text-xs text-muted-foreground">
-                      If the link contains coordinates, we will extract latitude and longitude automatically.
-                    </p>
-                  </div>
+                <div className="space-y-2">
+                  <label htmlFor="nearest_metro_distance_km" className="text-sm font-medium text-black">Metro distance (KM)</label>
+                  <Input id="nearest_metro_distance_km" name="nearest_metro_distance_km" type="number" step="0.01" placeholder="We will calculate this ourselves later" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                 </div>
+
+                <MapCoordinatesFields storageKey="owner-library-map-fields" mapLinkRequired clearOnMount={submitted === "1"} />
 
                 <div className="border-b border-border pb-2 pt-2">
                   <h3 className="text-sm font-semibold text-black">Facilities & Logistics</h3>
@@ -291,39 +281,17 @@ export default async function ForOwnersPage({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <label htmlFor="phone_number" className="text-sm font-medium text-black">Phone</label>
-                    <Input id="phone_number" name="phone_number" placeholder="10-digit mobile number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="whatsapp_number" className="text-sm font-medium text-black">WhatsApp</label>
-                    <Input id="whatsapp_number" name="whatsapp_number" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats</label>
-                    <Input id="total_seats" name="total_seats" type="number" min="0" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
+                  <PhoneWhatsappFields storageKey="owner-library-phone-fields" clearOnMount={submitted === "1"} />
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="amenities" className="text-sm font-medium text-black">Amenities</label>
-                  <select
-                    id="amenities"
-                    name="amenities"
-                    multiple
-                    className="min-h-36 w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm shadow-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
-                  >
-                    {AMENITY_OPTIONS.map((amenity) => (
-                      <option key={amenity} value={amenity}>
-                        {amenity}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    Hold Ctrl or Cmd to select multiple amenities.
-                  </p>
+                  <AmenitiesChecklist />
                 </div>
 
+                <div className="border-b border-border pb-2 pt-2">
+                  <h3 className="text-sm font-semibold text-black">About & Seats</h3>
+                </div>
                 <div className="space-y-2">
                   <label htmlFor="description" className="text-sm font-medium text-black">Short description</label>
                   <textarea
@@ -335,7 +303,17 @@ export default async function ForOwnersPage({
                   />
                 </div>
 
-                <OwnerFeePlansInput />
+                <div className="space-y-2">
+                  <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats</label>
+                  <Input id="total_seats" name="total_seats" type="number" min="0" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                </div>
+
+                <PlansEditor
+                  storageKey="owner-library-plan-draft"
+                  title="Plans"
+                  note="Plans are optional. Use Regular or Offer, add discount percentages, and we will calculate the clean discounted price automatically."
+                  clearOnMount={submitted === "1"}
+                />
 
                 <OwnerPhotosInput />
 
@@ -369,6 +347,16 @@ export default async function ForOwnersPage({
                     Open profile
                   </IntentLink>
                 </div>
+                {plans_updated === "1" ? (
+                  <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    Your plans were updated successfully.
+                  </div>
+                ) : null}
+                {plans_error === "1" ? (
+                  <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    We could not update those plans right now. Please try again.
+                  </div>
+                ) : null}
                 {submissions.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     You have not submitted a library yet.
@@ -387,6 +375,13 @@ export default async function ForOwnersPage({
                           <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-semibold text-primary">
                             {statusLabel(submission.status)}
                           </span>
+                        </div>
+                        <div className="mt-4">
+                          <OwnerSubmissionPlansForm
+                            submissionId={submission.id}
+                            displayName={submission.display_name}
+                            feePlans={submission.fee_plans}
+                          />
                         </div>
                       </div>
                     ))}

@@ -49,13 +49,13 @@ export default function AnalyticsPage() {
             <h3 className="font-bold text-black mb-4">How to set this up:</h3>
             <ol className="list-decimal pl-5 space-y-3 text-muted-foreground">
               <li>Open your PostHog account and navigate to <strong>Dashboards</strong>.</li>
-              <li>Click on the Dashboard you want to embed (e.g. "App Project Default").</li>
+              <li>Click on the Dashboard you want to embed (e.g. &quot;App Project Default&quot;).</li>
               <li>Click the <strong>Share</strong> button in the top right corner.</li>
               <li>Turn on <strong>Share Dashboard via link</strong>.</li>
               <li>Copy that specific Embedded Link URL.</li>
               <li>Add it to your <code>.env.local</code> file exactly like this:
                 <pre className="mt-3 p-3 bg-slate-900 text-green-400 rounded-lg overflow-x-auto">
-                  NEXT_PUBLIC_POSTHOG_DASHBOARD_URL="https://us.posthog.com/shared/your_unique_id"
+                  NEXT_PUBLIC_POSTHOG_DASHBOARD_URL=&quot;https://us.posthog.com/shared/your_unique_id&quot;
                 </pre>
               </li>
               <li>Restart your development server.</li>

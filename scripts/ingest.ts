@@ -17,6 +17,16 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+type CsvRow = Record<string, string>;
+type FeePlanCsvInput = {
+  plan_name?: string;
+  plan_type?: string | null;
+  price?: number;
+  currency?: string;
+  duration_label?: string | null;
+  description?: string | null;
+};
+
 function generateSlug(name: string, locality: string, branch: string) {
   const base = `${name} ${branch} ${locality}`.trim()
     .toLowerCase()
@@ -34,10 +44,10 @@ async function ingestData() {
   Papa.parse(csvFile, {
     header: true,
     skipEmptyLines: true,
-    complete: async (results: Papa.ParseResult<Record<string, string>>) => {
+    complete: async (results: Papa.ParseResult<CsvRow>) => {
       console.log(`Parsed ${results.data.length} rows.`);
 
-      for (const row of results.data as any[]) {
+      for (const row of results.data) {
         try {
           const name = row['Name'] || 'Unnamed Library';
           const locality = row['Display Locality'] || row['Locality'] || '';
@@ -91,12 +101,12 @@ async function ingestData() {
           const feePlansJson = row['Library Fee Plans JSON'];
           if (feePlansJson) {
             try {
-              const plans = JSON.parse(feePlansJson);
+              const plans = JSON.parse(feePlansJson) as unknown;
               if (Array.isArray(plans) && plans.length > 0) {
                 // Delete existing ones to prevent duplicates on re-run
                 await supabase.from('library_fee_plans').delete().eq('library_branch_id', branchId);
                 
-                const planRecords = plans.map((p, index) => ({
+                const planRecords = (plans as FeePlanCsvInput[]).map((p, index) => ({
                   library_branch_id: branchId,
                   plan_name: p.plan_name || 'Standard Plan',
                   plan_type: p.plan_type || null,
@@ -109,7 +119,7 @@ async function ingestData() {
 
                 await supabase.from('library_fee_plans').insert(planRecords);
               }
-            } catch (e) {
+            } catch {
               console.warn(`Could not parse JSON fee plans for ${name}`);
             }
           }
@@ -118,11 +128,13 @@ async function ingestData() {
           const photosJson = row['Library Photos JSON'];
           if (photosJson) {
             try {
-              const photos = JSON.parse(photosJson);
+              const photos = JSON.parse(photosJson) as unknown;
               if (Array.isArray(photos) && photos.length > 0) {
                 await supabase.from('library_images').delete().eq('library_branch_id', branchId);
                 
-                const photoRecords = photos.map((url, index) => ({
+                const photoRecords = photos
+                  .filter((url): url is string => typeof url === 'string' && url.length > 0)
+                  .map((url, index) => ({
                   library_branch_id: branchId,
                   imagekit_url: url,
                   is_cover: index === 0,
@@ -131,7 +143,7 @@ async function ingestData() {
 
                 await supabase.from('library_images').insert(photoRecords);
               }
-            } catch (e) {
+            } catch {
               // Not critical
             }
           }

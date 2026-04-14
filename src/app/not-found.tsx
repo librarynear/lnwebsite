@@ -33,7 +33,7 @@ export default function NotFound() {
           Something gone wrong!
         </h2>
         <p className="text-[#2F5A8F] text-base md:text-lg font-medium max-w-sm mx-auto">
-          The page you were looking for doesn't exist
+          The page you were looking for doesn&apos;t exist
         </p>
 
         {/* Go Back Button */}

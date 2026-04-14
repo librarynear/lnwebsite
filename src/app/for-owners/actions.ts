@@ -4,12 +4,16 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import { extractCoordinatesFromMapLink } from "@/lib/maps-coordinates";
-
-type OwnerFeePlan = {
-  duration_label?: string;
-  seat_type?: string;
-  price?: number;
-};
+import {
+  buildLibraryFeePlanInsertRows,
+  parsePlanDraftsJson,
+} from "@/lib/library-plans";
+import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
+import {
+  getLibraryCacheTarget,
+  revalidateLibraryContent,
+} from "@/lib/revalidate-library-content";
+import { supabaseServer } from "@/lib/supabase-server";
 
 const MAX_OWNER_PHOTOS = 8;
 const MAX_OWNER_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -47,28 +51,6 @@ async function uploadOwnerSubmissionImage(file: File, userId: string) {
   return result.url;
 }
 
-function parseFeePlans(formData: FormData): OwnerFeePlan[] {
-  const rawPlans = String(formData.get("fee_plans_json") ?? "");
-  if (!rawPlans) return [];
-
-  try {
-    const parsed = JSON.parse(rawPlans) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((plan) => {
-        const candidate = plan as OwnerFeePlan;
-        return {
-          duration_label: candidate.duration_label || "Monthly",
-          seat_type: candidate.seat_type || "Unreserved",
-          price: Number(candidate.price) || 0,
-        };
-      })
-      .filter((plan) => plan.price > 0);
-  } catch {
-    return [];
-  }
-}
-
 export async function submitOwnerLibrary(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -82,8 +64,14 @@ export async function submitOwnerLibrary(formData: FormData) {
   await upsertProfileFromUser(user);
 
   const mapLink = String(formData.get("map_link") ?? "").trim() || null;
-  const coordinates = extractCoordinatesFromMapLink(mapLink);
-  const feePlans = parseFeePlans(formData);
+  const extractedCoordinates = extractCoordinatesFromMapLink(mapLink);
+  const latitude = formData.get("latitude")
+    ? Number(formData.get("latitude"))
+    : extractedCoordinates?.latitude ?? null;
+  const longitude = formData.get("longitude")
+    ? Number(formData.get("longitude"))
+    : extractedCoordinates?.longitude ?? null;
+  const feePlans = parsePlanDraftsJson(String(formData.get("fee_plans_json") ?? ""));
   const imageFiles = formData
     .getAll("photos")
     .filter((file): file is File => file instanceof File && file.size > 0);
@@ -128,8 +116,8 @@ export async function submitOwnerLibrary(formData: FormData) {
     nearest_metro_distance_km: formData.get("nearest_metro_distance_km")
       ? Number(formData.get("nearest_metro_distance_km"))
       : null,
-    latitude: coordinates?.latitude ?? null,
-    longitude: coordinates?.longitude ?? null,
+    latitude: Number.isFinite(latitude) ? latitude : null,
+    longitude: Number.isFinite(longitude) ? longitude : null,
     phone_number: String(formData.get("phone_number") ?? "").trim(),
     whatsapp_number: String(formData.get("whatsapp_number") ?? "").trim() || null,
     opening_time: String(formData.get("opening_time") ?? "").trim() || null,
@@ -156,4 +144,64 @@ export async function submitOwnerLibrary(formData: FormData) {
   }
 
   redirect("/for-owners?submitted=1");
+}
+
+export async function updateOwnerSubmissionPlans(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/for-owners");
+  }
+
+  const submissionId = String(formData.get("submission_id") ?? "").trim();
+  const feePlans = parsePlanDraftsJson(String(formData.get("fee_plans_json") ?? ""));
+
+  if (!submissionId) {
+    redirect("/for-owners?plans_error=1");
+  }
+
+  const { data: submission, error: submissionError } = await supabase
+    .from("owner_library_submissions")
+    .select("id, user_id, submitted_library_branch_id")
+    .eq("id", submissionId)
+    .maybeSingle();
+
+  if (submissionError || !submission || submission.user_id !== user.id) {
+    redirect("/for-owners?plans_error=1");
+  }
+
+  const { error } = await supabase
+    .from("owner_library_submissions")
+    .update({
+      fee_plans: feePlans,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", submissionId);
+
+  if (error) {
+    redirect("/for-owners?plans_error=1");
+  }
+
+  if (submission.submitted_library_branch_id) {
+    const libraryBranchId = submission.submitted_library_branch_id;
+    const previousTarget = await getLibraryCacheTarget(libraryBranchId);
+
+    await supabaseServer.from("library_fee_plans").delete().eq("library_branch_id", libraryBranchId);
+
+    if (feePlans.length > 0) {
+      await supabaseServer
+        .from("library_fee_plans")
+        .insert(buildLibraryFeePlanInsertRows(feePlans, libraryBranchId));
+    }
+
+    await refreshLibraryProfileCompletenessScore(libraryBranchId);
+    const nextTarget = await getLibraryCacheTarget(libraryBranchId);
+    revalidateLibraryContent(previousTarget);
+    revalidateLibraryContent(nextTarget);
+  }
+
+  redirect("/for-owners?plans_updated=1");
 }

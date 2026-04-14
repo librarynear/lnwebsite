@@ -9,6 +9,7 @@ import {
 } from "@/lib/revalidate-library-content";
 import type { Json } from "@/types/supabase";
 import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
+import { buildLibraryFeePlanInsertRows, normalizePlanDrafts } from "@/lib/library-plans";
 
 type SubmissionPayload = {
   id: string;
@@ -139,24 +140,11 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
   }
 
   const feePlans = Array.isArray(submission.fee_plans)
-    ? submission.fee_plans
+    ? normalizePlanDrafts(submission.fee_plans)
     : [];
   if (feePlans.length > 0) {
     await supabaseServer.from("library_fee_plans").insert(
-      feePlans.map((plan, index) => {
-        const feePlan = plan as { duration_label?: string; seat_type?: string; price?: number };
-        const duration = feePlan.duration_label || "Monthly";
-        const seatType = feePlan.seat_type || "Unreserved";
-        return {
-          library_branch_id: library.id,
-          plan_name: `${duration} - ${seatType}`,
-          duration_label: duration,
-          seat_type: seatType,
-          price: Number(feePlan.price) || 0,
-          sort_order: index,
-          is_active: true,
-        };
-      }),
+      buildLibraryFeePlanInsertRows(feePlans, library.id),
     );
   }
 

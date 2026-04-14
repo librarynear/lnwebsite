@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div className="flex min-h-screen flex-col">
       <section className="flex w-full flex-col items-center justify-center border-b border-border/40 bg-white pt-8 pb-10">
-        <div className="w-full max-w-[560px] px-4">
+        <div className="w-full max-w-140 px-4">
           <SearchBarSkeleton />
         </div>
       </section>
