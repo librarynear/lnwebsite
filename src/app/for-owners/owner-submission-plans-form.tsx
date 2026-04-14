@@ -16,7 +16,7 @@ export function OwnerSubmissionPlansForm({
   displayName: string;
   feePlans: Json | null;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
     <div className="rounded-2xl border border-border/70 bg-white p-4">

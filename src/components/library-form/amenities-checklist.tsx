@@ -1,5 +1,3 @@
-import { Check } from "lucide-react";
-
 const AMENITY_OPTIONS = [
   "AC",
   "Wi-Fi",
@@ -34,10 +32,7 @@ export function AmenitiesChecklist({
               defaultChecked={selected.has(amenity)}
               className="peer sr-only"
             />
-            <span className="flex items-center gap-2 rounded-xl border border-border/80 bg-slate-50/60 px-3 py-2 text-sm transition-colors peer-checked:border-primary/50 peer-checked:bg-primary/8 peer-checked:text-primary">
-              <span className="flex h-4 w-4 items-center justify-center rounded border border-current">
-                <Check className="h-3 w-3" />
-              </span>
+            <span className="flex items-center rounded-xl border border-border/80 bg-slate-50/60 px-3 py-2 text-sm transition-colors peer-checked:border-primary/50 peer-checked:bg-primary/8 peer-checked:text-primary">
               {amenity}
             </span>
           </label>

@@ -28,6 +28,7 @@ function formatFileSize(size: number) {
 export function OwnerPhotosInput() {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<PhotoPreview[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,19 +38,21 @@ export function OwnerPhotosInput() {
     };
   }, []);
 
-  function setInputFiles(files: File[]) {
+  function syncInputFiles(nextFiles: File[]) {
     const dataTransfer = new DataTransfer();
-    files.forEach((file) => dataTransfer.items.add(file));
+    nextFiles.forEach((file) => dataTransfer.items.add(file));
+
     if (inputRef.current) {
       inputRef.current.files = dataTransfer.files;
+      inputRef.current.value = "";
     }
   }
 
-  function setValidatedFiles(files: File[]) {
+  function syncPreviews(nextFiles: File[]) {
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrlsRef.current = [];
 
-    const nextPreviews = files.map((file) => {
+    const nextPreviews = nextFiles.map((file) => {
       const url = URL.createObjectURL(file);
       previewUrlsRef.current.push(url);
       return {
@@ -60,16 +63,20 @@ export function OwnerPhotosInput() {
       };
     });
 
-    setInputFiles(files);
     setPreviews(nextPreviews);
+  }
+
+  function updateFiles(nextFiles: File[]) {
+    setFiles(nextFiles);
+    syncInputFiles(nextFiles);
+    syncPreviews(nextFiles);
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const incomingFiles = Array.from(event.target.files ?? []);
-    const existingFiles = Array.from(inputRef.current?.files ?? []);
     setError(null);
 
-    const mergedFiles = [...existingFiles, ...incomingFiles].filter(
+    const mergedFiles = [...files, ...incomingFiles].filter(
       (file, index, current) =>
         current.findIndex((candidate) => fileId(candidate) === fileId(file)) === index,
     );
@@ -89,23 +96,22 @@ export function OwnerPhotosInput() {
       acceptedFiles.push(file);
     }
 
-    const nextFiles = [...acceptedFiles].slice(0, MAX_PHOTOS);
+    const nextFiles = acceptedFiles.slice(0, MAX_PHOTOS);
     if (acceptedFiles.length > MAX_PHOTOS) {
       setError(`You can upload up to ${MAX_PHOTOS} photos.`);
     }
 
-    setValidatedFiles(nextFiles);
+    updateFiles(nextFiles);
   }
 
   function removePhoto(id: string) {
-    const currentFiles = Array.from(inputRef.current?.files ?? []);
-    const nextFiles = currentFiles.filter((file) => fileId(file) !== id);
-    setValidatedFiles(nextFiles);
+    const nextFiles = files.filter((file) => fileId(file) !== id);
+    updateFiles(nextFiles);
     setError(null);
   }
 
   function clearPhotos() {
-    setValidatedFiles([]);
+    updateFiles([]);
     setError(null);
   }
 
