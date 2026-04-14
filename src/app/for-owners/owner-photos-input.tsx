@@ -44,7 +44,6 @@ export function OwnerPhotosInput() {
 
     if (inputRef.current) {
       inputRef.current.files = dataTransfer.files;
-      inputRef.current.value = "";
     }
   }
 
