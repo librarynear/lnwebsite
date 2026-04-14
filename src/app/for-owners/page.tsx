@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, MapPin, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Clock3, LockKeyhole, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
@@ -22,6 +22,7 @@ type OwnerSubmissionRow = {
   display_name: string;
   city: string;
   locality: string | null;
+  reviewer_notes: string | null;
   created_at: string | null;
   fee_plans: Json | null;
 };
@@ -35,6 +36,7 @@ function statusLabel(status: string) {
   switch (status) {
     case "approved":
       return "Approved";
+    case "needs_changes":
     case "rejected":
       return "Needs changes";
     default:
@@ -44,14 +46,30 @@ function statusLabel(status: string) {
 
 function errorMessage(error?: string) {
   switch (error) {
+    case "duplicate_submission":
+      return "You already have one library submission with this account. You can now edit only your plans below.";
     case "image_upload_failed":
-      return "We could not upload the photos right now. Please try again with smaller images or submit without photos first.";
+      return "We could not upload one of the photos right now. Please try again.";
     case "too_many_images":
-      return "Please upload up to 8 photos only.";
+      return "Please upload up to 3 photos only.";
+    case "too_few_images":
+      return "Please upload at least 1 photo to continue.";
     case "invalid_image":
-      return "Please upload image files only, up to 8 MB each.";
+      return "Please upload image files only, up to 5 MB each.";
+    case "invalid_phone":
+      return "Please enter a valid Indian mobile number for phone and WhatsApp.";
+    case "invalid_map_link":
+      return "Please add a valid Google Maps link.";
+    case "invalid_coordinates":
+      return "Please provide a valid latitude and longitude. We can auto-fill them from the Google Maps link when possible.";
+    case "invalid_pin_code":
+      return "Please enter a valid 6-digit PIN code.";
+    case "invalid_timings":
+      return "Please make sure the closing time is after the opening time.";
+    case "invalid_plan_description":
+      return "Each plan description can have up to 30 words only.";
     case "missing_required_fields":
-      return "Please fill the required fields and try again.";
+      return "Please fill all compulsory fields marked with * and try again.";
     default:
       return "We could not submit your listing just yet. Please review the required fields and try again.";
   }
@@ -77,13 +95,14 @@ export default async function ForOwnersPage({
         (
           await supabase
             .from("owner_library_submissions")
-            .select("id, status, display_name, city, locality, created_at, fee_plans")
+            .select("id, status, display_name, city, locality, reviewer_notes, created_at, fee_plans")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
         ).data ?? [],
       )
     : null;
   const submissions = submissionsMeasurement?.result ?? [];
+  const hasExistingSubmission = submissions.length > 0;
 
   if (submissionsMeasurement) {
     logPerf("forOwners", [submissionsMeasurement.metric], `user=1 submissions=${submissions.length}`);
@@ -98,17 +117,17 @@ export default async function ForOwnersPage({
               Bring your library in front of students who are already searching nearby.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-white/80 md:text-lg">
-              Sign in once with Google, submit your library details, and we will review it before it goes live.
-              That keeps the platform trustworthy for students and smooth for owners.
+              Sign in once with Google, complete the guided onboarding, and we will review your library
+              before it goes live. After submission, you can update only your plans from this page.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
               {user ? (
                 <a
-                  href="#owner-form"
+                  href={hasExistingSubmission ? "#owner-submissions" : "#owner-form"}
                   className="inline-flex items-center rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-[#0F74C5] transition-colors hover:bg-white/90 shadow-sm"
                 >
-                  Start listing now
+                  {hasExistingSubmission ? "Open your submission" : "Start onboarding"}
                 </a>
               ) : (
                 <GoogleLoginButton
@@ -131,18 +150,18 @@ export default async function ForOwnersPage({
             {[
               {
                 icon: ShieldCheck,
-                title: "Verified onboarding",
-                body: "Every owner listing stays under our review first, so low-quality or duplicate entries do not hit the public site.",
+                title: "Guided first submission",
+                body: "Each owner account can create one library listing, which keeps onboarding focused and supportable.",
               },
               {
                 icon: Clock3,
-                title: "Fast approval flow",
-                body: "Once approved, your listing will go live immediately.",
+                title: "Fast review flow",
+                body: "We review the listing once. After that, you can update plans from the same dashboard without resubmitting the entire form.",
               },
               {
                 icon: MapPin,
-                title: "Local discovery",
-                body: "Students can find your library by locality, metro station, and nearby distance.",
+                title: "Automatic location enrichment",
+                body: "Share your Google Maps link and we will calculate the nearest metro and distance from your coordinates.",
               },
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
@@ -165,7 +184,7 @@ export default async function ForOwnersPage({
             </div>
             <h2 className="text-3xl font-bold text-[#0F74C5]">Sign in before listing your library</h2>
             <p className="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-              We use one secure Google sign-in for everyone. This allows owners to safely track their submissions and prevents fake listings on our platform.
+              We use one secure Google sign-in for everyone. This allows owners to safely track their submission and prevents fake listings on our platform.
             </p>
             <GoogleLoginButton
               next="/for-owners"
@@ -174,6 +193,100 @@ export default async function ForOwnersPage({
               Continue with Google to list your library
             </GoogleLoginButton>
           </div>
+        ) : hasExistingSubmission ? (
+          <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="space-y-6">
+              <div className="rounded-3xl border-0 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <LockKeyhole className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-black">Your library is already submitted</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      You can now edit only your plans from this page. To update address, timings, phone numbers,
+                      amenities, or any other listing details, please contact our team and we will help you.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border-0 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <h3 className="text-lg font-bold text-black">What happens next</h3>
+                <div className="mt-4 space-y-4">
+                  {[
+                    "Your original onboarding details stay locked so the listing remains consistent and trustworthy.",
+                    "Plan changes are saved from here and can update your live pricing immediately after approval has already happened.",
+                    "Need help with anything beyond plans? Reach out to our team and we will update it for you.",
+                  ].map((item) => (
+                    <div key={item} className="flex gap-3">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
+                      <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div id="owner-submissions" className="rounded-3xl border-0 bg-white p-6 shadow-md md:p-8">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-black">Your submission</h3>
+                <IntentLink href="/profile" className="text-sm font-medium text-primary hover:underline">
+                  Open profile
+                </IntentLink>
+              </div>
+              {submitted === "1" ? (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Your library submission is in review. We have locked the rest of the form and left plan editing available here.
+                </div>
+              ) : null}
+              {error ? (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {errorMessage(error)}
+                </div>
+              ) : null}
+              {plans_updated === "1" ? (
+                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Your plans were updated successfully.
+                </div>
+              ) : null}
+              {plans_error === "1" ? (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  We could not update those plans right now. Please try again.
+                </div>
+              ) : null}
+
+              <div className="space-y-3">
+                {(submissions as OwnerSubmissionRow[]).map((submission) => (
+                  <div key={submission.id} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-black">{submission.display_name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {[submission.locality, submission.city].filter(Boolean).join(", ")}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-semibold text-primary">
+                        {statusLabel(submission.status)}
+                      </span>
+                    </div>
+                    {submission.reviewer_notes ? (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        {submission.reviewer_notes}
+                      </div>
+                    ) : null}
+                    <div className="mt-4">
+                      <OwnerSubmissionPlansForm
+                        submissionId={submission.id}
+                        displayName={submission.display_name}
+                        feePlans={submission.fee_plans}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div
@@ -181,9 +294,9 @@ export default async function ForOwnersPage({
               className="rounded-3xl border-0 bg-white p-6 shadow-md md:p-8"
             >
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-black">Submit your library</h2>
+                <h2 className="text-2xl font-bold text-black">Guided owner onboarding</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Fill in the essentials. We will review the submission and keep you posted in your account.
+                  Fill your first library submission carefully. Fields marked with <span className="font-semibold text-black">*</span> are compulsory.
                 </p>
               </div>
 
@@ -214,8 +327,8 @@ export default async function ForOwnersPage({
                     <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="locality" className="text-sm font-medium text-black">Locality</label>
-                    <Input id="locality" name="locality" placeholder="Mukherjee Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="locality" className="text-sm font-medium text-black">Locality <span className="text-destructive">*</span></label>
+                    <Input id="locality" name="locality" placeholder="Mukherjee Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
@@ -234,49 +347,51 @@ export default async function ForOwnersPage({
                   <h3 className="text-sm font-semibold text-black">Location Details</h3>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="full_address" className="text-sm font-medium text-black">Full address</label>
+                  <label htmlFor="full_address" className="text-sm font-medium text-black">Full address <span className="text-destructive">*</span></label>
                   <textarea
                     id="full_address"
                     name="full_address"
                     rows={3}
                     placeholder="House number, street, landmark, locality"
-                    className="w-full rounded-2xl border border-border/80 bg-slate-50/50 shadow-sm px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                    className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                    required
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="state" className="text-sm font-medium text-black">State</label>
-                    <Input id="state" name="state" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="state" className="text-sm font-medium text-black">State <span className="text-destructive">*</span></label>
+                    <Input id="state" name="state" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="pin_code" className="text-sm font-medium text-black">PIN code</label>
-                    <Input id="pin_code" name="pin_code" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="nearest_metro" className="text-sm font-medium text-black">Nearest metro</label>
-                    <Input id="nearest_metro" name="nearest_metro" placeholder="Rajendra Place" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="pin_code" className="text-sm font-medium text-black">PIN code <span className="text-destructive">*</span></label>
+                    <Input id="pin_code" name="pin_code" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="nearest_metro_distance_km" className="text-sm font-medium text-black">Metro distance (KM)</label>
-                  <Input id="nearest_metro_distance_km" name="nearest_metro_distance_km" type="number" step="0.01" placeholder="We will calculate this ourselves later" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
-                </div>
+                <MapCoordinatesFields
+                  storageKey="owner-library-map-fields"
+                  mapLinkRequired
+                  coordinatesRequired
+                  clearOnMount={submitted === "1"}
+                  helperText="Nearest metro will be calculated automatically from your location."
+                />
 
-                <MapCoordinatesFields storageKey="owner-library-map-fields" mapLinkRequired clearOnMount={submitted === "1"} />
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                  Nearest metro will be calculated automatically from your location.
+                </div>
 
                 <div className="border-b border-border pb-2 pt-2">
                   <h3 className="text-sm font-semibold text-black">Facilities & Logistics</h3>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time</label>
-                    <Input id="opening_time" name="opening_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time <span className="text-destructive">*</span></label>
+                    <Input id="opening_time" name="opening_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time</label>
-                    <Input id="closing_time" name="closing_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time <span className="text-destructive">*</span></label>
+                    <Input id="closing_time" name="closing_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
@@ -285,7 +400,7 @@ export default async function ForOwnersPage({
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="amenities" className="text-sm font-medium text-black">Amenities</label>
+                  <label htmlFor="amenities" className="text-sm font-medium text-black">Amenities <span className="text-destructive">*</span></label>
                   <AmenitiesChecklist />
                 </div>
 
@@ -293,19 +408,19 @@ export default async function ForOwnersPage({
                   <h3 className="text-sm font-semibold text-black">About & Seats</h3>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="description" className="text-sm font-medium text-black">Short description</label>
+                  <label htmlFor="description" className="text-sm font-medium text-black">Description of library</label>
                   <textarea
                     id="description"
                     name="description"
                     rows={4}
                     placeholder="Tell students what makes your library a great place to study."
-                    className="w-full rounded-2xl border border-border/80 bg-slate-50/50 shadow-sm px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                    className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats</label>
-                  <Input id="total_seats" name="total_seats" type="number" min="0" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                  <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats available <span className="text-destructive">*</span></label>
+                  <Input id="total_seats" name="total_seats" type="number" min="1" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                 </div>
 
                 <PlansEditor
@@ -317,7 +432,7 @@ export default async function ForOwnersPage({
 
                 <OwnerPhotosInput />
 
-                <FormSubmitButton className="mt-4 h-12 w-full md:w-auto rounded-full bg-[#0F74C5] hover:bg-[#0F74C5]/90 px-8 text-sm font-semibold shadow-md">
+                <FormSubmitButton className="mt-4 h-12 w-full rounded-full bg-[#0F74C5] px-8 text-sm font-semibold shadow-md hover:bg-[#0F74C5]/90 md:w-auto">
                   Submit for review
                 </FormSubmitButton>
               </form>
@@ -325,12 +440,12 @@ export default async function ForOwnersPage({
 
             <div className="space-y-6">
               <div className="rounded-3xl border-0 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                <h3 className="text-lg font-bold text-black">What happens next</h3>
+                <h3 className="text-lg font-bold text-black">How onboarding works</h3>
                 <div className="mt-4 space-y-4">
                   {[
-                    "We review your details before the library appears publicly.",
-                    "If something is missing, you will see it in your owner dashboard instead of silently failing.",
-                    "Once approved, the listing can go live quickly through our cached public pages.",
+                    "Submit one complete library profile with photos, location, timings, amenities, and seat count.",
+                    "We calculate nearby metro details from your location automatically, so students see cleaner listing data.",
+                    "After submission, plans remain editable from your dashboard while all other changes go through our team.",
                   ].map((item) => (
                     <div key={item} className="flex gap-3">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
@@ -341,52 +456,19 @@ export default async function ForOwnersPage({
               </div>
 
               <div className="rounded-3xl border-0 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-black">Your submissions</h3>
-                  <IntentLink href="/profile" className="text-sm font-medium text-primary hover:underline">
-                    Open profile
-                  </IntentLink>
+                <h3 className="text-lg font-bold text-black">What happens next</h3>
+                <div className="mt-4 space-y-4">
+                  {[
+                    "We review your details before the library appears publicly.",
+                    "If something is missing, you will see it in your owner dashboard instead of silently failing.",
+                    "Once approved, the listing can go live quickly and your plan updates can continue from the same account.",
+                  ].map((item) => (
+                    <div key={item} className="flex gap-3">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
+                      <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+                    </div>
+                  ))}
                 </div>
-                {plans_updated === "1" ? (
-                  <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    Your plans were updated successfully.
-                  </div>
-                ) : null}
-                {plans_error === "1" ? (
-                  <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    We could not update those plans right now. Please try again.
-                  </div>
-                ) : null}
-                {submissions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    You have not submitted a library yet.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {(submissions as OwnerSubmissionRow[]).map((submission) => (
-                      <div key={submission.id} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="font-semibold text-black">{submission.display_name}</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {[submission.locality, submission.city].filter(Boolean).join(", ")}
-                            </p>
-                          </div>
-                          <span className="rounded-full bg-primary/8 px-3 py-1 text-xs font-semibold text-primary">
-                            {statusLabel(submission.status)}
-                          </span>
-                        </div>
-                        <div className="mt-4">
-                          <OwnerSubmissionPlansForm
-                            submissionId={submission.id}
-                            displayName={submission.display_name}
-                            feePlans={submission.fee_plans}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>

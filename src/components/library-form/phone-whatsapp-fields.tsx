@@ -83,6 +83,9 @@ export function PhoneWhatsappFields({
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           disabled={sameAsPhone}
         />
+        {sameAsPhone ? (
+          <input type="hidden" name="whatsapp_number" value={phone} readOnly />
+        ) : null}
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <input
             type="checkbox"

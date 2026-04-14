@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase-server";
+import { findNearestMetro } from "@/lib/nearest-metro";
 import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
@@ -77,6 +78,11 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
     redirect("/admin/owner-submissions");
   }
 
+  const computedMetro =
+    submission.latitude !== null && submission.longitude !== null
+      ? await findNearestMetro(submission.latitude, submission.longitude)
+      : null;
+
   const slugBase = slugify(submission.display_name);
   const slug = slugBase ? `${slugBase}-${submission.city.toLowerCase()}` : `${submission.id}`;
 
@@ -101,8 +107,10 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
       locality: submission.locality,
       district: submission.district,
       full_address: submission.full_address,
-      nearest_metro: submission.nearest_metro,
-      nearest_metro_distance_km: submission.nearest_metro_distance_km,
+      nearest_metro: computedMetro?.nearest_metro ?? submission.nearest_metro,
+      nearest_metro_line: computedMetro?.nearest_metro_line ?? null,
+      nearest_metro_distance_km:
+        computedMetro?.nearest_metro_distance_km ?? submission.nearest_metro_distance_km,
       latitude: submission.latitude,
       longitude: submission.longitude,
       phone_number: submission.phone_number,

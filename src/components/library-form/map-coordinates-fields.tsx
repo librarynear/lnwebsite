@@ -32,14 +32,18 @@ export function MapCoordinatesFields({
   initialLongitude = null,
   storageKey,
   mapLinkRequired = false,
+  coordinatesRequired = false,
   clearOnMount = false,
+  helperText,
 }: {
   initialMapLink?: string;
   initialLatitude?: number | null;
   initialLongitude?: number | null;
   storageKey?: string;
   mapLinkRequired?: boolean;
+  coordinatesRequired?: boolean;
   clearOnMount?: boolean;
+  helperText?: string;
 }) {
   const storedDraft = !clearOnMount ? readStoredMapDraft(storageKey) : null;
   const [mapLink, setMapLink] = useState(storedDraft?.mapLink ?? initialMapLink);
@@ -91,12 +95,12 @@ export function MapCoordinatesFields({
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           required={mapLinkRequired}
         />
-        {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
+        <p className="text-xs text-muted-foreground">{status || helperText}</p>
       </div>
 
       <div className="space-y-2">
         <label htmlFor="latitude" className="text-sm font-medium text-black">
-          Latitude
+          Latitude{coordinatesRequired ? <span className="text-destructive"> *</span> : null}
         </label>
         <Input
           id="latitude"
@@ -106,12 +110,13 @@ export function MapCoordinatesFields({
           value={latitude}
           onChange={(event) => setLatitude(event.target.value)}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
+          required={coordinatesRequired}
         />
       </div>
 
       <div className="space-y-2">
         <label htmlFor="longitude" className="text-sm font-medium text-black">
-          Longitude
+          Longitude{coordinatesRequired ? <span className="text-destructive"> *</span> : null}
         </label>
         <Input
           id="longitude"
@@ -121,6 +126,7 @@ export function MapCoordinatesFields({
           value={longitude}
           onChange={(event) => setLongitude(event.target.value)}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
+          required={coordinatesRequired}
         />
       </div>
 

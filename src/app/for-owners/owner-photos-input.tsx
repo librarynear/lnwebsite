@@ -4,7 +4,7 @@ import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 const MAX_PHOTOS = 3;
-const MAX_PHOTO_MB = 8;
+const MAX_PHOTO_MB = 5;
 const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 
 type PhotoPreview = {
@@ -66,10 +66,16 @@ export function OwnerPhotosInput() {
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const incomingFiles = Array.from(event.target.files ?? []);
+    const existingFiles = Array.from(inputRef.current?.files ?? []);
     setError(null);
 
+    const mergedFiles = [...existingFiles, ...incomingFiles].filter(
+      (file, index, current) =>
+        current.findIndex((candidate) => fileId(candidate) === fileId(file)) === index,
+    );
+
     const acceptedFiles: File[] = [];
-    for (const file of incomingFiles) {
+    for (const file of mergedFiles) {
       if (!file.type.startsWith("image/")) {
         setError("Only image files are allowed.");
         continue;
@@ -105,7 +111,7 @@ export function OwnerPhotosInput() {
 
   return (
     <div className="space-y-3">
-      <label htmlFor="photos" className="text-sm font-medium text-black">Photos</label>
+      <label htmlFor="photos" className="text-sm font-medium text-black">Photos <span className="text-destructive">*</span></label>
       <input
         ref={inputRef}
         id="photos"
@@ -129,7 +135,7 @@ export function OwnerPhotosInput() {
           Choose library photos
         </span>
         <span className="mt-1 text-xs text-muted-foreground">
-          Up to {MAX_PHOTOS} images, {MAX_PHOTO_MB} MB each
+          Choose one at a time or multiple together. Up to {MAX_PHOTOS} images, {MAX_PHOTO_MB} MB each
         </span>
       </button>
 

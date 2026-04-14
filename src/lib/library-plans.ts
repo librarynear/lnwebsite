@@ -108,7 +108,7 @@ export function normalizePlanDraft(input: Partial<LibraryPlanDraft> | null | und
     duration_label: getDurationLabel(durationKey),
     seat_type: seatType,
     hours_per_day: clampInt(input?.hours_per_day, 1, 24, 1),
-    description: limitWords(normalizeText(input?.description), 50),
+    description: limitWords(normalizeText(input?.description), 30),
     base_price: basePrice,
     discount_percentage: discountPercentage,
     discounted_price: calculateDiscountedPrice(basePrice, discountPercentage),

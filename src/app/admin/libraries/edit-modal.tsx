@@ -40,6 +40,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [overrideNearestMetro, setOverrideNearestMetro] = useState(false);
   const [images, setImages] = useState<LibraryImage[]>(
     library.library_images ? [...library.library_images] : [],
   );
@@ -150,12 +151,12 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                   <input name="display_name" defaultValue={library.display_name} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Locality</label>
-                  <input name="locality" defaultValue={library.locality || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">City *</label>
                   <input name="city" defaultValue={library.city} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">State *</label>
+                  <input name="state" defaultValue={library.state || "Delhi"} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">District</label>
@@ -166,20 +167,16 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                   <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">Location Details</h3>
                 </div>
                 <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Address</label>
-                  <textarea name="full_address" defaultValue={library.full_address || ""} rows={2} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Address *</label>
+                  <textarea name="full_address" defaultValue={library.full_address || ""} rows={2} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PIN Code *</label>
                   <input name="pin_code" defaultValue={library.pin_code} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nearest Metro</label>
-                  <input name="nearest_metro" defaultValue={library.nearest_metro || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metro Distance (KM)</label>
-                  <input name="nearest_metro_distance_km" type="number" step="0.01" defaultValue={library.nearest_metro_distance_km ?? ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Locality *</label>
+                  <input name="locality" defaultValue={library.locality || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="md:col-span-2">
                   <MapCoordinatesFields
@@ -188,19 +185,60 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                     initialLongitude={library.longitude}
                     storageKey={`library-edit-map:${library.id}`}
                     mapLinkRequired
+                    coordinatesRequired
+                    helperText="Nearest metro will be calculated automatically from your location."
                   />
+                </div>
+                <div className="md:col-span-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+                  Nearest metro will be calculated automatically from your location.
+                </div>
+                <div className="md:col-span-2 space-y-3 rounded-xl border border-border bg-slate-50/70 p-4">
+                  <label className="flex items-center gap-2 text-sm font-medium text-black">
+                    <input
+                      type="checkbox"
+                      name="override_nearest_metro"
+                      checked={overrideNearestMetro}
+                      onChange={(event) => setOverrideNearestMetro(event.target.checked)}
+                    />
+                    Override nearest metro manually
+                  </label>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nearest Metro</label>
+                      <input
+                        name="nearest_metro"
+                        defaultValue={library.nearest_metro || ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted"
+                        disabled={!overrideNearestMetro}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metro Distance (KM)</label>
+                      <input
+                        name="nearest_metro_distance_km"
+                        type="number"
+                        step="0.01"
+                        defaultValue={library.nearest_metro_distance_km ?? ""}
+                        className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted"
+                        disabled={!overrideNearestMetro}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave this off in normal cases. Turn it on only if you need to override the auto-calculated metro.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2 mt-2">
                   <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">Facilities & Logistics</h3>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opening Time</label>
-                  <input name="opening_time" type="time" defaultValue={library.opening_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opening Time *</label>
+                  <input name="opening_time" type="time" defaultValue={library.opening_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Closing Time</label>
-                  <input name="closing_time" type="time" defaultValue={library.closing_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Closing Time *</label>
+                  <input name="closing_time" type="time" defaultValue={library.closing_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
                 <PhoneWhatsappFields
                   initialPhone={library.phone_number || ""}
@@ -208,7 +246,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                   storageKey={`library-edit-phone:${library.id}`}
                 />
                 <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amenities</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amenities *</label>
                   <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
                 </div>
 
@@ -220,8 +258,8 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                   <textarea name="description" defaultValue={library.description || ""} rows={4} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seats</label>
-                  <input name="total_seats" type="number" min="0" defaultValue={library.total_seats ?? ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seats *</label>
+                  <input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
                 </div>
 
                 <div className="md:col-span-2 mt-2">

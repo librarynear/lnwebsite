@@ -203,8 +203,8 @@ function DraftCard({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <label className="text-sm font-medium text-black">Description</label>
-          <span className={`text-xs ${descriptionWordCount > 50 ? "text-destructive" : "text-muted-foreground"}`}>
-            {descriptionWordCount}/50 words
+          <span className={`text-xs ${descriptionWordCount > 30 ? "text-destructive" : "text-muted-foreground"}`}>
+            {descriptionWordCount}/30 words
           </span>
         </div>
         <textarea
