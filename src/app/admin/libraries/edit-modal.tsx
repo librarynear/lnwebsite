@@ -156,7 +156,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
       {isOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex max-h-[92vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-start justify-between border-b border-border/70 bg-white px-6 py-5">
               <div>
                 <h2 className="text-2xl font-bold text-black">Edit library details</h2>
@@ -171,10 +171,9 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 md:px-6" id={formId}>
               <FormDraftPersistence formId={formId} storageKey={`library-edit-draft:${library.id}`} />
 
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="space-y-6">
-                  <Section title="Core details">
-                    <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-6">
+                <Section title="Core details">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-black">Display name *</label>
                         <Input name="display_name" defaultValue={library.display_name} required className="rounded-2xl bg-white" />
@@ -199,71 +198,71 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         <label className="text-sm font-medium text-black">PIN code *</label>
                         <Input name="pin_code" defaultValue={library.pin_code} required className="rounded-2xl bg-white" />
                       </div>
-                    </div>
-                  </Section>
+                  </div>
+                </Section>
 
-                  <Section title="Location details" description="Coordinates and nearest metro are calculated from the Google Maps link unless you explicitly override them.">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-black">Full address *</label>
-                        <textarea
-                          name="full_address"
-                          defaultValue={library.full_address || ""}
-                          rows={3}
-                          className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
-                          required
-                        />
-                      </div>
-
-                      <MapCoordinatesFields
-                        initialMapLink={library.map_link || ""}
-                        initialLatitude={library.latitude}
-                        initialLongitude={library.longitude}
-                        storageKey={`library-edit-map:${library.id}`}
-                        mapLinkRequired
-                        coordinatesRequired
-                        helperText="Nearest metro will be calculated automatically from your location."
+                <Section title="Location details" description="Coordinates and nearest metro are calculated from the Google Maps link unless you explicitly override them.">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-black">Full address *</label>
+                      <textarea
+                        name="full_address"
+                        defaultValue={library.full_address || ""}
+                        rows={3}
+                        className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                        required
                       />
+                    </div>
 
-                      <div className="space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
-                        <label className="flex items-center gap-2 text-sm font-medium text-black">
-                          <input
-                            type="checkbox"
-                            name="override_nearest_metro"
-                            checked={overrideNearestMetro}
-                            onChange={(event) => setOverrideNearestMetro(event.target.checked)}
+                    <MapCoordinatesFields
+                      initialMapLink={library.map_link || ""}
+                      initialLatitude={library.latitude}
+                      initialLongitude={library.longitude}
+                      storageKey={`library-edit-map:${library.id}`}
+                      mapLinkRequired
+                      coordinatesRequired
+                      helperText="Nearest metro will be calculated automatically from your location."
+                    />
+
+                    <div className="space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
+                      <label className="flex items-center gap-2 text-sm font-medium text-black">
+                        <input
+                          type="checkbox"
+                          name="override_nearest_metro"
+                          checked={overrideNearestMetro}
+                          onChange={(event) => setOverrideNearestMetro(event.target.checked)}
+                        />
+                        Override nearest metro manually
+                      </label>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-black">Nearest metro</label>
+                          <Input
+                            name="nearest_metro"
+                            defaultValue={library.nearest_metro || ""}
+                            disabled={!overrideNearestMetro}
+                            className="rounded-2xl bg-white disabled:bg-muted"
                           />
-                          Override nearest metro manually
-                        </label>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-black">Nearest metro</label>
-                            <Input
-                              name="nearest_metro"
-                              defaultValue={library.nearest_metro || ""}
-                              disabled={!overrideNearestMetro}
-                              className="rounded-2xl bg-white disabled:bg-muted"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-black">Metro distance (KM)</label>
-                            <Input
-                              name="nearest_metro_distance_km"
-                              type="number"
-                              step="0.01"
-                              defaultValue={library.nearest_metro_distance_km ?? ""}
-                              disabled={!overrideNearestMetro}
-                              className="rounded-2xl bg-white disabled:bg-muted"
-                            />
-                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-black">Metro distance (KM)</label>
+                          <Input
+                            name="nearest_metro_distance_km"
+                            type="number"
+                            step="0.01"
+                            defaultValue={library.nearest_metro_distance_km ?? ""}
+                            disabled={!overrideNearestMetro}
+                            className="rounded-2xl bg-white disabled:bg-muted"
+                          />
                         </div>
                       </div>
                     </div>
-                  </Section>
+                  </div>
+                </Section>
 
-                  <Section title="Facilities and logistics">
-                    <div className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
+                <Section title="Facilities and logistics">
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-black">Opening time *</label>
                           <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="rounded-2xl bg-white" />
@@ -272,126 +271,123 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                           <label className="text-sm font-medium text-black">Closing time *</label>
                           <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="rounded-2xl bg-white" />
                         </div>
-                      </div>
+                    </div>
 
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <PhoneWhatsappFields
-                          initialPhone={library.phone_number || ""}
-                          initialWhatsapp={library.whatsapp_number || ""}
-                          storageKey={`library-edit-phone:${library.id}`}
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <PhoneWhatsappFields
+                        initialPhone={library.phone_number || ""}
+                        initialWhatsapp={library.whatsapp_number || ""}
+                        storageKey={`library-edit-phone:${library.id}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-black">Amenities *</label>
+                      <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="About and seats">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-black">Description</label>
+                      <textarea
+                        name="description"
+                        defaultValue={library.description || ""}
+                        rows={4}
+                        className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-black">Seats *</label>
+                      <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="rounded-2xl bg-white" />
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Plans" description="Use the same plan editor owners see. Hours, discounts, and seat types will show on the public page.">
+                  <PlansEditor
+                    initialPlans={normalizePlanDrafts(library.library_fee_plans || [])}
+                    storageKey={`library-edit-plans:${library.id}`}
+                    note="Add as many plans as you need. The Add Plan button is below the list for faster repeated entry."
+                  />
+                </Section>
+
+                <Section title="Photos" description="Uploading through this panel keeps the editor open, and placing it below the form makes bulk edits easier before you manage images.">
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-muted-foreground">{images.length} photo{images.length === 1 ? "" : "s"}</p>
+                      <div>
+                        <input
+                          type="file"
+                          id={`photo-upload-${library.id}`}
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-black">Amenities *</label>
-                        <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
+                        <label
+                          htmlFor={`photo-upload-${library.id}`}
+                          className={`inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-input bg-white px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? "pointer-events-none opacity-50" : ""}`}
+                        >
+                          {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                          {isUploading ? "Uploading..." : "Add photo"}
+                        </label>
                       </div>
                     </div>
-                  </Section>
 
-                  <Section title="About and seats">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-black">Description</label>
-                        <textarea
-                          name="description"
-                          defaultValue={library.description || ""}
-                          rows={4}
-                          className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
-                        />
-                      </div>
-                      <div className="space-y-2 md:max-w-xs">
-                        <label className="text-sm font-medium text-black">Seats *</label>
-                        <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="rounded-2xl bg-white" />
-                      </div>
-                    </div>
-                  </Section>
-
-                  <Section title="Plans" description="Use the same plan editor owners see. Hours, discounts, and seat types will show on the public page.">
-                    <PlansEditor
-                      initialPlans={normalizePlanDrafts(library.library_fee_plans || [])}
-                      storageKey={`library-edit-plans:${library.id}`}
-                      note="Add as many plans as you need. The Add Plan button is below the list for faster repeated entry."
-                    />
-                  </Section>
-                </div>
-
-                <div className="space-y-6">
-                  <Section title="Photos" description="Uploading through this panel now keeps the editor open instead of closing the modal.">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">{images.length} photo{images.length === 1 ? "" : "s"}</p>
-                        <div>
-                          <input
-                            type="file"
-                            id={`photo-upload-${library.id}`}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            disabled={isUploading}
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                      {images.map((img) => (
+                        <div key={img.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
+                          <Image
+                            src={`${img.imagekit_url}?tr=w-300,h-300,fo-auto`}
+                            alt="Library photo"
+                            fill
+                            className="object-cover"
                           />
-                          <label
-                            htmlFor={`photo-upload-${library.id}`}
-                            className={`inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-input bg-white px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? "pointer-events-none opacity-50" : ""}`}
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteImage(img.id)}
+                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow-sm transition-colors hover:bg-white"
+                            aria-label="Delete photo"
                           >
-                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
-                            {isUploading ? "Uploading..." : "Add photo"}
-                          </label>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        {images.map((img) => (
-                          <div key={img.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
-                            <Image
-                              src={`${img.imagekit_url}?tr=w-300,h-300,fo-auto`}
-                              alt="Library photo"
-                              fill
-                              className="object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteImage(img.id)}
-                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow-sm transition-colors hover:bg-white"
-                              aria-label="Delete photo"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                        {images.length === 0 ? (
-                          <div className="col-span-full rounded-2xl border-2 border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-                            No photos added yet.
-                          </div>
-                        ) : null}
-                      </div>
+                      ))}
+                      {images.length === 0 ? (
+                        <div className="col-span-full rounded-2xl border-2 border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+                          No photos added yet.
+                        </div>
+                      ) : null}
                     </div>
-                  </Section>
+                  </div>
+                </Section>
 
-                  {allowDelete ? (
-                    <Section title="Danger zone" description="This keeps the delete action accessible without burying it inside the form.">
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => void handleDeleteLibrary()}
-                        disabled={isDeleting || isSaving}
-                        className="w-full font-semibold"
-                      >
-                        {isDeleting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Library
-                          </>
-                        )}
-                      </Button>
-                    </Section>
-                  ) : null}
-                </div>
+                {allowDelete ? (
+                  <Section title="Danger zone" description="This keeps the delete action accessible without burying it inside the form.">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => void handleDeleteLibrary()}
+                      disabled={isDeleting || isSaving}
+                      className="w-full sm:w-auto font-semibold"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Library
+                        </>
+                      )}
+                    </Button>
+                  </Section>
+                ) : null}
               </div>
             </form>
 
