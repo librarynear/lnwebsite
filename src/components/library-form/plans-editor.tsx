@@ -40,6 +40,26 @@ function readStoredPlanDraft(storageKey?: string) {
   }
 }
 
+function PlanField({
+  label,
+  required = false,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 space-y-2">
+      <label className="text-sm font-medium text-black">
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 function DraftCard({
   plan,
   index,
@@ -72,11 +92,8 @@ function DraftCard({
         </Button>
       </div>
 
-      <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">
-            Plan category <span className="text-destructive">*</span>
-          </label>
+      <div className="grid min-w-0 gap-4">
+        <PlanField label="Plan category" required>
           <select
             value={plan.plan_category}
             onChange={(event) =>
@@ -90,12 +107,9 @@ function DraftCard({
               </option>
             ))}
           </select>
-        </div>
+        </PlanField>
 
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">
-            Months <span className="text-destructive">*</span>
-          </label>
+        <PlanField label="Months" required>
           <select
             value={plan.duration_key}
             onChange={(event) =>
@@ -112,12 +126,9 @@ function DraftCard({
               </option>
             ))}
           </select>
-        </div>
+        </PlanField>
 
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">
-            Plan type <span className="text-destructive">*</span>
-          </label>
+        <PlanField label="Plan type" required>
           <select
             value={plan.seat_type}
             onChange={(event) =>
@@ -131,12 +142,9 @@ function DraftCard({
               </option>
             ))}
           </select>
-        </div>
+        </PlanField>
 
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">
-            Hours <span className="text-destructive">*</span>
-          </label>
+        <PlanField label="Hours" required>
           <Input
             type="number"
             min="1"
@@ -148,26 +156,22 @@ function DraftCard({
             placeholder="Hours"
             className="min-w-0 rounded-2xl bg-white"
           />
-        </div>
+        </PlanField>
       </div>
 
       {plan.plan_category === "offer" ? (
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">Offer name</label>
+        <PlanField label="Offer name">
           <Input
             value={plan.offer_name}
             onChange={(event) => onChange(index, { offer_name: event.target.value })}
             placeholder="Optional offer label"
             className="min-w-0 rounded-2xl bg-white"
           />
-        </div>
+        </PlanField>
       ) : null}
 
-      <div className="grid min-w-0 gap-4 md:grid-cols-3">
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">
-            Regular price (Rs.) <span className="text-destructive">*</span>
-          </label>
+      <div className="grid min-w-0 gap-4">
+        <PlanField label="Regular price (Rs.)" required>
           <Input
             type="number"
             min="0"
@@ -179,10 +183,9 @@ function DraftCard({
             placeholder="e.g. 2500"
             className="min-w-0 rounded-2xl bg-white"
           />
-        </div>
+        </PlanField>
 
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">Discount %</label>
+        <PlanField label="Discount %">
           <Input
             type="number"
             min="0"
@@ -197,17 +200,16 @@ function DraftCard({
             placeholder="Optional"
             className="min-w-0 rounded-2xl bg-white"
           />
-        </div>
+        </PlanField>
 
-        <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium text-black">Discounted price</label>
+        <PlanField label="Discounted price">
           <Input
             value={plan.base_price > 0 ? numberInputValue(plan.discounted_price) : ""}
             readOnly
             placeholder="Auto"
             className="min-w-0 rounded-2xl bg-muted/40"
           />
-        </div>
+        </PlanField>
       </div>
 
       <div className="min-w-0 space-y-2">

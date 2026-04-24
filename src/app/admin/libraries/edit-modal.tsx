@@ -56,6 +56,26 @@ function Section({
   );
 }
 
+function Field({
+  label,
+  required = false,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid min-w-0 gap-2">
+      <label className="block text-sm font-medium text-black">
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 export function EditLibraryModal({ library, allowDelete = false }: EditLibraryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -173,38 +193,31 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
               <div className="mx-auto w-full max-w-6xl min-w-0 space-y-6">
                 <Section title="Core details">
-                  <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">Display name *</label>
+                  <div className="grid min-w-0 gap-4">
+                      <Field label="Display name" required>
                         <Input name="display_name" defaultValue={library.display_name} required className="min-w-0 rounded-2xl bg-white" />
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">Locality *</label>
+                      </Field>
+                      <Field label="Locality" required>
                         <Input name="locality" defaultValue={library.locality || ""} required className="min-w-0 rounded-2xl bg-white" />
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">City *</label>
+                      </Field>
+                      <Field label="City" required>
                         <Input name="city" defaultValue={library.city} required className="min-w-0 rounded-2xl bg-white" />
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">District</label>
+                      </Field>
+                      <Field label="District">
                         <Input name="district" defaultValue={library.district || ""} className="min-w-0 rounded-2xl bg-white" />
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">State *</label>
+                      </Field>
+                      <Field label="State" required>
                         <Input name="state" defaultValue={library.state || "Delhi"} required className="min-w-0 rounded-2xl bg-white" />
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <label className="text-sm font-medium text-black">PIN code *</label>
+                      </Field>
+                      <Field label="PIN code" required>
                         <Input name="pin_code" defaultValue={library.pin_code} required className="min-w-0 rounded-2xl bg-white" />
-                      </div>
+                      </Field>
                   </div>
                 </Section>
 
                 <Section title="Location details" description="Coordinates and nearest metro are calculated from the Google Maps link unless you explicitly override them.">
                   <div className="min-w-0 space-y-4">
-                    <div className="min-w-0 space-y-2">
-                      <label className="text-sm font-medium text-black">Full address *</label>
+                    <Field label="Full address" required>
                       <textarea
                         name="full_address"
                         defaultValue={library.full_address || ""}
@@ -212,7 +225,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                         required
                       />
-                    </div>
+                    </Field>
 
                     <MapCoordinatesFields
                       initialMapLink={library.map_link || ""}
@@ -234,18 +247,16 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         />
                         Override nearest metro manually
                       </label>
-                      <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                        <div className="min-w-0 space-y-2">
-                          <label className="text-sm font-medium text-black">Nearest metro</label>
+                      <div className="grid min-w-0 gap-4">
+                        <Field label="Nearest metro">
                           <Input
                             name="nearest_metro"
                             defaultValue={library.nearest_metro || ""}
                             disabled={!overrideNearestMetro}
                             className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
-                        </div>
-                        <div className="min-w-0 space-y-2">
-                          <label className="text-sm font-medium text-black">Metro distance (KM)</label>
+                        </Field>
+                        <Field label="Metro distance (KM)">
                           <Input
                             name="nearest_metro_distance_km"
                             type="number"
@@ -254,7 +265,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                             disabled={!overrideNearestMetro}
                             className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
-                        </div>
+                        </Field>
                       </div>
                     </div>
                   </div>
@@ -262,18 +273,16 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
                 <Section title="Facilities and logistics">
                   <div className="min-w-0 space-y-4">
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="min-w-0 space-y-2">
-                          <label className="text-sm font-medium text-black">Opening time *</label>
+                    <div className="grid min-w-0 gap-4">
+                        <Field label="Opening time" required>
                           <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="min-w-0 rounded-2xl bg-white" />
-                        </div>
-                        <div className="min-w-0 space-y-2">
-                          <label className="text-sm font-medium text-black">Closing time *</label>
+                        </Field>
+                        <Field label="Closing time" required>
                           <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="min-w-0 rounded-2xl bg-white" />
-                        </div>
+                        </Field>
                     </div>
 
-                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid min-w-0 gap-4">
                       <PhoneWhatsappFields
                         initialPhone={library.phone_number || ""}
                         initialWhatsapp={library.whatsapp_number || ""}
@@ -281,28 +290,26 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                       />
                     </div>
 
-                    <div className="min-w-0 space-y-2">
-                      <label className="text-sm font-medium text-black">Amenities *</label>
+                    <div className="grid min-w-0 gap-2">
+                      <label className="block text-sm font-medium text-black">Amenities *</label>
                       <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
                     </div>
                   </div>
                 </Section>
 
                 <Section title="About and seats">
-                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-                    <div className="min-w-0 space-y-2">
-                      <label className="text-sm font-medium text-black">Description</label>
+                  <div className="grid min-w-0 gap-4">
+                    <Field label="Description">
                       <textarea
                         name="description"
                         defaultValue={library.description || ""}
                         rows={4}
                         className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                       />
-                    </div>
-                    <div className="min-w-0 space-y-2">
-                      <label className="text-sm font-medium text-black">Seats *</label>
+                    </Field>
+                    <Field label="Seats" required>
                       <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="min-w-0 rounded-2xl bg-white" />
-                    </div>
+                    </Field>
                   </div>
                 </Section>
 
