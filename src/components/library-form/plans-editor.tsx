@@ -89,6 +89,24 @@ function getSeatTypeLabel(value?: string | null) {
   return SEAT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? "Select plan type";
 }
 
+function resolvePlanCategory(value?: string | null, fallback?: LibraryPlanDraft["plan_category"]) {
+  return PLAN_CATEGORY_OPTIONS.some((option) => option.value === value)
+    ? (value as LibraryPlanDraft["plan_category"])
+    : fallback;
+}
+
+function resolveDurationKey(value?: string | null, fallback?: LibraryPlanDraft["duration_key"]) {
+  return DURATION_OPTIONS.some((option) => option.value === value)
+    ? (value as LibraryPlanDraft["duration_key"])
+    : fallback;
+}
+
+function resolveSeatType(value?: string | null, fallback?: LibraryPlanDraft["seat_type"]) {
+  return SEAT_TYPE_OPTIONS.some((option) => option.value === value)
+    ? (value as LibraryPlanDraft["seat_type"])
+    : fallback;
+}
+
 function mergePlanRow(row: PlanEditorRow) {
   const { baseline, draft } = row;
   const hasDraftValue = Object.values(draft).some((value) => value.trim() !== "");
@@ -97,9 +115,9 @@ function mergePlanRow(row: PlanEditorRow) {
   }
 
   return normalizePlanDraft({
-    plan_category: draft.plan_category || baseline?.plan_category,
-    duration_key: draft.duration_key || baseline?.duration_key,
-    seat_type: draft.seat_type || baseline?.seat_type,
+    plan_category: resolvePlanCategory(draft.plan_category, baseline?.plan_category),
+    duration_key: resolveDurationKey(draft.duration_key, baseline?.duration_key),
+    seat_type: resolveSeatType(draft.seat_type, baseline?.seat_type),
     hours_per_day:
       draft.hours_per_day !== "" ? Number(draft.hours_per_day) : baseline?.hours_per_day,
     description: draft.description || baseline?.description,
@@ -110,6 +128,10 @@ function mergePlanRow(row: PlanEditorRow) {
         : baseline?.discount_percentage,
     offer_name: draft.offer_name || baseline?.offer_name,
   });
+}
+
+function isPersistablePlan(plan: LibraryPlanDraft | null): plan is LibraryPlanDraft {
+  return plan !== null && plan.base_price > 0;
 }
 
 function DraftCard({
@@ -318,7 +340,7 @@ export function PlansEditor({
     () =>
       rows
         .map((row) => mergePlanRow(row))
-        .filter((plan): plan is LibraryPlanDraft => Boolean(plan) && plan.base_price > 0),
+        .filter(isPersistablePlan),
     [rows],
   );
 
