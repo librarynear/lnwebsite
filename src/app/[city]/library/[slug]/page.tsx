@@ -175,10 +175,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   ]
     .filter(Boolean)
     .join(". ");
+  const keywords = [
+    lib.display_name,
+    lib.locality,
+    lib.city,
+    lib.nearest_metro ? `${lib.nearest_metro} metro` : null,
+    "study library",
+    "reading room",
+  ].filter(Boolean) as string[];
 
   return {
     title: previewTitle,
     description: previewDescription,
+    keywords,
     alternates: {
       canonical: pageUrl,
     },
@@ -241,12 +250,15 @@ export default async function LibraryDetailPage({ params }: PageProps) {
   const walkingMins = lib.nearest_metro_distance_km
     ? Math.round(lib.nearest_metro_distance_km * 12)
     : null;
-
-  const jsonLd = {
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/${city}/library/${slug}`;
+  const librarySchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: lib.display_name,
-    description: `Study library in ${lib.locality ?? lib.city}`,
+    url: pageUrl,
+    description: lib.description || `Study library in ${lib.locality ?? lib.city}`,
+    image: images.slice(0, 6),
     address: {
       "@type": "PostalAddress",
       streetAddress: lib.full_address ?? lib.formatted_address,
@@ -255,18 +267,85 @@ export default async function LibraryDetailPage({ params }: PageProps) {
       postalCode: lib.pin_code,
       addressCountry: "IN",
     },
-    ...(lib.latitude && lib.longitude ? {
-      geo: {
-        "@type": "GeoCoordinates",
-        latitude: lib.latitude,
-        longitude: lib.longitude,
-      }
-    } : {}),
+    areaServed: {
+      "@type": "City",
+      name: lib.city,
+    },
+    ...(lib.latitude && lib.longitude
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: lib.latitude,
+            longitude: lib.longitude,
+          },
+        }
+      : {}),
     ...(lib.phone_number ? { telephone: lib.phone_number } : {}),
-    ...(lib.opening_time && lib.closing_time ? {
-      openingHours: `Mo-Su ${lib.opening_time}-${lib.closing_time}`
-    } : {}),
+    ...(lib.opening_time && lib.closing_time
+      ? {
+          openingHours: `Mo-Su ${lib.opening_time}-${lib.closing_time}`,
+        }
+      : {}),
+    ...(feePlans.length
+      ? {
+          makesOffer: feePlans.slice(0, 8).map((plan) => ({
+            "@type": "Offer",
+            priceCurrency: plan.currency || "INR",
+            price: plan.price,
+            name: plan.plan_name,
+            description: plan.description || plan.duration_label || undefined,
+            availability: "https://schema.org/InStock",
+          })),
+        }
+      : {}),
   };
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: siteUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: city.charAt(0).toUpperCase() + city.slice(1),
+        item: `${siteUrl}/${city}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: lib.display_name,
+        item: pageUrl,
+      },
+    ],
+  };
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `Where is ${lib.display_name} located?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: lib.full_address ?? lib.formatted_address ?? `${lib.locality ?? lib.city}, ${lib.city}`,
+        },
+      },
+      {
+        "@type": "Question",
+        name: `How can I compare ${lib.display_name} with other libraries nearby?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `Compare metro distance, timings, amenities, study environment, seat availability, and fees before choosing ${lib.display_name}.`,
+        },
+      },
+    ],
+  };
+  const jsonLd = [librarySchema, breadcrumbSchema, faqSchema];
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -343,6 +422,16 @@ export default async function LibraryDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+            <h2 className="text-xl font-bold text-black">How to evaluate this library</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Before you decide, compare commute time, study environment, seat comfort, operating
+              hours, amenities, and price against other libraries in {lib.locality ?? lib.city}.
+              If you study daily, reliable access and consistency usually matter more than the
+              cheapest monthly fee alone.
+            </p>
           </section>
 
           <AmenitiesGrid amenities={amenities} />

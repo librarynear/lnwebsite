@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description:
     "Discover and compare study libraries, reading rooms, and private coaching halls near you. Filter by locality, metro station, amenities, and fees.",
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: siteUrl,
+  },
   openGraph: {
     type: "website",
     siteName: "LibraryNear",

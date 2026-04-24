@@ -79,9 +79,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { city, slug } = await params;
   const locality = slugToLocalityName(slug);
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/${city}/locality/${slug}`;
   return {
     title: `Best Libraries in ${locality}, ${cityLabel}`,
-    description: `Find the best study libraries and reading rooms in ${locality}, ${cityLabel}. Compare fees, amenities, timing, and distance from metro.`,
+    description: `Find the best study libraries in ${locality}, ${cityLabel}. Compare fees, amenities, timings, and metro access before choosing a study space.`,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      type: "website",
+      url: pageUrl,
+      title: `Best Libraries in ${locality}, ${cityLabel} | LibraryNear`,
+      description: `Compare study libraries, reading rooms, fees, amenities, and metro access in ${locality}, ${cityLabel}.`,
+      siteName: "LibraryNear",
+    },
   };
 }
 
@@ -100,18 +112,72 @@ export default async function LocalityPage({ params }: PageProps) {
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
 
   const siteUrl = getSiteUrl();
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `Best Libraries in ${locality}, ${cityLabel}`,
-    numberOfItems: libraries.length,
-    itemListElement: libraries.slice(0, 10).map((lib, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: lib.display_name,
-      url: `${siteUrl}/${city}/library/${lib.slug}`,
-    })),
-  };
+  const pageUrl = `${siteUrl}/${city}/locality/${slug}`;
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: siteUrl,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: cityLabel,
+          item: `${siteUrl}/${city}`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: locality,
+          item: pageUrl,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: `Best Libraries in ${locality}, ${cityLabel}`,
+      url: pageUrl,
+      description: `Browse study libraries and reading rooms in ${locality}, ${cityLabel}.`,
+      mainEntity: {
+        "@type": "ItemList",
+        numberOfItems: libraries.length,
+        itemListElement: libraries.slice(0, 10).map((lib, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: lib.display_name,
+          url: `${siteUrl}/${city}/library/${lib.slug}`,
+        })),
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: `Why do students choose libraries in ${locality}?`,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: `Students usually compare metro access, study environment, timings, amenities, and monthly fees before choosing a library in ${locality}.`,
+          },
+        },
+        {
+          "@type": "Question",
+          name: `What should I compare before selecting a library in ${locality}?`,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: `Shortlist libraries by location, seating, quiet environment, cleanliness, operating hours, and how close they are to your nearest metro station.`,
+          },
+        },
+      ],
+    },
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -201,6 +267,25 @@ export default async function LocalityPage({ params }: PageProps) {
           >
             Browse all libraries
           </IntentLink>
+        </div>
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+            <h2 className="text-xl font-bold text-black">Why students shortlist libraries in {locality}</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              {locality} attracts students who want a practical mix of accessibility, study-friendly
+              surroundings, and reliable daily routines. Start by comparing metro distance, seat
+              availability, cleanliness, and how quiet the study environment feels during peak hours.
+            </p>
+          </section>
+          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+            <h2 className="text-xl font-bold text-black">What to compare before you choose</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Look beyond just the price. The best library for one student may depend on early opening
+              hours, late closing times, AC, Wi-Fi, charging points, or how quickly you can reach it
+              from your nearest metro station.
+            </p>
+          </section>
         </div>
       </div>
     </div>

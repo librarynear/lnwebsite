@@ -14,6 +14,7 @@ import { LibraryFilters } from "@/components/library-filters";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { IntentLink } from "@/components/intent-link";
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/site-url";
 
 interface SearchResult extends LibraryCardData {
   distance_km?: number | null;
@@ -40,12 +41,45 @@ interface PageProps {
   }>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { city } = await params;
+  const { q, locality, sort, verified, nearby, lat, lng } = await searchParams;
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
+  const siteUrl = getSiteUrl();
+  const canonicalUrl = locality && !q && !sort && !verified && !nearby && !lat && !lng
+    ? `${siteUrl}/${city}/locality/${locality.toLowerCase().replace(/\s+/g, "-")}`
+    : `${siteUrl}/${city}/libraries`;
+  const shouldIndex = !q && !sort && !verified && !nearby && !lat && !lng && !locality;
+  const title = nearby
+    ? `Libraries Near You in ${cityLabel} | LibraryNear`
+    : q
+      ? `Search Results for "${q}" in ${cityLabel} | LibraryNear`
+      : locality
+        ? `Libraries in ${locality}, ${cityLabel} | LibraryNear`
+        : `Libraries in ${cityLabel} | LibraryNear`;
+  const description = nearby
+    ? `Discover libraries near your location in ${cityLabel}. Compare nearby study spaces, metro access, and amenities.`
+    : q
+      ? `Search LibraryNear for ${q} in ${cityLabel}. Compare study libraries, reading rooms, fees, and amenities.`
+      : locality
+        ? `Browse study libraries in ${locality}, ${cityLabel}. Compare amenities, timings, and verified library listings.`
+        : `Find the best study libraries in ${cityLabel}. Filter by locality, verify status, view fees and contact details.`;
+
   return {
-    title: `Libraries in ${cityLabel} | LibraryNear`,
-    description: `Find the best study libraries in ${cityLabel}. Filter by locality, verify status, view fees and contact details.`,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    robots: shouldIndex
+      ? {
+          index: true,
+          follow: true,
+        }
+      : {
+          index: false,
+          follow: true,
+        },
   };
 }
 
@@ -485,15 +519,73 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
   );
 
   const cityLabel = city.charAt(0).toUpperCase() + city.slice(1);
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/${city}/libraries`;
+  const visibleTitle = nearbyMode
+    ? "Libraries near you"
+    : q
+      ? `Results for "${q}"`
+      : locality
+        ? `Libraries in ${locality}`
+        : `Libraries in ${cityLabel}`;
+  const librariesSchema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: siteUrl,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: cityLabel,
+          item: `${siteUrl}/${city}`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: "Libraries",
+          item: pageUrl,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: visibleTitle,
+      url: pageUrl,
+      description: `Browse study libraries in ${cityLabel} and compare locality, amenities, and metro access.`,
+      mainEntity: {
+        "@type": "ItemList",
+        numberOfItems: librariesWithCovers.length,
+        itemListElement: librariesWithCovers.slice(0, 12).map((lib, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: lib.display_name,
+          url: `${siteUrl}/${city}/library/${lib.slug}`,
+        })),
+      },
+    },
+  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(librariesSchema) }}
+      />
       <div className="sticky top-20 z-30 bg-white border-b border-border/50 py-3">
         <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-xl">
+          <div className="mx-auto flex w-full justify-center">
+            <div className="w-full max-w-xl">
             <Suspense fallback={null}>
               <SearchBar city={city} />
             </Suspense>
+            </div>
           </div>
         </div>
       </div>
@@ -514,15 +606,7 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
         </div>
 
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-black">
-            {nearbyMode
-              ? "Libraries near you"
-              : q
-                ? `Results for "${q}"`
-                : locality
-                  ? `Libraries in ${locality}`
-                  : `Libraries in ${cityLabel}`}
-          </h1>
+          <h1 className="text-2xl font-bold text-black">{visibleTitle}</h1>
           {!zeroResults && (
             <span className="text-sm text-muted-foreground shrink-0">
               {libraries.length} found
@@ -595,17 +679,47 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
                 nearbyMode={nearbyMode}
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
-                {librariesWithCovers.map((lib, index) => (
-                  <LibraryCard
-                    key={lib.id}
-                    lib={lib}
-                    city={city}
-                    nearbyMode={nearbyMode}
-                    priority={index < 4}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="mb-8 rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+                  <h2 className="text-lg font-bold text-black">How to shortlist the right library</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    Compare libraries by locality, nearest metro, quiet study environment, seating,
+                    timings, amenities, and monthly fees. Verified libraries and high-completeness
+                    profiles are a useful first filter when you want stronger quality signals.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
+                  {librariesWithCovers.map((lib, index) => (
+                    <LibraryCard
+                      key={lib.id}
+                      lib={lib}
+                      city={city}
+                      nearbyMode={nearbyMode}
+                      priority={index < 4}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-10 grid gap-6 lg:grid-cols-2">
+                  <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+                    <h2 className="text-xl font-bold text-black">Best way to compare libraries in {cityLabel}</h2>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                      Students usually compare commute time first, then narrow the list using
+                      opening hours, study environment, and pricing. If you already know your preferred
+                      locality, use that filter before comparing the final shortlist.
+                    </p>
+                  </section>
+                  <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+                    <h2 className="text-xl font-bold text-black">What matters before you choose</h2>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                      A lower monthly fee is not always the best fit. Reliable power backup, Wi-Fi,
+                      seating comfort, cleanliness, and distance from the nearest metro can matter
+                      more when you plan to study there every day.
+                    </p>
+                  </section>
+                </div>
+              </>
             )}
           </div>
         </div>

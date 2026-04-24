@@ -2,12 +2,14 @@ import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { MapPin } from "lucide-react";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { supabaseServer } from "@/lib/supabase-server";
 import { type LibraryCardData, runLibraryCardQuery, withCardImage } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { HomeSearchShell } from "@/components/home-search-shell";
 import { IntentLink } from "@/components/intent-link";
+import { getSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 120;
 
@@ -81,6 +83,36 @@ interface HomeProps {
   searchParams: Promise<{ locality?: string; q?: string }>;
 }
 
+export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
+  const { locality, q } = await searchParams;
+  const siteUrl = getSiteUrl();
+
+  if (locality || q) {
+    return {
+      title: locality ? `Libraries in ${locality}` : "Search Libraries in Delhi",
+      description: locality
+        ? `Browse libraries in ${locality}, Delhi on LibraryNear.`
+        : `Search libraries, reading rooms, and study spaces in Delhi on LibraryNear.`,
+      alternates: {
+        canonical: siteUrl,
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
+    };
+  }
+
+  return {
+    title: "LibraryNear - Find the Best Libraries Near You",
+    description:
+      "Discover and compare study libraries, reading rooms, and private coaching halls in Delhi. Explore localities, fees, amenities, and nearby metro access.",
+    alternates: {
+      canonical: siteUrl,
+    },
+  };
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const { locality, q } = await searchParams;
 
@@ -101,6 +133,18 @@ export default async function Home({ searchParams }: HomeProps) {
       <Suspense fallback={null}>
         <HomeSearchShell />
       </Suspense>
+
+      <section className="border-b border-border/40 bg-slate-50/40">
+        <div className="container mx-auto px-6 py-8 md:px-10 md:py-10">
+          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-5xl">
+            Find the best libraries and study spaces in Delhi
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
+            Compare reading rooms by locality, metro access, amenities, and fees to shortlist the
+            right place to study.
+          </p>
+        </div>
+      </section>
 
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">

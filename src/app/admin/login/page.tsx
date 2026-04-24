@@ -1,6 +1,15 @@
 import { login } from "../actions";
 import { Search } from "lucide-react"; // Reusing an icon for brand
 
+export const metadata = {
+  title: "Admin Login",
+  description: "Admin access for LibraryNear.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 export default async function LoginPage({
   searchParams,
 }: {

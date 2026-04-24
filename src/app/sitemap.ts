@@ -10,15 +10,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static routes
   const statics: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: "daily", priority: 1 },
-    { url: `${base}/delhi`, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${base}/delhi/libraries`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/about`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${base}/for-owners`, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // All library detail pages
   const { data: branches } = await supabaseServer
     .from("library_branches")
-    .select("slug, city, updated_at")
+    .select("slug, city, locality, updated_at")
     .eq("is_active", true);
+
+  const uniqueCities = [...new Set((branches ?? []).map((row) => row.city.toLowerCase()))];
+
+  const cityPages: MetadataRoute.Sitemap = uniqueCities.flatMap((city) => [
+    { url: `${base}/${city}`, changeFrequency: "weekly", priority: 0.85 },
+    { url: `${base}/${city}/libraries`, changeFrequency: "daily", priority: 0.9 },
+  ]);
 
   const libraryPages: MetadataRoute.Sitemap = (branches ?? []).map((b) => ({
     url: `${base}/${b.city.toLowerCase()}/library/${b.slug}`,
@@ -28,21 +36,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Locality pages
-  const { data: localityData } = await supabaseServer
-    .from("library_branches")
-    .select("locality")
-    .eq("is_active", true)
-    .not("locality", "is", null);
-
   const uniqueLocalities = [
-    ...new Set((localityData ?? []).map((r) => r.locality).filter(Boolean)),
+    ...new Set(
+      (branches ?? [])
+        .filter((row) => row.locality)
+        .map((row) => `${row.city.toLowerCase()}::${row.locality!.toLowerCase().replace(/\s+/g, "-")}`),
+    ),
   ];
 
-  const localityPages: MetadataRoute.Sitemap = uniqueLocalities.map((loc) => ({
-    url: `${base}/delhi/locality/${encodeURIComponent(loc!.toLowerCase().replace(/\s+/g, "-"))}`,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
+  const localityPages: MetadataRoute.Sitemap = uniqueLocalities.map((entry) => {
+    const [city, localitySlug] = entry.split("::");
+    return {
+      url: `${base}/${city}/locality/${encodeURIComponent(localitySlug)}`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    };
+  });
 
-  return [...statics, ...libraryPages, ...localityPages];
+  return [...statics, ...cityPages, ...libraryPages, ...localityPages];
 }
