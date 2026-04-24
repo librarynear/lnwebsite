@@ -51,6 +51,7 @@ export type Database = {
           last_sales_reviewer_id?: string | null;
           last_verification_updated_at?: string | null;
           last_verification_updated_by?: string | null;
+          source_submission_id?: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["library_branches"]["Row"]> & {
           slug: string;

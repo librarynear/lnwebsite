@@ -1,21 +1,27 @@
 "use client";
 
-import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { ImagePlus, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 const MAX_PHOTOS = 3;
 const MAX_PHOTO_MB = 5;
 const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 
-type PhotoPreview = {
+type PhotoStatus = "existing" | "uploading" | "uploaded" | "failed";
+
+type PhotoItem = {
   id: string;
   name: string;
   size: number;
   url: string;
+  status: PhotoStatus;
   existing: boolean;
+  fileId?: string;
+  error?: string | null;
+  previewObjectUrl?: string | null;
 };
 
-function fileId(file: File) {
+function createClientPhotoId(file: File) {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
@@ -26,87 +32,142 @@ function formatFileSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getPhotoStatusLabel(photo: PhotoItem) {
+  switch (photo.status) {
+    case "uploading":
+      return "Uploading...";
+    case "uploaded":
+      return "Uploaded";
+    case "failed":
+      return photo.error || "Upload Failed";
+    default:
+      return "Already uploaded";
+  }
+}
+
+function getUploadState(photos: PhotoItem[]) {
+  if (photos.length === 0) return "missing";
+  if (photos.some((photo) => photo.status === "uploading")) return "uploading";
+  if (photos.some((photo) => photo.status === "failed")) return "failed";
+  if (photos.every((photo) => photo.status === "uploaded" || photo.status === "existing")) return "ready";
+  return "missing";
+}
+
 export function OwnerPhotosInput({
   initialImageUrls = [],
 }: {
   initialImageUrls?: string[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const previewUrlsRef = useRef<string[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
-  const [existingUrls, setExistingUrls] = useState<string[]>(initialImageUrls);
-  const [previews, setPreviews] = useState<PhotoPreview[]>(
+  const statusInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+  const [photos, setPhotos] = useState<PhotoItem[]>(
     initialImageUrls.map((url, index) => ({
       id: `existing-${index}-${url}`,
       name: `Existing photo ${index + 1}`,
       size: 0,
       url,
+      status: "existing",
       existing: true,
+      previewObjectUrl: null,
+      error: null,
     })),
   );
   const [error, setError] = useState<string | null>(null);
 
+  const uploadState = useMemo(() => getUploadState(photos), [photos]);
+
   useEffect(() => {
+    const objectUrls = objectUrlsRef.current;
     return () => {
-      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      for (const objectUrl of objectUrls) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, []);
 
-  function syncInputFiles(nextFiles: File[]) {
-    const dataTransfer = new DataTransfer();
-    nextFiles.forEach((file) => dataTransfer.items.add(file));
+  useEffect(() => {
+    const statusInput = statusInputRef.current;
+    if (!statusInput) return;
+    statusInput.value = uploadState;
+    statusInput.dispatchEvent(new Event("input", { bubbles: true }));
+    statusInput.dispatchEvent(new CustomEvent("owner-photo-upload-state-change", { bubbles: true }));
+  }, [uploadState]);
 
-    if (inputRef.current) {
-      inputRef.current.files = dataTransfer.files;
+  async function uploadPhoto(file: File, photoId: string, previewUrl: string) {
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+
+    try {
+      const response = await fetch("/api/owner-submission-images", {
+        method: "POST",
+        body: uploadFormData,
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { url?: string; fileId?: string; error?: string }
+        | null;
+
+      if (!response.ok || !payload?.url || !payload?.fileId) {
+        throw new Error(payload?.error || "Upload Failed");
+      }
+
+      setPhotos((current) =>
+        current.map((photo) =>
+          photo.id === photoId
+            ? (() => {
+                if (photo.previewObjectUrl) {
+                  URL.revokeObjectURL(photo.previewObjectUrl);
+                  objectUrlsRef.current.delete(photo.previewObjectUrl);
+                }
+                return {
+                  ...photo,
+                  url: payload.url!,
+                  fileId: payload.fileId!,
+                  status: "uploaded" as const,
+                  error: null,
+                  previewObjectUrl: null,
+                };
+              })()
+            : photo,
+        ),
+      );
+    } catch (uploadError) {
+      setPhotos((current) =>
+        current.map((photo) =>
+          photo.id === photoId
+            ? {
+                ...photo,
+                status: "failed",
+                error:
+                  uploadError instanceof Error && uploadError.message
+                    ? uploadError.message
+                    : "Upload Failed",
+                url: previewUrl,
+              }
+            : photo,
+        ),
+      );
     }
-  }
-
-  function syncPreviews(nextFiles: File[], nextExistingUrls: string[] = existingUrls) {
-    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    previewUrlsRef.current = [];
-
-    const nextPreviews = [
-      ...nextExistingUrls.map((url, index) => ({
-        id: `existing-${index}-${url}`,
-        name: `Existing photo ${index + 1}`,
-        size: 0,
-        url,
-        existing: true,
-      })),
-      ...nextFiles.map((file) => {
-        const url = URL.createObjectURL(file);
-        previewUrlsRef.current.push(url);
-        return {
-          id: fileId(file),
-          name: file.name,
-          size: file.size,
-          url,
-          existing: false,
-        };
-      }),
-    ];
-
-    setPreviews(nextPreviews);
-  }
-
-  function updateFiles(nextFiles: File[], nextExistingUrls: string[] = existingUrls) {
-    setFiles(nextFiles);
-    setExistingUrls(nextExistingUrls);
-    syncInputFiles(nextFiles);
-    syncPreviews(nextFiles, nextExistingUrls);
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const incomingFiles = Array.from(event.target.files ?? []);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+
     setError(null);
 
-    const mergedFiles = [...files, ...incomingFiles].filter(
-      (file, index, current) =>
-        current.findIndex((candidate) => fileId(candidate) === fileId(file)) === index,
-    );
+    const currentCount = photos.length;
+    if (currentCount >= MAX_PHOTOS) {
+      setError(`You can upload up to ${MAX_PHOTOS} photos.`);
+      return;
+    }
 
+    const availableSlots = MAX_PHOTOS - currentCount;
     const acceptedFiles: File[] = [];
-    for (const file of mergedFiles) {
+
+    for (const file of incomingFiles) {
       if (!file.type.startsWith("image/")) {
         setError("Only image files are allowed.");
         continue;
@@ -117,64 +178,139 @@ export function OwnerPhotosInput({
         continue;
       }
 
+      const duplicate = photos.some(
+        (photo) =>
+          !photo.existing &&
+          photo.name === file.name &&
+          photo.size === file.size,
+      );
+      if (duplicate) {
+        continue;
+      }
+
       acceptedFiles.push(file);
     }
 
-    const availableSlots = Math.max(0, MAX_PHOTOS - existingUrls.length);
-    const nextFiles = acceptedFiles.slice(0, availableSlots);
+    const filesToQueue = acceptedFiles.slice(0, availableSlots);
     if (acceptedFiles.length > availableSlots) {
       setError(`You can upload up to ${MAX_PHOTOS} photos.`);
     }
 
-    updateFiles(nextFiles);
-  }
+    const newPhotos = filesToQueue.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      objectUrlsRef.current.add(previewUrl);
+      return {
+        id: createClientPhotoId(file),
+        name: file.name,
+        size: file.size,
+        url: previewUrl,
+        status: "uploading" as const,
+        existing: false,
+        previewObjectUrl: previewUrl,
+        error: null,
+      };
+    });
 
-  function removePhoto(id: string) {
-    if (id.startsWith("existing-")) {
-      const nextExistingUrls = existingUrls.filter((url, index) => `existing-${index}-${url}` !== id);
-      updateFiles(files, nextExistingUrls);
-    } else {
-      const nextFiles = files.filter((file) => fileId(file) !== id);
-      updateFiles(nextFiles);
+    if (newPhotos.length === 0) {
+      return;
     }
+
+    setPhotos((current) => [...current, ...newPhotos]);
+    for (let index = 0; index < filesToQueue.length; index += 1) {
+      void uploadPhoto(filesToQueue[index], newPhotos[index].id, newPhotos[index].url);
+    }
+  }
+
+  async function removePhoto(photo: PhotoItem) {
+    if (!photo.existing && photo.fileId && photo.status === "uploaded") {
+      try {
+        await fetch("/api/owner-submission-images", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ fileId: photo.fileId }),
+        });
+      } catch (deleteError) {
+        console.error("Failed to delete uploaded owner photo:", deleteError);
+      }
+    }
+
+    if (photo.previewObjectUrl) {
+      URL.revokeObjectURL(photo.previewObjectUrl);
+      objectUrlsRef.current.delete(photo.previewObjectUrl);
+    }
+
+    setPhotos((current) => current.filter((item) => item.id !== photo.id));
     setError(null);
   }
 
-  function clearPhotos() {
-    updateFiles([], []);
+  async function clearPhotos() {
+    for (const photo of photos) {
+      if (!photo.existing && photo.fileId && photo.status === "uploaded") {
+        try {
+          await fetch("/api/owner-submission-images", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ fileId: photo.fileId }),
+          });
+        } catch (deleteError) {
+          console.error("Failed to delete uploaded owner photo:", deleteError);
+        }
+      }
+
+      if (photo.previewObjectUrl) {
+        URL.revokeObjectURL(photo.previewObjectUrl);
+        objectUrlsRef.current.delete(photo.previewObjectUrl);
+      }
+    }
+
+    setPhotos([]);
     setError(null);
   }
+
+  const uploadedPhotos = photos.filter((photo) => photo.status === "uploaded");
+  const existingPhotos = photos.filter((photo) => photo.status === "existing");
 
   return (
     <div className="space-y-3">
-      <label htmlFor="photos" className="text-sm font-medium text-black">Photos <span className="text-destructive">*</span></label>
+      <label htmlFor="photos" className="text-sm font-medium text-black">
+        Photos <span className="text-destructive">*</span>
+      </label>
       <input
         ref={inputRef}
         id="photos"
-        name="photos"
         type="file"
         accept="image/*"
         multiple
         className="sr-only"
         onChange={handleFileChange}
       />
-      {existingUrls.map((url) => (
-        <input key={url} type="hidden" name="existing_image_urls" value={url} readOnly />
+      <input ref={statusInputRef} type="hidden" name="photo_upload_state" value={uploadState} readOnly />
+      {existingPhotos.map((photo) => (
+        <input key={photo.id} type="hidden" name="existing_image_urls" value={photo.url} readOnly />
+      ))}
+      {uploadedPhotos.map((photo) => (
+        <input key={photo.id} type="hidden" name="uploaded_image_urls" value={photo.url} readOnly />
+      ))}
+      {uploadedPhotos.map((photo) => (
+        <input key={`${photo.id}-file`} type="hidden" name="uploaded_image_file_ids" value={photo.fileId ?? ""} readOnly />
       ))}
 
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-primary/30 bg-primary/3 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/6"
+        disabled={photos.length >= MAX_PHOTOS}
+        className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-primary/30 bg-primary/3 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/6 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
           <UploadCloud className="h-5 w-5" />
         </span>
-        <span className="text-sm font-semibold text-black">
-          Choose library photos
-        </span>
+        <span className="text-sm font-semibold text-black">Choose library photos</span>
         <span className="mt-1 text-xs text-muted-foreground">
-          Choose one at a time or multiple together. Up to {MAX_PHOTOS} images, {MAX_PHOTO_MB} MB each
+          Upload up to {MAX_PHOTOS} images, {MAX_PHOTO_MB} MB each
         </span>
       </button>
 
@@ -184,15 +320,27 @@ export function OwnerPhotosInput({
         </p>
       ) : null}
 
-      {previews.length > 0 ? (
+      {uploadState === "uploading" ? (
+        <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+          Please wait for all photos to finish uploading before submitting.
+        </p>
+      ) : null}
+
+      {uploadState === "failed" ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          Remove failed uploads and upload them again before submitting.
+        </p>
+      ) : null}
+
+      {photos.length > 0 ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-muted-foreground">
-              {previews.length} photo{previews.length === 1 ? "" : "s"} selected
+              {photos.length} photo{photos.length === 1 ? "" : "s"} selected
             </p>
             <button
               type="button"
-              onClick={clearPhotos}
+              onClick={() => void clearPhotos()}
               className="text-xs font-semibold text-primary hover:underline"
             >
               Clear all
@@ -200,32 +348,45 @@ export function OwnerPhotosInput({
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {previews.map((photo) => (
+            {photos.map((photo) => (
               <div key={photo.id} className="group overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
                 <div className="relative aspect-square bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.url}
-                    alt={photo.name}
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={photo.url} alt={photo.name} className="h-full w-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => removePhoto(photo.id)}
+                    onClick={() => void removePhoto(photo)}
                     className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow-sm backdrop-blur transition-colors hover:bg-white"
                     aria-label={`Remove ${photo.name}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2">
-                  <ImagePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-black">{photo.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {photo.existing ? "Already uploaded" : formatFileSize(photo.size)}
-                    </p>
+                <div className="space-y-1 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {photo.status === "uploading" ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-sky-600" />
+                    ) : (
+                      <ImagePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-black">{photo.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {photo.existing ? "Already uploaded" : formatFileSize(photo.size)}
+                      </p>
+                    </div>
                   </div>
+                  <p
+                    className={`text-[11px] font-medium ${
+                      photo.status === "uploaded" || photo.status === "existing"
+                        ? "text-emerald-700"
+                        : photo.status === "failed"
+                          ? "text-rose-700"
+                          : "text-sky-700"
+                    }`}
+                  >
+                    {getPhotoStatusLabel(photo)}
+                  </p>
                 </div>
               </div>
             ))}

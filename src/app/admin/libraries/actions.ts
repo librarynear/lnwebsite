@@ -171,11 +171,15 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     return { success: false, error: error.message };
   }
 
-  await supabaseServer.from("library_fee_plans").delete().eq("library_branch_id", id);
-
-  if (feePlans.length > 0) {
-    const plansToInsert = buildLibraryFeePlanInsertRows(feePlans, id);
-    await supabaseServer.from("library_fee_plans").insert(plansToInsert);
+  const { error: replacePlansError } = await supabaseServer.rpc(
+    "replace_library_fee_plans" as never,
+    {
+      p_library_branch_id: id,
+      p_plans: buildLibraryFeePlanInsertRows(feePlans, id),
+    } as never,
+  );
+  if (replacePlansError) {
+    return { success: false, error: replacePlansError.message };
   }
 
   await refreshLibraryProfileCompletenessScore(id);

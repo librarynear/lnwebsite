@@ -67,6 +67,34 @@ async function getSubmission(id: string): Promise<SubmissionPayload | null> {
   return (data as SubmissionPayload) ?? null;
 }
 
+async function linkSubmissionToExistingLibrary(submissionId: string) {
+  const { data: existingLibrary, error } = await supabaseServer
+    .from("library_branches")
+    .select("id")
+    .eq("source_submission_id", submissionId)
+    .maybeSingle();
+
+  if (error || !existingLibrary?.id) {
+    return null;
+  }
+
+  const { error: updateError } = await supabaseServer
+    .from("owner_library_submissions")
+    .update({
+      status: "approved",
+      submitted_library_branch_id: existingLibrary.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", submissionId);
+
+  if (updateError) {
+    console.error("Failed to relink owner submission to existing library:", updateError.message);
+    return null;
+  }
+
+  return existingLibrary.id;
+}
+
 export async function approveOwnerSubmission(formData: FormData): Promise<void> {
   const id = formData.get("id") as string;
   if (!id) {
@@ -78,6 +106,13 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
   }
 
   if (!submission.pin_code) {
+    redirect("/admin/owner-submissions");
+  }
+
+  const preexistingLibraryId = await linkSubmissionToExistingLibrary(id);
+  if (preexistingLibraryId) {
+    revalidatePath("/admin/owner-submissions");
+    revalidateLibraryContent(await getLibraryCacheTarget(preexistingLibraryId));
     redirect("/admin/owner-submissions");
   }
 
@@ -152,6 +187,7 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
       is_active: true,
       verification_status: "unverified",
       created_source: "owner_submission",
+      source_submission_id: submission.id,
       last_admin_reviewed_at: new Date().toISOString(),
       last_owner_updated_at: new Date().toISOString(),
     })
@@ -161,6 +197,12 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
   libraryId = library?.id ?? null;
 
   if (insertError || !library) {
+    const existingLibraryId = await linkSubmissionToExistingLibrary(id);
+    if (existingLibraryId) {
+      revalidatePath("/admin/owner-submissions");
+      revalidateLibraryContent(await getLibraryCacheTarget(existingLibraryId));
+      redirect("/admin/owner-submissions");
+    }
     console.error("Failed to create library from submission:", insertError?.message);
     redirect("/admin/owner-submissions");
   }

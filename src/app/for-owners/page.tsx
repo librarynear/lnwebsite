@@ -2,7 +2,6 @@ import { CheckCircle2, Clock3, LockKeyhole, MapPin, ShieldCheck } from "lucide-r
 import { createClient } from "@/lib/supabase/server";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
-import { FormSubmitButton } from "@/components/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { submitOwnerLibrary } from "@/app/for-owners/actions";
 import { OwnerPhotosInput } from "@/app/for-owners/owner-photos-input";
@@ -16,6 +15,7 @@ import { OwnerSubmissionPlansForm } from "./owner-submission-plans-form";
 import type { Json } from "@/types/supabase";
 import { PhoneWhatsappFields } from "@/components/library-form/phone-whatsapp-fields";
 import type { LibraryPlanDraft } from "@/lib/library-plans";
+import { OwnerSubmissionSubmitButton } from "./owner-submission-submit-button";
 
 type OwnerSubmissionRow = {
   id: string;
@@ -441,11 +441,11 @@ export default async function ForOwnersPage({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time <span className="text-destructive">*</span></label>
-                    <Input id="opening_time" name="opening_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="opening_time" name="opening_time" type="time" defaultValue={editableSubmission?.opening_time ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time <span className="text-destructive">*</span></label>
-                    <Input id="closing_time" name="closing_time" type="time" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="closing_time" name="closing_time" type="time" defaultValue={editableSubmission?.closing_time ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
@@ -493,9 +493,9 @@ export default async function ForOwnersPage({
 
                 <OwnerPhotosInput initialImageUrls={editableSubmission?.image_urls ?? []} />
 
-                <FormSubmitButton className="mt-4 h-12 w-full rounded-full bg-[#0F74C5] px-8 text-sm font-semibold shadow-md hover:bg-[#0F74C5]/90 md:w-auto">
+                <OwnerSubmissionSubmitButton formId="owner-library-form" className="mt-4 h-12 w-full rounded-full bg-[#0F74C5] px-8 text-sm font-semibold shadow-md hover:bg-[#0F74C5]/90 md:w-auto">
                   {editableSubmission ? "Resubmit for review" : "Submit for review"}
-                </FormSubmitButton>
+                </OwnerSubmissionSubmitButton>
               </form>
             </div>
 

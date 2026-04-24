@@ -24,42 +24,9 @@ import {
 } from "@/lib/owner-form-validation";
 import { logLibraryActivity } from "@/lib/library-activity";
 import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
+import { cleanupImageKitFiles } from "@/lib/server/imagekit";
 
 const MAX_OWNER_PHOTOS = 3;
-const MAX_OWNER_PHOTO_BYTES = 5 * 1024 * 1024;
-
-async function uploadOwnerSubmissionImage(file: File, userId: string) {
-  const imagekitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;
-  if (!imagekitPrivateKey) {
-    throw new Error("ImageKit private key is not configured");
-  }
-
-  const imagekitFormData = new FormData();
-  imagekitFormData.append("file", file);
-  imagekitFormData.append("fileName", file.name.replace(/[^\w.-]+/g, "-") || "owner_submission.jpg");
-  imagekitFormData.append("folder", `/owner-submissions/${userId}/`);
-
-  const authHeader = "Basic " + Buffer.from(`${imagekitPrivateKey}:`).toString("base64");
-  const response = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-    method: "POST",
-    headers: {
-      Authorization: authHeader,
-    },
-    body: imagekitFormData,
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to upload owner submission image (${response.status})`);
-  }
-
-  const result = (await response.json()) as { url?: string };
-  if (!result.url) {
-    throw new Error("Image upload did not return a URL");
-  }
-
-  return result.url;
-}
 
 function ownerErrorRedirect(code: string): never {
   redirect(`/for-owners?error=${code}`);
@@ -81,6 +48,20 @@ function getTrimmedString(formData: FormData, key: string) {
 function getExistingImageUrls(formData: FormData) {
   return formData
     .getAll("existing_image_urls")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function getUploadedImageUrls(formData: FormData) {
+  return formData
+    .getAll("uploaded_image_urls")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function getUploadedImageFileIds(formData: FormData) {
+  return formData
+    .getAll("uploaded_image_file_ids")
     .map((value) => String(value).trim())
     .filter(Boolean);
 }
@@ -145,15 +126,15 @@ export async function submitOwnerLibrary(formData: FormData) {
   const normalizedWhatsapp = rawWhatsapp ? normalizeIndianPhone(rawWhatsapp) : null;
   const rawPlansJson = String(formData.get("fee_plans_json") ?? "");
   const feePlans = parsePlanDraftsJson(rawPlansJson);
-  const imageFiles = formData
-    .getAll("photos")
-    .filter((file): file is File => file instanceof File && file.size > 0);
   const amenityValues = formData
     .getAll("amenities")
     .map((value) => String(value).trim())
     .filter(Boolean);
   const amenitiesText = amenityValues.length > 0 ? amenityValues.join(", ") : null;
   const existingImageUrls = existingSubmission ? getExistingImageUrls(formData) : [];
+  const uploadedImageUrls = getUploadedImageUrls(formData);
+  const uploadedImageFileIds = getUploadedImageFileIds(formData);
+  const photoUploadState = getTrimmedString(formData, "photo_upload_state");
 
   if (
     !displayName ||
@@ -189,19 +170,21 @@ export async function submitOwnerLibrary(formData: FormData) {
     ownerErrorRedirect("invalid_plan_description");
   }
 
-  if (imageFiles.length + existingImageUrls.length === 0) {
+  if (photoUploadState !== "ready") {
+    ownerErrorRedirect("image_upload_failed");
+  }
+
+  if (uploadedImageUrls.length !== uploadedImageFileIds.length) {
+    await cleanupImageKitFiles(uploadedImageFileIds);
+    ownerErrorRedirect("image_upload_failed");
+  }
+
+  if (uploadedImageUrls.length + existingImageUrls.length === 0) {
     ownerErrorRedirect("too_few_images");
   }
 
-  if (imageFiles.length + existingImageUrls.length > MAX_OWNER_PHOTOS) {
+  if (uploadedImageUrls.length + existingImageUrls.length > MAX_OWNER_PHOTOS) {
     ownerErrorRedirect("too_many_images");
-  }
-
-  const invalidImageFile = imageFiles.find(
-    (file) => !file.type.startsWith("image/") || file.size > MAX_OWNER_PHOTO_BYTES,
-  );
-  if (invalidImageFile) {
-    ownerErrorRedirect("invalid_image");
   }
 
   const resolvedMap = await resolveGoogleMapsCoordinates(rawMapLink);
@@ -229,27 +212,7 @@ export async function submitOwnerLibrary(formData: FormData) {
   }
 
   const nearestMetro = await findNearestMetro(latitude, longitude);
-  const imageUrls = [...existingImageUrls];
-
-  for (const [index, file] of imageFiles.entries()) {
-    console.info(
-      `[owner-submission] upload-start user=${user.id} index=${index + 1}/${imageFiles.length} name="${file.name}" size=${file.size}`,
-    );
-
-    try {
-      const imageUrl = await uploadOwnerSubmissionImage(file, user.id);
-      imageUrls.push(imageUrl);
-      console.info(
-        `[owner-submission] upload-success user=${user.id} index=${index + 1}/${imageFiles.length} name="${file.name}" url="${imageUrl}"`,
-      );
-    } catch (error) {
-      console.error(
-        `[owner-submission] upload-failed user=${user.id} index=${index + 1}/${imageFiles.length} name="${file.name}"`,
-        error,
-      );
-      ownerErrorRedirect("image_upload_failed");
-    }
-  }
+  const imageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
   const payload = {
     user_id: user.id,
@@ -299,6 +262,7 @@ export async function submitOwnerLibrary(formData: FormData) {
 
   if (error) {
     console.error("Failed to create owner submission:", error.message);
+    await cleanupImageKitFiles(uploadedImageFileIds);
     ownerErrorRedirect("submission_failed");
   }
 
@@ -349,23 +313,16 @@ export async function updateOwnerSubmissionPlans(formData: FormData) {
     const libraryBranchId = submission.submitted_library_branch_id;
     const previousTarget = await getLibraryCacheTarget(libraryBranchId);
 
-    const { error: deletePlansError } = await supabaseServer
-      .from("library_fee_plans")
-      .delete()
-      .eq("library_branch_id", libraryBranchId);
-    if (deletePlansError) {
-      console.error("Failed to delete existing library fee plans:", deletePlansError.message);
+    const { error: replacePlansError } = await supabaseServer.rpc(
+      "replace_library_fee_plans" as never,
+      {
+        p_library_branch_id: libraryBranchId,
+        p_plans: buildLibraryFeePlanInsertRows(feePlans, libraryBranchId),
+      } as never,
+    );
+    if (replacePlansError) {
+      console.error("Failed to replace library fee plans:", replacePlansError.message);
       redirect("/for-owners?plans_error=1");
-    }
-
-    if (feePlans.length > 0) {
-      const { error: insertPlansError } = await supabaseServer
-        .from("library_fee_plans")
-        .insert(buildLibraryFeePlanInsertRows(feePlans, libraryBranchId));
-      if (insertPlansError) {
-        console.error("Failed to insert updated library fee plans:", insertPlansError.message);
-        redirect("/for-owners?plans_error=1");
-      }
     }
 
     await refreshLibraryProfileCompletenessScore(libraryBranchId);
