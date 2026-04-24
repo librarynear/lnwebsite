@@ -15,6 +15,7 @@ import { FormDraftPersistence } from "@/components/library-form/form-draft-persi
 import { OwnerSubmissionPlansForm } from "./owner-submission-plans-form";
 import type { Json } from "@/types/supabase";
 import { PhoneWhatsappFields } from "@/components/library-form/phone-whatsapp-fields";
+import type { LibraryPlanDraft } from "@/lib/library-plans";
 
 type OwnerSubmissionRow = {
   id: string;
@@ -22,10 +23,32 @@ type OwnerSubmissionRow = {
   display_name: string;
   city: string;
   locality: string | null;
+  district: string | null;
+  state: string | null;
+  pin_code: string | null;
+  full_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone_number: string | null;
+  whatsapp_number: string | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  total_seats: number | null;
+  map_link: string | null;
+  description: string | null;
+  amenities_text: string | null;
+  image_urls: string[] | null;
   reviewer_notes: string | null;
   created_at: string | null;
   fee_plans: Json | null;
 };
+
+function parseAmenities(value: string | null) {
+  return String(value ?? "")
+    .split(/[,|\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export const metadata = {
   title: "For Owners",
@@ -37,8 +60,9 @@ function statusLabel(status: string) {
     case "approved":
       return "Approved";
     case "needs_changes":
-    case "rejected":
       return "Needs changes";
+    case "rejected":
+      return "Rejected";
     default:
       return "Under review";
   }
@@ -60,6 +84,8 @@ function errorMessage(error?: string) {
       return "Please enter a valid Indian mobile number for phone and WhatsApp.";
     case "invalid_map_link":
       return "Please add a valid Google Maps link.";
+    case "unresolvable_map_link":
+      return "We could not extract coordinates from that Google Maps link after resolving it. Please use the full share link or enter latitude and longitude manually.";
     case "invalid_coordinates":
       return "Please provide a valid latitude and longitude. We can auto-fill them from the Google Maps link when possible.";
     case "invalid_pin_code":
@@ -95,14 +121,20 @@ export default async function ForOwnersPage({
         (
           await supabase
             .from("owner_library_submissions")
-            .select("id, status, display_name, city, locality, reviewer_notes, created_at, fee_plans")
+            .select("id, status, display_name, city, locality, district, state, pin_code, full_address, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text, image_urls, reviewer_notes, created_at, fee_plans")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
         ).data ?? [],
       )
     : null;
   const submissions = submissionsMeasurement?.result ?? [];
-  const hasExistingSubmission = submissions.length > 0;
+  const latestSubmission = (submissions[0] as OwnerSubmissionRow | undefined) ?? null;
+  const editableSubmission =
+    latestSubmission &&
+    (latestSubmission.status === "needs_changes" || latestSubmission.status === "rejected")
+      ? latestSubmission
+      : null;
+  const hasLockedSubmission = Boolean(latestSubmission) && !editableSubmission;
 
   if (submissionsMeasurement) {
     logPerf("forOwners", [submissionsMeasurement.metric], `user=1 submissions=${submissions.length}`);
@@ -124,10 +156,10 @@ export default async function ForOwnersPage({
             <div className="mt-8 flex flex-wrap gap-3">
               {user ? (
                 <a
-                  href={hasExistingSubmission ? "#owner-submissions" : "#owner-form"}
+                  href={hasLockedSubmission ? "#owner-submissions" : "#owner-form"}
                   className="inline-flex items-center rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-[#0F74C5] transition-colors hover:bg-white/90 shadow-sm"
                 >
-                  {hasExistingSubmission ? "Open your submission" : "Start onboarding"}
+                  {hasLockedSubmission ? "Open your submission" : editableSubmission ? "Resume submission" : "Start onboarding"}
                 </a>
               ) : (
                 <GoogleLoginButton
@@ -193,7 +225,7 @@ export default async function ForOwnersPage({
               Continue with Google to list your library
             </GoogleLoginButton>
           </div>
-        ) : hasExistingSubmission ? (
+        ) : hasLockedSubmission ? (
           <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-6">
               <div className="rounded-3xl border-0 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
@@ -204,8 +236,8 @@ export default async function ForOwnersPage({
                   <div>
                     <h2 className="text-2xl font-bold text-black">Your library is already submitted</h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      You can now edit only your plans from this page. To update address, timings, phone numbers,
-                      amenities, or any other listing details, please contact our team and we will help you.
+                      You can edit plans from this page. To update address, timings, phone numbers,
+                      amenities, photos, or any other listing details after approval, please contact our team and we will help you.
                     </p>
                   </div>
                 </div>
@@ -296,7 +328,11 @@ export default async function ForOwnersPage({
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-black">Guided owner onboarding</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Fill your first library submission carefully. Fields marked with <span className="font-semibold text-black">*</span> are compulsory.
+                  {editableSubmission
+                    ? "Review the notes, update your details, and resubmit. Fields marked with "
+                    : "Fill your first library submission carefully. Fields marked with "}
+                  <span className="font-semibold text-black">*</span>
+                  {" are compulsory."}
                 </p>
               </div>
 
@@ -305,6 +341,20 @@ export default async function ForOwnersPage({
                   Your library submission is in review. We will surface it in your owner dashboard below.
                 </div>
               )}
+
+              {editableSubmission?.status === "needs_changes" && editableSubmission.reviewer_notes ? (
+                <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <span className="font-semibold">Changes requested:</span> {editableSubmission.reviewer_notes}
+                </div>
+              ) : null}
+
+              {editableSubmission?.status === "rejected" ? (
+                <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {editableSubmission.reviewer_notes
+                    ? `Your previous submission was rejected. You can correct it and resubmit. Reviewer notes: ${editableSubmission.reviewer_notes}`
+                    : "Your previous submission was rejected. You can correct it and resubmit from here."}
+                </div>
+              ) : null}
 
               {error && (
                 <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -324,22 +374,22 @@ export default async function ForOwnersPage({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="display_name" className="text-sm font-medium text-black">Display name <span className="text-destructive">*</span></label>
-                    <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" defaultValue={editableSubmission?.display_name ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="locality" className="text-sm font-medium text-black">Locality <span className="text-destructive">*</span></label>
-                    <Input id="locality" name="locality" placeholder="Mukherjee Nagar" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="locality" name="locality" placeholder="Mukherjee Nagar" defaultValue={editableSubmission?.locality ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="city" className="text-sm font-medium text-black">City <span className="text-destructive">*</span></label>
-                    <Input id="city" name="city" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="city" name="city" defaultValue={editableSubmission?.city ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="district" className="text-sm font-medium text-black">District</label>
-                    <Input id="district" name="district" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <Input id="district" name="district" defaultValue={editableSubmission?.district ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
                 </div>
 
@@ -353,6 +403,7 @@ export default async function ForOwnersPage({
                     name="full_address"
                     rows={3}
                     placeholder="House number, street, landmark, locality"
+                    defaultValue={editableSubmission?.full_address ?? ""}
                     className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                     required
                   />
@@ -361,16 +412,19 @@ export default async function ForOwnersPage({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="state" className="text-sm font-medium text-black">State <span className="text-destructive">*</span></label>
-                    <Input id="state" name="state" defaultValue="Delhi" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="state" name="state" defaultValue={editableSubmission?.state ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="pin_code" className="text-sm font-medium text-black">PIN code <span className="text-destructive">*</span></label>
-                    <Input id="pin_code" name="pin_code" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="pin_code" name="pin_code" defaultValue={editableSubmission?.pin_code ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                   </div>
                 </div>
 
                 <MapCoordinatesFields
                   storageKey="owner-library-map-fields"
+                  initialMapLink={editableSubmission?.map_link ?? ""}
+                  initialLatitude={editableSubmission?.latitude ?? null}
+                  initialLongitude={editableSubmission?.longitude ?? null}
                   mapLinkRequired
                   coordinatesRequired
                   clearOnMount={submitted === "1"}
@@ -396,12 +450,17 @@ export default async function ForOwnersPage({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <PhoneWhatsappFields storageKey="owner-library-phone-fields" clearOnMount={submitted === "1"} />
+                  <PhoneWhatsappFields
+                    initialPhone={editableSubmission?.phone_number ?? ""}
+                    initialWhatsapp={editableSubmission?.whatsapp_number ?? ""}
+                    storageKey="owner-library-phone-fields"
+                    clearOnMount={submitted === "1"}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="amenities" className="text-sm font-medium text-black">Amenities <span className="text-destructive">*</span></label>
-                  <AmenitiesChecklist />
+                  <AmenitiesChecklist initialSelected={parseAmenities(editableSubmission?.amenities_text ?? null)} />
                 </div>
 
                 <div className="border-b border-border pb-2 pt-2">
@@ -414,26 +473,28 @@ export default async function ForOwnersPage({
                     name="description"
                     rows={4}
                     placeholder="Tell students what makes your library a great place to study."
+                    defaultValue={editableSubmission?.description ?? ""}
                     className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats available <span className="text-destructive">*</span></label>
-                  <Input id="total_seats" name="total_seats" type="number" min="1" className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                  <Input id="total_seats" name="total_seats" type="number" min="1" defaultValue={editableSubmission?.total_seats ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
                 </div>
 
                 <PlansEditor
+                  initialPlans={(Array.isArray(editableSubmission?.fee_plans) ? editableSubmission?.fee_plans : []) as Partial<LibraryPlanDraft>[]}
                   storageKey="owner-library-plan-draft"
                   title="Plans"
                   note="Plans are optional. Use Regular or Offer, add discount percentages, and we will calculate the clean discounted price automatically."
                   clearOnMount={submitted === "1"}
                 />
 
-                <OwnerPhotosInput />
+                <OwnerPhotosInput initialImageUrls={editableSubmission?.image_urls ?? []} />
 
                 <FormSubmitButton className="mt-4 h-12 w-full rounded-full bg-[#0F74C5] px-8 text-sm font-semibold shadow-md hover:bg-[#0F74C5]/90 md:w-auto">
-                  Submit for review
+                  {editableSubmission ? "Resubmit for review" : "Submit for review"}
                 </FormSubmitButton>
               </form>
             </div>

@@ -5,6 +5,7 @@ export type OwnerValidationErrorCode =
   | "missing_required_fields"
   | "invalid_phone"
   | "invalid_map_link"
+  | "unresolvable_map_link"
   | "invalid_coordinates"
   | "invalid_pin_code"
   | "invalid_timings"

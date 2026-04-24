@@ -20,14 +20,20 @@ type ProfileSummary = Pick<Tables<"profiles">, "full_name" | "avatar_url" | "ema
 export const metadata = {
   title: "Profile",
   description: "Manage your LibraryNear account, saved libraries, and library listings.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 function formatStatus(status: string) {
   switch (status) {
     case "approved":
       return "Approved";
-    case "rejected":
+    case "needs_changes":
       return "Needs changes";
+    case "rejected":
+      return "Rejected";
     default:
       return "Under review";
   }
@@ -164,7 +170,7 @@ export default async function ProfilePage() {
                 </p>
               </div>
               <IntentLink href="/for-owners" className="text-sm font-medium text-primary hover:underline">
-                Add another
+                Manage listing
               </IntentLink>
             </div>
 

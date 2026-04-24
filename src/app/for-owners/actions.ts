@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
-import { extractCoordinatesFromMapLink } from "@/lib/maps-coordinates";
 import {
   buildLibraryFeePlanInsertRows,
   parsePlanDraftsJson,
@@ -20,11 +19,11 @@ import {
   hasValidTimeRange,
   isValidLatitude,
   isValidLongitude,
-  isValidMapLink,
   isValidPinCode,
   normalizeIndianPhone,
 } from "@/lib/owner-form-validation";
 import { logLibraryActivity } from "@/lib/library-activity";
+import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
 
 const MAX_OWNER_PHOTOS = 3;
 const MAX_OWNER_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -66,6 +65,47 @@ function ownerErrorRedirect(code: string): never {
   redirect(`/for-owners?error=${code}`);
 }
 
+type EditableOwnerSubmissionStatus = "needs_changes" | "rejected";
+
+type ExistingOwnerSubmission = {
+  id: string;
+  status: string;
+  image_urls: string[] | null;
+  submitted_library_branch_id: string | null;
+};
+
+function getTrimmedString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function getExistingImageUrls(formData: FormData) {
+  return formData
+    .getAll("existing_image_urls")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
+function isEditableOwnerSubmissionStatus(status: string): status is EditableOwnerSubmissionStatus {
+  return status === "needs_changes" || status === "rejected";
+}
+
+async function loadExistingOwnerSubmission(userId: string) {
+  const { data, error } = await supabaseServer
+    .from("owner_library_submissions")
+    .select("id, status, image_urls, submitted_library_branch_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load owner submission:", error.message);
+    return null;
+  }
+
+  return (data as ExistingOwnerSubmission | null) ?? null;
+}
+
 export async function submitOwnerLibrary(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -78,30 +118,29 @@ export async function submitOwnerLibrary(formData: FormData) {
 
   await upsertProfileFromUser(user);
 
-  const { count: existingCount } = await supabase
-    .from("owner_library_submissions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
-  if ((existingCount ?? 0) > 0) {
+  const existingSubmission = await loadExistingOwnerSubmission(user.id);
+  if (
+    existingSubmission &&
+    !isEditableOwnerSubmissionStatus(existingSubmission.status)
+  ) {
     ownerErrorRedirect("duplicate_submission");
   }
 
-  const displayName = String(formData.get("display_name") ?? "").trim();
-  const locality = String(formData.get("locality") ?? "").trim();
-  const city = String(formData.get("city") ?? "").trim();
-  const district = String(formData.get("district") ?? "").trim() || null;
-  const state = String(formData.get("state") ?? "").trim();
-  const pinCode = String(formData.get("pin_code") ?? "").trim();
-  const fullAddress = String(formData.get("full_address") ?? "").trim();
-  const openingTime = String(formData.get("opening_time") ?? "").trim();
-  const closingTime = String(formData.get("closing_time") ?? "").trim();
-  const mapLink = String(formData.get("map_link") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const totalSeatsRaw = String(formData.get("total_seats") ?? "").trim();
+  const displayName = getTrimmedString(formData, "display_name");
+  const locality = getTrimmedString(formData, "locality");
+  const city = getTrimmedString(formData, "city");
+  const district = getTrimmedString(formData, "district") || null;
+  const state = getTrimmedString(formData, "state");
+  const pinCode = getTrimmedString(formData, "pin_code");
+  const fullAddress = getTrimmedString(formData, "full_address");
+  const openingTime = getTrimmedString(formData, "opening_time");
+  const closingTime = getTrimmedString(formData, "closing_time");
+  const rawMapLink = getTrimmedString(formData, "map_link");
+  const description = getTrimmedString(formData, "description") || null;
+  const totalSeatsRaw = getTrimmedString(formData, "total_seats");
   const totalSeats = totalSeatsRaw ? Number.parseInt(totalSeatsRaw, 10) : Number.NaN;
-  const rawPhone = String(formData.get("phone_number") ?? "").trim();
-  const rawWhatsapp = String(formData.get("whatsapp_number") ?? "").trim();
+  const rawPhone = getTrimmedString(formData, "phone_number");
+  const rawWhatsapp = getTrimmedString(formData, "whatsapp_number");
   const normalizedPhone = normalizeIndianPhone(rawPhone);
   const normalizedWhatsapp = rawWhatsapp ? normalizeIndianPhone(rawWhatsapp) : null;
   const rawPlansJson = String(formData.get("fee_plans_json") ?? "");
@@ -114,6 +153,7 @@ export async function submitOwnerLibrary(formData: FormData) {
     .map((value) => String(value).trim())
     .filter(Boolean);
   const amenitiesText = amenityValues.length > 0 ? amenityValues.join(", ") : null;
+  const existingImageUrls = existingSubmission ? getExistingImageUrls(formData) : [];
 
   if (
     !displayName ||
@@ -124,7 +164,7 @@ export async function submitOwnerLibrary(formData: FormData) {
     !fullAddress ||
     !openingTime ||
     !closingTime ||
-    !mapLink ||
+    !rawMapLink ||
     !rawPhone ||
     !Number.isInteger(totalSeats) ||
     totalSeats < 1 ||
@@ -141,10 +181,6 @@ export async function submitOwnerLibrary(formData: FormData) {
     ownerErrorRedirect("invalid_pin_code");
   }
 
-  if (!isValidMapLink(mapLink)) {
-    ownerErrorRedirect("invalid_map_link");
-  }
-
   if (!hasValidTimeRange(openingTime, closingTime)) {
     ownerErrorRedirect("invalid_timings");
   }
@@ -153,11 +189,11 @@ export async function submitOwnerLibrary(formData: FormData) {
     ownerErrorRedirect("invalid_plan_description");
   }
 
-  if (imageFiles.length === 0) {
+  if (imageFiles.length + existingImageUrls.length === 0) {
     ownerErrorRedirect("too_few_images");
   }
 
-  if (imageFiles.length > MAX_OWNER_PHOTOS) {
+  if (imageFiles.length + existingImageUrls.length > MAX_OWNER_PHOTOS) {
     ownerErrorRedirect("too_many_images");
   }
 
@@ -168,13 +204,20 @@ export async function submitOwnerLibrary(formData: FormData) {
     ownerErrorRedirect("invalid_image");
   }
 
-  const extractedCoordinates = extractCoordinatesFromMapLink(mapLink);
+  const resolvedMap = await resolveGoogleMapsCoordinates(rawMapLink);
+  if (resolvedMap.resolutionError === "invalid_map_link") {
+    ownerErrorRedirect("invalid_map_link");
+  }
+  if (resolvedMap.resolutionError === "unresolvable_map_link") {
+    ownerErrorRedirect("unresolvable_map_link");
+  }
+
   const latitude = formData.get("latitude")
     ? Number(formData.get("latitude"))
-    : extractedCoordinates?.latitude ?? null;
+    : resolvedMap.coordinates?.latitude ?? null;
   const longitude = formData.get("longitude")
     ? Number(formData.get("longitude"))
-    : extractedCoordinates?.longitude ?? null;
+    : resolvedMap.coordinates?.longitude ?? null;
 
   if (
     typeof latitude !== "number" ||
@@ -186,7 +229,7 @@ export async function submitOwnerLibrary(formData: FormData) {
   }
 
   const nearestMetro = await findNearestMetro(latitude, longitude);
-  const imageUrls: string[] = [];
+  const imageUrls = [...existingImageUrls];
 
   for (const [index, file] of imageFiles.entries()) {
     console.info(
@@ -226,14 +269,33 @@ export async function submitOwnerLibrary(formData: FormData) {
     opening_time: openingTime,
     closing_time: closingTime,
     total_seats: totalSeats,
-    map_link: mapLink,
+    map_link: resolvedMap.resolvedUrl,
     description,
     amenities_text: amenitiesText,
     image_urls: imageUrls,
     fee_plans: feePlans.length > 0 ? feePlans : null,
+    status: "pending_review",
+    reviewer_notes: null,
+    reviewed_at: null,
+    updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("owner_library_submissions").insert(payload);
+  const error = existingSubmission
+    ? (
+        await supabaseServer
+          .from("owner_library_submissions")
+          .update({
+            ...payload,
+            submitted_library_branch_id: existingSubmission.submitted_library_branch_id,
+          })
+          .eq("id", existingSubmission.id)
+          .eq("user_id", user.id)
+      ).error
+    : (
+        await supabase
+          .from("owner_library_submissions")
+          .insert(payload)
+      ).error;
 
   if (error) {
     console.error("Failed to create owner submission:", error.message);
@@ -261,9 +323,9 @@ export async function updateOwnerSubmissionPlans(formData: FormData) {
     redirect("/for-owners?plans_error=1");
   }
 
-  const { data: submission, error: submissionError } = await supabase
+  const { data: submission, error: submissionError } = await supabaseServer
     .from("owner_library_submissions")
-    .select("id, user_id, submitted_library_branch_id, display_name")
+    .select("id, user_id, status, submitted_library_branch_id, display_name")
     .eq("id", submissionId)
     .maybeSingle();
 
@@ -271,7 +333,7 @@ export async function updateOwnerSubmissionPlans(formData: FormData) {
     redirect("/for-owners?plans_error=1");
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseServer
     .from("owner_library_submissions")
     .update({
       fee_plans: feePlans,
@@ -287,12 +349,23 @@ export async function updateOwnerSubmissionPlans(formData: FormData) {
     const libraryBranchId = submission.submitted_library_branch_id;
     const previousTarget = await getLibraryCacheTarget(libraryBranchId);
 
-    await supabaseServer.from("library_fee_plans").delete().eq("library_branch_id", libraryBranchId);
+    const { error: deletePlansError } = await supabaseServer
+      .from("library_fee_plans")
+      .delete()
+      .eq("library_branch_id", libraryBranchId);
+    if (deletePlansError) {
+      console.error("Failed to delete existing library fee plans:", deletePlansError.message);
+      redirect("/for-owners?plans_error=1");
+    }
 
     if (feePlans.length > 0) {
-      await supabaseServer
+      const { error: insertPlansError } = await supabaseServer
         .from("library_fee_plans")
         .insert(buildLibraryFeePlanInsertRows(feePlans, libraryBranchId));
+      if (insertPlansError) {
+        console.error("Failed to insert updated library fee plans:", insertPlansError.message);
+        redirect("/for-owners?plans_error=1");
+      }
     }
 
     await refreshLibraryProfileCompletenessScore(libraryBranchId);

@@ -13,17 +13,16 @@ import {
   buildLibraryFeePlanInsertRows,
   parsePlanDraftsJson,
 } from "@/lib/library-plans";
-import { extractCoordinatesFromMapLink } from "@/lib/maps-coordinates";
 import { findNearestMetro } from "@/lib/nearest-metro";
 import {
   hasValidPlanDescriptions,
   hasValidTimeRange,
   isValidLatitude,
   isValidLongitude,
-  isValidMapLink,
   isValidPinCode,
   normalizeIndianPhone,
 } from "@/lib/owner-form-validation";
+import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
 
 function getTrimmedString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -84,10 +83,6 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     return { success: false, error: "Please enter a valid 6-digit PIN code." };
   }
 
-  if (!isValidMapLink(mapLink)) {
-    return { success: false, error: "Please add a valid Google Maps link." };
-  }
-
   if (!hasValidTimeRange(openingTime, closingTime)) {
     return { success: false, error: "Closing time must be after opening time." };
   }
@@ -96,7 +91,15 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     return { success: false, error: "Each plan description can have up to 30 words." };
   }
 
-  const extractedCoordinates = extractCoordinatesFromMapLink(mapLink);
+  const resolvedMap = await resolveGoogleMapsCoordinates(mapLink);
+  if (resolvedMap.resolutionError === "invalid_map_link") {
+    return { success: false, error: "Please add a valid Google Maps link." };
+  }
+  if (resolvedMap.resolutionError === "unresolvable_map_link") {
+    return { success: false, error: "We could not extract coordinates from that Google Maps link. Please use the full share link or enter latitude and longitude manually." };
+  }
+
+  const extractedCoordinates = resolvedMap.coordinates;
   const latitude = formData.get("latitude")
     ? Number(formData.get("latitude"))
     : extractedCoordinates?.latitude ?? null;
@@ -147,7 +150,7 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     phone_number: phoneNumber,
     description,
     amenities_text: amenityValues.join(", "),
-    map_link: mapLink,
+    map_link: resolvedMap.resolvedUrl,
     whatsapp_number: whatsappNumber,
     total_seats: totalSeats,
   };

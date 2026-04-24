@@ -134,18 +134,6 @@ export default async function Home({ searchParams }: HomeProps) {
         <HomeSearchShell />
       </Suspense>
 
-      <section className="border-b border-border/40 bg-slate-50/40">
-        <div className="container mx-auto px-6 py-8 md:px-10 md:py-10">
-          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-5xl">
-            Find the best libraries and study spaces in Delhi
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-            Compare reading rooms by locality, metro access, amenities, and fees to shortlist the
-            right place to study.
-          </p>
-        </div>
-      </section>
-
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
           <IntentLink

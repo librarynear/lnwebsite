@@ -65,10 +65,13 @@ export function MapCoordinatesFields({
   }, [latitude, longitude, mapLink, storageKey]);
 
   const extracted = useMemo(() => extractCoordinatesFromMapLink(mapLink), [mapLink]);
+  const usesShortGoogleMapsLink = /maps\.app\.goo\.gl/i.test(mapLink);
   const status = !mapLink.trim()
     ? ""
     : extracted
       ? "Coordinates extracted from the Google Maps link."
+      : usesShortGoogleMapsLink
+        ? "Short Google Maps links may still resolve on submit. You can also enter latitude and longitude manually."
       : "Could not extract coordinates from this link. You can enter them manually.";
 
   function handleMapLinkChange(value: string) {

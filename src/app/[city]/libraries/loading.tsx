@@ -6,8 +6,10 @@ export default function Loading() {
     <div className="flex min-h-screen flex-col bg-white">
       <div className="border-b border-border/50 bg-white py-3">
         <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-xl">
-            <SearchBarSkeleton />
+          <div className="mx-auto flex w-full justify-center">
+            <div className="w-full max-w-xl">
+              <SearchBarSkeleton />
+            </div>
           </div>
         </div>
       </div>

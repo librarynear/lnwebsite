@@ -11,9 +11,11 @@ import {
 import type { Json } from "@/types/supabase";
 import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
 import { buildLibraryFeePlanInsertRows, normalizePlanDrafts } from "@/lib/library-plans";
+import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
 
 type SubmissionPayload = {
   id: string;
+  status: string;
   display_name: string;
   city: string;
   locality: string | null;
@@ -35,6 +37,7 @@ type SubmissionPayload = {
   amenities_text: string | null;
   image_urls: string[] | null;
   fee_plans: Json | null;
+  submitted_library_branch_id: string | null;
 };
 
 function slugify(value: string) {
@@ -51,7 +54,7 @@ async function getSubmission(id: string): Promise<SubmissionPayload | null> {
   const { data, error } = await supabaseServer
     .from("owner_library_submissions")
     .select(
-      "id, display_name, city, locality, district, state, pin_code, full_address, nearest_metro, nearest_metro_distance_km, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text, image_urls, fee_plans",
+      "id, status, display_name, city, locality, district, state, pin_code, full_address, nearest_metro, nearest_metro_distance_km, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text, image_urls, fee_plans, submitted_library_branch_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -78,9 +81,33 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
     redirect("/admin/owner-submissions");
   }
 
+  if (submission.submitted_library_branch_id) {
+    const { error: existingLinkUpdateError } = await supabaseServer
+      .from("owner_library_submissions")
+      .update({
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    if (existingLinkUpdateError) {
+      console.error("Failed to refresh existing approved owner submission:", existingLinkUpdateError.message);
+    }
+    revalidatePath("/admin/owner-submissions");
+    revalidateLibraryContent(await getLibraryCacheTarget(submission.submitted_library_branch_id));
+    redirect("/admin/owner-submissions");
+  }
+
+  if (submission.status !== "pending_review") {
+    redirect("/admin/owner-submissions");
+  }
+
+  const resolvedMap = await resolveGoogleMapsCoordinates(submission.map_link);
+  const resolvedLatitude = resolvedMap.coordinates?.latitude ?? submission.latitude;
+  const resolvedLongitude = resolvedMap.coordinates?.longitude ?? submission.longitude;
+
   const computedMetro =
-    submission.latitude !== null && submission.longitude !== null
-      ? await findNearestMetro(submission.latitude, submission.longitude)
+    resolvedLatitude !== null && resolvedLongitude !== null
+      ? await findNearestMetro(resolvedLatitude, resolvedLongitude)
       : null;
 
   const slugBase = slugify(submission.display_name);
@@ -95,6 +122,7 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
 
   const safeSlug = existing ? `${slug}-${submission.id.slice(0, 6)}` : slug;
 
+  let libraryId: string | null = null;
   const { data: libraryData, error: insertError } = await supabaseServer
     .from("library_branches")
     .insert({
@@ -111,14 +139,14 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
       nearest_metro_line: computedMetro?.nearest_metro_line ?? null,
       nearest_metro_distance_km:
         computedMetro?.nearest_metro_distance_km ?? submission.nearest_metro_distance_km,
-      latitude: submission.latitude,
-      longitude: submission.longitude,
+      latitude: resolvedLatitude,
+      longitude: resolvedLongitude,
       phone_number: submission.phone_number,
       whatsapp_number: submission.whatsapp_number,
       opening_time: submission.opening_time,
       closing_time: submission.closing_time,
       total_seats: submission.total_seats,
-      map_link: submission.map_link,
+      map_link: resolvedMap.resolvedUrl ?? submission.map_link,
       description: submission.description,
       amenities_text: submission.amenities_text,
       is_active: true,
@@ -130,6 +158,7 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
     .select("id")
     .maybeSingle();
   const library = (libraryData as { id: string } | null) ?? null;
+  libraryId = library?.id ?? null;
 
   if (insertError || !library) {
     console.error("Failed to create library from submission:", insertError?.message);
@@ -137,7 +166,7 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
   }
 
   if (Array.isArray(submission.image_urls) && submission.image_urls.length > 0) {
-    await supabaseServer.from("library_images").insert(
+    const { error: imageInsertError } = await supabaseServer.from("library_images").insert(
       submission.image_urls.map((imageUrl, index) => ({
         library_branch_id: library.id,
         imagekit_url: imageUrl,
@@ -145,30 +174,60 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
         sort_order: index,
       })),
     );
+    if (imageInsertError) {
+      console.error("Failed to copy owner submission images:", imageInsertError.message);
+      await supabaseServer.from("library_branches").delete().eq("id", library.id);
+      redirect("/admin/owner-submissions");
+    }
   }
 
   const feePlans = Array.isArray(submission.fee_plans)
     ? normalizePlanDrafts(submission.fee_plans)
     : [];
   if (feePlans.length > 0) {
-    await supabaseServer.from("library_fee_plans").insert(
+    const { error: feePlansInsertError } = await supabaseServer.from("library_fee_plans").insert(
       buildLibraryFeePlanInsertRows(feePlans, library.id),
     );
+    if (feePlansInsertError) {
+      console.error("Failed to copy owner submission fee plans:", feePlansInsertError.message);
+      await supabaseServer.from("library_images").delete().eq("library_branch_id", library.id);
+      await supabaseServer.from("library_branches").delete().eq("id", library.id);
+      redirect("/admin/owner-submissions");
+    }
   }
 
-  await refreshLibraryProfileCompletenessScore(library.id);
+  try {
+    await refreshLibraryProfileCompletenessScore(library.id);
+  } catch (error) {
+    console.error("Failed to refresh library profile completeness score:", error);
+    await supabaseServer.from("library_fee_plans").delete().eq("library_branch_id", library.id);
+    await supabaseServer.from("library_images").delete().eq("library_branch_id", library.id);
+    await supabaseServer.from("library_branches").delete().eq("id", library.id);
+    redirect("/admin/owner-submissions");
+  }
 
   const { error: updateError } = await supabaseServer
     .from("owner_library_submissions")
     .update({
       status: "approved",
       submitted_library_branch_id: library.id,
+      map_link: resolvedMap.resolvedUrl ?? submission.map_link,
+      latitude: resolvedLatitude,
+      longitude: resolvedLongitude,
+      nearest_metro: computedMetro?.nearest_metro ?? submission.nearest_metro,
+      nearest_metro_distance_km:
+        computedMetro?.nearest_metro_distance_km ?? submission.nearest_metro_distance_km,
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (updateError) {
     console.error("Failed to update owner submission:", updateError.message);
+    if (libraryId) {
+      await supabaseServer.from("library_fee_plans").delete().eq("library_branch_id", libraryId);
+      await supabaseServer.from("library_images").delete().eq("library_branch_id", libraryId);
+      await supabaseServer.from("library_branches").delete().eq("id", libraryId);
+    }
     redirect("/admin/owner-submissions");
   }
 
@@ -183,6 +242,11 @@ export async function requestChangesOwnerSubmission(formData: FormData): Promise
   if (!id) {
     redirect("/admin/owner-submissions");
   }
+  const submission = await getSubmission(id);
+  if (!submission || submission.status !== "pending_review") {
+    redirect("/admin/owner-submissions");
+  }
+
   const { error } = await supabaseServer
     .from("owner_library_submissions")
     .update({
@@ -206,6 +270,11 @@ export async function rejectOwnerSubmission(formData: FormData): Promise<void> {
   if (!id) {
     redirect("/admin/owner-submissions");
   }
+  const submission = await getSubmission(id);
+  if (!submission || submission.status !== "pending_review") {
+    redirect("/admin/owner-submissions");
+  }
+
   const { error } = await supabaseServer
     .from("owner_library_submissions")
     .update({

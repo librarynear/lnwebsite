@@ -12,6 +12,7 @@ type PhotoPreview = {
   name: string;
   size: number;
   url: string;
+  existing: boolean;
 };
 
 function fileId(file: File) {
@@ -25,11 +26,24 @@ function formatFileSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function OwnerPhotosInput() {
+export function OwnerPhotosInput({
+  initialImageUrls = [],
+}: {
+  initialImageUrls?: string[];
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<PhotoPreview[]>([]);
+  const [existingUrls, setExistingUrls] = useState<string[]>(initialImageUrls);
+  const [previews, setPreviews] = useState<PhotoPreview[]>(
+    initialImageUrls.map((url, index) => ({
+      id: `existing-${index}-${url}`,
+      name: `Existing photo ${index + 1}`,
+      size: 0,
+      url,
+      existing: true,
+    })),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,28 +61,39 @@ export function OwnerPhotosInput() {
     }
   }
 
-  function syncPreviews(nextFiles: File[]) {
+  function syncPreviews(nextFiles: File[], nextExistingUrls: string[] = existingUrls) {
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrlsRef.current = [];
 
-    const nextPreviews = nextFiles.map((file) => {
-      const url = URL.createObjectURL(file);
-      previewUrlsRef.current.push(url);
-      return {
-        id: fileId(file),
-        name: file.name,
-        size: file.size,
+    const nextPreviews = [
+      ...nextExistingUrls.map((url, index) => ({
+        id: `existing-${index}-${url}`,
+        name: `Existing photo ${index + 1}`,
+        size: 0,
         url,
-      };
-    });
+        existing: true,
+      })),
+      ...nextFiles.map((file) => {
+        const url = URL.createObjectURL(file);
+        previewUrlsRef.current.push(url);
+        return {
+          id: fileId(file),
+          name: file.name,
+          size: file.size,
+          url,
+          existing: false,
+        };
+      }),
+    ];
 
     setPreviews(nextPreviews);
   }
 
-  function updateFiles(nextFiles: File[]) {
+  function updateFiles(nextFiles: File[], nextExistingUrls: string[] = existingUrls) {
     setFiles(nextFiles);
+    setExistingUrls(nextExistingUrls);
     syncInputFiles(nextFiles);
-    syncPreviews(nextFiles);
+    syncPreviews(nextFiles, nextExistingUrls);
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -95,8 +120,9 @@ export function OwnerPhotosInput() {
       acceptedFiles.push(file);
     }
 
-    const nextFiles = acceptedFiles.slice(0, MAX_PHOTOS);
-    if (acceptedFiles.length > MAX_PHOTOS) {
+    const availableSlots = Math.max(0, MAX_PHOTOS - existingUrls.length);
+    const nextFiles = acceptedFiles.slice(0, availableSlots);
+    if (acceptedFiles.length > availableSlots) {
       setError(`You can upload up to ${MAX_PHOTOS} photos.`);
     }
 
@@ -104,13 +130,18 @@ export function OwnerPhotosInput() {
   }
 
   function removePhoto(id: string) {
-    const nextFiles = files.filter((file) => fileId(file) !== id);
-    updateFiles(nextFiles);
+    if (id.startsWith("existing-")) {
+      const nextExistingUrls = existingUrls.filter((url, index) => `existing-${index}-${url}` !== id);
+      updateFiles(files, nextExistingUrls);
+    } else {
+      const nextFiles = files.filter((file) => fileId(file) !== id);
+      updateFiles(nextFiles);
+    }
     setError(null);
   }
 
   function clearPhotos() {
-    updateFiles([]);
+    updateFiles([], []);
     setError(null);
   }
 
@@ -127,6 +158,9 @@ export function OwnerPhotosInput() {
         className="sr-only"
         onChange={handleFileChange}
       />
+      {existingUrls.map((url) => (
+        <input key={url} type="hidden" name="existing_image_urls" value={url} readOnly />
+      ))}
 
       <button
         type="button"
@@ -188,7 +222,9 @@ export function OwnerPhotosInput() {
                   <ImagePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="truncate text-xs font-medium text-black">{photo.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{formatFileSize(photo.size)}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {photo.existing ? "Already uploaded" : formatFileSize(photo.size)}
+                    </p>
                   </div>
                 </div>
               </div>
