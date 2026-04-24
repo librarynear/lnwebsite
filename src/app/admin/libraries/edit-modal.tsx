@@ -46,7 +46,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-border/70 bg-white p-5 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+    <section className="min-w-0 rounded-3xl border border-border/70 bg-white p-5 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
       <div className="mb-5">
         <h3 className="text-sm font-semibold text-black">{title}</h3>
         {description ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p> : null}
@@ -156,7 +156,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
       {isOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex max-h-[92vh] w-full max-w-[1280px] flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-start justify-between border-b border-border/70 bg-white px-6 py-5">
               <div>
                 <h2 className="text-2xl font-bold text-black">Edit library details</h2>
@@ -168,48 +168,48 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
               </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 md:px-6" id={formId}>
+            <form onSubmit={handleSubmit} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-5 md:px-6" id={formId}>
               <FormDraftPersistence formId={formId} storageKey={`library-edit-draft:${library.id}`} />
 
-              <div className="space-y-6">
+              <div className="mx-auto w-full max-w-6xl min-w-0 space-y-6">
                 <Section title="Core details">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      <div className="space-y-2">
+                  <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">Display name *</label>
-                        <Input name="display_name" defaultValue={library.display_name} required className="rounded-2xl bg-white" />
+                        <Input name="display_name" defaultValue={library.display_name} required className="min-w-0 rounded-2xl bg-white" />
                       </div>
-                      <div className="space-y-2">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">Locality *</label>
-                        <Input name="locality" defaultValue={library.locality || ""} required className="rounded-2xl bg-white" />
+                        <Input name="locality" defaultValue={library.locality || ""} required className="min-w-0 rounded-2xl bg-white" />
                       </div>
-                      <div className="space-y-2">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">City *</label>
-                        <Input name="city" defaultValue={library.city} required className="rounded-2xl bg-white" />
+                        <Input name="city" defaultValue={library.city} required className="min-w-0 rounded-2xl bg-white" />
                       </div>
-                      <div className="space-y-2">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">District</label>
-                        <Input name="district" defaultValue={library.district || ""} className="rounded-2xl bg-white" />
+                        <Input name="district" defaultValue={library.district || ""} className="min-w-0 rounded-2xl bg-white" />
                       </div>
-                      <div className="space-y-2">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">State *</label>
-                        <Input name="state" defaultValue={library.state || "Delhi"} required className="rounded-2xl bg-white" />
+                        <Input name="state" defaultValue={library.state || "Delhi"} required className="min-w-0 rounded-2xl bg-white" />
                       </div>
-                      <div className="space-y-2">
+                      <div className="min-w-0 space-y-2">
                         <label className="text-sm font-medium text-black">PIN code *</label>
-                        <Input name="pin_code" defaultValue={library.pin_code} required className="rounded-2xl bg-white" />
+                        <Input name="pin_code" defaultValue={library.pin_code} required className="min-w-0 rounded-2xl bg-white" />
                       </div>
                   </div>
                 </Section>
 
                 <Section title="Location details" description="Coordinates and nearest metro are calculated from the Google Maps link unless you explicitly override them.">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
+                  <div className="min-w-0 space-y-4">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium text-black">Full address *</label>
                       <textarea
                         name="full_address"
                         defaultValue={library.full_address || ""}
                         rows={3}
-                        className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                        className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                         required
                       />
                     </div>
@@ -224,7 +224,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                       helperText="Nearest metro will be calculated automatically from your location."
                     />
 
-                    <div className="space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
+                    <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
                       <label className="flex items-center gap-2 text-sm font-medium text-black">
                         <input
                           type="checkbox"
@@ -234,17 +234,17 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         />
                         Override nearest metro manually
                       </label>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
+                      <div className="grid min-w-0 gap-4 md:grid-cols-2">
+                        <div className="min-w-0 space-y-2">
                           <label className="text-sm font-medium text-black">Nearest metro</label>
                           <Input
                             name="nearest_metro"
                             defaultValue={library.nearest_metro || ""}
                             disabled={!overrideNearestMetro}
-                            className="rounded-2xl bg-white disabled:bg-muted"
+                            className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="min-w-0 space-y-2">
                           <label className="text-sm font-medium text-black">Metro distance (KM)</label>
                           <Input
                             name="nearest_metro_distance_km"
@@ -252,7 +252,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                             step="0.01"
                             defaultValue={library.nearest_metro_distance_km ?? ""}
                             disabled={!overrideNearestMetro}
-                            className="rounded-2xl bg-white disabled:bg-muted"
+                            className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
                         </div>
                       </div>
@@ -261,19 +261,19 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                 </Section>
 
                 <Section title="Facilities and logistics">
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="space-y-2">
+                  <div className="min-w-0 space-y-4">
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="min-w-0 space-y-2">
                           <label className="text-sm font-medium text-black">Opening time *</label>
-                          <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="rounded-2xl bg-white" />
+                          <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="min-w-0 rounded-2xl bg-white" />
                         </div>
-                        <div className="space-y-2">
+                        <div className="min-w-0 space-y-2">
                           <label className="text-sm font-medium text-black">Closing time *</label>
-                          <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="rounded-2xl bg-white" />
+                          <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="min-w-0 rounded-2xl bg-white" />
                         </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <PhoneWhatsappFields
                         initialPhone={library.phone_number || ""}
                         initialWhatsapp={library.whatsapp_number || ""}
@@ -281,7 +281,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium text-black">Amenities *</label>
                       <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
                     </div>
@@ -289,19 +289,19 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                 </Section>
 
                 <Section title="About and seats">
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-                    <div className="space-y-2">
+                  <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium text-black">Description</label>
                       <textarea
                         name="description"
                         defaultValue={library.description || ""}
                         rows={4}
-                        className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                        className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium text-black">Seats *</label>
-                      <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="rounded-2xl bg-white" />
+                      <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="min-w-0 rounded-2xl bg-white" />
                     </div>
                   </div>
                 </Section>
@@ -315,7 +315,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                 </Section>
 
                 <Section title="Photos" description="Uploading through this panel keeps the editor open, and placing it below the form makes bulk edits easier before you manage images.">
-                  <div className="space-y-4">
+                  <div className="min-w-0 space-y-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-sm text-muted-foreground">{images.length} photo{images.length === 1 ? "" : "s"}</p>
                       <div>
@@ -337,7 +337,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                       {images.map((img) => (
                         <div key={img.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
                           <Image

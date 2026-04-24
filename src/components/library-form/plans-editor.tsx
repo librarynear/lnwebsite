@@ -56,7 +56,7 @@ function DraftCard({
   const descriptionWordCount = countWords(plan.description);
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/70 bg-slate-50/60 p-4">
+    <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-slate-50/60 p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-black">Plan {index + 1}</p>
         <Button
@@ -72,8 +72,8 @@ function DraftCard({
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="space-y-2">
+      <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">
             Plan category <span className="text-destructive">*</span>
           </label>
@@ -82,7 +82,7 @@ function DraftCard({
             onChange={(event) =>
               onChange(index, { plan_category: event.target.value as LibraryPlanDraft["plan_category"] })
             }
-            className="h-10 w-full rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
           >
             {PLAN_CATEGORY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -92,7 +92,7 @@ function DraftCard({
           </select>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">
             Months <span className="text-destructive">*</span>
           </label>
@@ -104,7 +104,7 @@ function DraftCard({
                 duration_label: getDurationLabel(event.target.value),
               })
             }
-            className="h-10 w-full rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
           >
             {DURATION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -114,7 +114,7 @@ function DraftCard({
           </select>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">
             Plan type <span className="text-destructive">*</span>
           </label>
@@ -123,7 +123,7 @@ function DraftCard({
             onChange={(event) =>
               onChange(index, { seat_type: event.target.value as LibraryPlanDraft["seat_type"] })
             }
-            className="h-10 w-full rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
           >
             {SEAT_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -133,7 +133,7 @@ function DraftCard({
           </select>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">
             Hours <span className="text-destructive">*</span>
           </label>
@@ -146,25 +146,25 @@ function DraftCard({
               onChange(index, { hours_per_day: Number(event.target.value) || 1 })
             }
             placeholder="Hours"
-            className="rounded-2xl bg-white"
+            className="min-w-0 rounded-2xl bg-white"
           />
         </div>
       </div>
 
       {plan.plan_category === "offer" ? (
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">Offer name</label>
           <Input
             value={plan.offer_name}
             onChange={(event) => onChange(index, { offer_name: event.target.value })}
             placeholder="Optional offer label"
-            className="rounded-2xl bg-white"
+            className="min-w-0 rounded-2xl bg-white"
           />
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="space-y-2">
+      <div className="grid min-w-0 gap-4 md:grid-cols-3">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">
             Regular price (Rs.) <span className="text-destructive">*</span>
           </label>
@@ -177,11 +177,11 @@ function DraftCard({
               onChange(index, { base_price: Math.max(0, Number(event.target.value) || 0) })
             }
             placeholder="e.g. 2500"
-            className="rounded-2xl bg-white"
+            className="min-w-0 rounded-2xl bg-white"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">Discount %</label>
           <Input
             type="number"
@@ -195,22 +195,22 @@ function DraftCard({
               })
             }
             placeholder="Optional"
-            className="rounded-2xl bg-white"
+            className="min-w-0 rounded-2xl bg-white"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium text-black">Discounted price</label>
           <Input
             value={plan.base_price > 0 ? numberInputValue(plan.discounted_price) : ""}
             readOnly
             placeholder="Auto"
-            className="rounded-2xl bg-muted/40"
+            className="min-w-0 rounded-2xl bg-muted/40"
           />
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <div className="flex items-center justify-between gap-3">
           <label className="text-sm font-medium text-black">Description</label>
           <span className={`text-xs ${descriptionWordCount > 30 ? "text-destructive" : "text-muted-foreground"}`}>
@@ -222,7 +222,7 @@ function DraftCard({
           value={plan.description}
           onChange={(event) => onChange(index, { description: event.target.value })}
           placeholder="Optional short plan note"
-          className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none"
+          className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none"
         />
       </div>
     </div>
@@ -296,9 +296,9 @@ export function PlansEditor({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <input type="hidden" name={inputName} value={JSON.stringify(plans)} />
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-white p-4">
+      <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-black">{title}</h3>
@@ -308,8 +308,8 @@ export function PlansEditor({
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-2xl border border-dashed border-border/70 bg-slate-50/50 p-3 md:grid-cols-[180px_auto] md:items-end">
-          <div className="space-y-2">
+        <div className="grid min-w-0 gap-3 rounded-2xl border border-dashed border-border/70 bg-slate-50/50 p-3 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:items-end">
+          <div className="min-w-0 space-y-2">
             <label className="text-sm font-medium text-black">Global discount %</label>
             <Input
               type="number"
@@ -317,10 +317,10 @@ export function PlansEditor({
               max="100"
               value={globalDiscount}
               onChange={(event) => setGlobalDiscount(event.target.value)}
-              className="rounded-2xl bg-white"
+              className="min-w-0 rounded-2xl bg-white"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0 space-y-2">
             <Button type="button" variant="outline" onClick={applyGlobalDiscount}>
               <Tag className="mr-2 h-4 w-4" />
               Apply to all plans
@@ -334,7 +334,7 @@ export function PlansEditor({
         {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
       </div>
 
-      <div className="space-y-3">
+      <div className="min-w-0 space-y-3">
         {plans.map((plan, index) => (
           <DraftCard
             key={`${plan.duration_key}-${index}`}
