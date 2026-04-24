@@ -5,22 +5,43 @@ import { Plus, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DEFAULT_PLAN,
   DURATION_OPTIONS,
   PLAN_CATEGORY_OPTIONS,
   SEAT_TYPE_OPTIONS,
   calculateDiscountedPrice,
   countWords,
-  getDurationLabel,
   normalizePlanDraft,
   normalizePlanDrafts,
   type LibraryPlanDraft,
 } from "@/lib/library-plans";
 
-function numberInputValue(value: number, blankWhenZero = false) {
-  if (!Number.isFinite(value)) return "";
-  if (blankWhenZero && value === 0) return "";
-  return String(value);
+type EditablePlanDraft = {
+  plan_category: string;
+  duration_key: string;
+  seat_type: string;
+  hours_per_day: string;
+  description: string;
+  base_price: string;
+  discount_percentage: string;
+  offer_name: string;
+};
+
+type PlanEditorRow = {
+  baseline: LibraryPlanDraft | null;
+  draft: EditablePlanDraft;
+};
+
+function createEmptyDraft(): EditablePlanDraft {
+  return {
+    plan_category: "",
+    duration_key: "",
+    seat_type: "",
+    hours_per_day: "",
+    description: "",
+    base_price: "",
+    discount_percentage: "",
+    offer_name: "",
+  };
 }
 
 function readStoredPlanDraft(storageKey?: string) {
@@ -30,7 +51,7 @@ function readStoredPlanDraft(storageKey?: string) {
     const raw = window.localStorage.getItem(storageKey);
     return raw
       ? (JSON.parse(raw) as {
-          plans?: Partial<LibraryPlanDraft>[];
+          rows?: PlanEditorRow[];
           globalDiscount?: string;
         })
       : null;
@@ -60,20 +81,53 @@ function PlanField({
   );
 }
 
+function getPlanCategoryLabel(value?: string | null) {
+  return PLAN_CATEGORY_OPTIONS.find((option) => option.value === value)?.label ?? "Select category";
+}
+
+function getSeatTypeLabel(value?: string | null) {
+  return SEAT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? "Select plan type";
+}
+
+function mergePlanRow(row: PlanEditorRow) {
+  const { baseline, draft } = row;
+  const hasDraftValue = Object.values(draft).some((value) => value.trim() !== "");
+  if (!baseline && !hasDraftValue) {
+    return null;
+  }
+
+  return normalizePlanDraft({
+    plan_category: draft.plan_category || baseline?.plan_category,
+    duration_key: draft.duration_key || baseline?.duration_key,
+    seat_type: draft.seat_type || baseline?.seat_type,
+    hours_per_day:
+      draft.hours_per_day !== "" ? Number(draft.hours_per_day) : baseline?.hours_per_day,
+    description: draft.description || baseline?.description,
+    base_price: draft.base_price !== "" ? Number(draft.base_price) : baseline?.base_price,
+    discount_percentage:
+      draft.discount_percentage !== ""
+        ? Number(draft.discount_percentage)
+        : baseline?.discount_percentage,
+    offer_name: draft.offer_name || baseline?.offer_name,
+  });
+}
+
 function DraftCard({
-  plan,
+  row,
   index,
   onChange,
   onRemove,
   removable,
 }: {
-  plan: LibraryPlanDraft;
+  row: PlanEditorRow;
   index: number;
-  onChange: (index: number, patch: Partial<LibraryPlanDraft>) => void;
+  onChange: (index: number, patch: Partial<EditablePlanDraft>) => void;
   onRemove: (index: number) => void;
   removable: boolean;
 }) {
-  const descriptionWordCount = countWords(plan.description);
+  const mergedPlan = mergePlanRow(row);
+  const baseline = row.baseline;
+  const descriptionWordCount = countWords(row.draft.description || baseline?.description || "");
 
   return (
     <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-slate-50/60 p-4">
@@ -95,12 +149,11 @@ function DraftCard({
       <div className="grid min-w-0 gap-4">
         <PlanField label="Plan category" required>
           <select
-            value={plan.plan_category}
-            onChange={(event) =>
-              onChange(index, { plan_category: event.target.value as LibraryPlanDraft["plan_category"] })
-            }
+            value={row.draft.plan_category}
+            onChange={(event) => onChange(index, { plan_category: event.target.value })}
             className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
+            <option value="">{baseline ? getPlanCategoryLabel(baseline.plan_category) : "Select category"}</option>
             {PLAN_CATEGORY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -111,15 +164,11 @@ function DraftCard({
 
         <PlanField label="Months" required>
           <select
-            value={plan.duration_key}
-            onChange={(event) =>
-              onChange(index, {
-                duration_key: event.target.value as LibraryPlanDraft["duration_key"],
-                duration_label: getDurationLabel(event.target.value),
-              })
-            }
+            value={row.draft.duration_key}
+            onChange={(event) => onChange(index, { duration_key: event.target.value })}
             className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
+            <option value="">{baseline ? baseline.duration_label : "Select duration"}</option>
             {DURATION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -130,12 +179,11 @@ function DraftCard({
 
         <PlanField label="Plan type" required>
           <select
-            value={plan.seat_type}
-            onChange={(event) =>
-              onChange(index, { seat_type: event.target.value as LibraryPlanDraft["seat_type"] })
-            }
+            value={row.draft.seat_type}
+            onChange={(event) => onChange(index, { seat_type: event.target.value })}
             className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
+            <option value="">{baseline ? getSeatTypeLabel(baseline.seat_type) : "Select plan type"}</option>
             {SEAT_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -149,22 +197,20 @@ function DraftCard({
             type="number"
             min="1"
             max="24"
-            value={numberInputValue(plan.hours_per_day)}
-            onChange={(event) =>
-              onChange(index, { hours_per_day: Number(event.target.value) || 1 })
-            }
-            placeholder="Hours"
+            value={row.draft.hours_per_day}
+            onChange={(event) => onChange(index, { hours_per_day: event.target.value })}
+            placeholder={baseline ? String(baseline.hours_per_day) : "e.g. 12"}
             className="min-w-0 rounded-2xl bg-white"
           />
         </PlanField>
       </div>
 
-      {plan.plan_category === "offer" ? (
+      {(row.draft.plan_category || baseline?.plan_category) === "offer" ? (
         <PlanField label="Offer name">
           <Input
-            value={plan.offer_name}
+            value={row.draft.offer_name}
             onChange={(event) => onChange(index, { offer_name: event.target.value })}
-            placeholder="Optional offer label"
+            placeholder={baseline?.offer_name || "Optional offer label"}
             className="min-w-0 rounded-2xl bg-white"
           />
         </PlanField>
@@ -176,11 +222,9 @@ function DraftCard({
             type="number"
             min="0"
             step="1"
-            value={numberInputValue(plan.base_price, true)}
-            onChange={(event) =>
-              onChange(index, { base_price: Math.max(0, Number(event.target.value) || 0) })
-            }
-            placeholder="e.g. 2500"
+            value={row.draft.base_price}
+            onChange={(event) => onChange(index, { base_price: event.target.value })}
+            placeholder={baseline?.base_price ? String(baseline.base_price) : "e.g. 2500"}
             className="min-w-0 rounded-2xl bg-white"
           />
         </PlanField>
@@ -191,22 +235,22 @@ function DraftCard({
             min="0"
             max="100"
             step="1"
-            value={numberInputValue(plan.discount_percentage, true)}
-            onChange={(event) =>
-              onChange(index, {
-                discount_percentage: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
-              })
+            value={row.draft.discount_percentage}
+            onChange={(event) => onChange(index, { discount_percentage: event.target.value })}
+            placeholder={
+              baseline && baseline.discount_percentage > 0
+                ? String(baseline.discount_percentage)
+                : "Optional"
             }
-            placeholder="Optional"
             className="min-w-0 rounded-2xl bg-white"
           />
         </PlanField>
 
         <PlanField label="Discounted price">
           <Input
-            value={plan.base_price > 0 ? numberInputValue(plan.discounted_price) : ""}
+            value={mergedPlan?.base_price ? String(calculateDiscountedPrice(mergedPlan.base_price, mergedPlan.discount_percentage)) : ""}
             readOnly
-            placeholder="Auto"
+            placeholder={mergedPlan?.base_price ? String(mergedPlan.discounted_price) : "Auto"}
             className="min-w-0 rounded-2xl bg-muted/40"
           />
         </PlanField>
@@ -214,16 +258,16 @@ function DraftCard({
 
       <div className="min-w-0 space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <label className="text-sm font-medium text-black">Description</label>
+          <label className="block text-sm font-medium text-black">Description</label>
           <span className={`text-xs ${descriptionWordCount > 30 ? "text-destructive" : "text-muted-foreground"}`}>
             {descriptionWordCount}/30 words
           </span>
         </div>
         <textarea
           rows={2}
-          value={plan.description}
+          value={row.draft.description}
           onChange={(event) => onChange(index, { description: event.target.value })}
-          placeholder="Optional short plan note"
+          placeholder={baseline?.description || "Optional short plan note"}
           className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none"
         />
       </div>
@@ -246,16 +290,17 @@ export function PlansEditor({
   note?: string;
   clearOnMount?: boolean;
 }) {
-  const normalizedInitialPlans = useMemo(
-    () => (initialPlans.length > 0 ? initialPlans.map((plan) => normalizePlanDraft(plan)) : [DEFAULT_PLAN]),
-    [initialPlans],
+  const normalizedInitialPlans = useMemo(() => normalizePlanDrafts(initialPlans), [initialPlans]);
+  const initialRows = useMemo<PlanEditorRow[]>(
+    () =>
+      normalizedInitialPlans.length > 0
+        ? normalizedInitialPlans.map((plan) => ({ baseline: plan, draft: createEmptyDraft() }))
+        : [{ baseline: null, draft: createEmptyDraft() }],
+    [normalizedInitialPlans],
   );
+
   const storedDraft = !clearOnMount ? readStoredPlanDraft(storageKey) : null;
-  const [plans, setPlans] = useState<LibraryPlanDraft[]>(
-    storedDraft?.plans && storedDraft.plans.length > 0
-      ? normalizePlanDrafts(storedDraft.plans)
-      : normalizedInitialPlans,
-  );
+  const [rows, setRows] = useState<PlanEditorRow[]>(storedDraft?.rows?.length ? storedDraft.rows : initialRows);
   const [globalDiscount, setGlobalDiscount] = useState(storedDraft?.globalDiscount ?? "");
 
   useEffect(() => {
@@ -266,40 +311,33 @@ export function PlansEditor({
 
   useEffect(() => {
     if (!storageKey) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ plans, globalDiscount }));
-  }, [globalDiscount, plans, storageKey]);
+    window.localStorage.setItem(storageKey, JSON.stringify({ rows, globalDiscount }));
+  }, [globalDiscount, rows, storageKey]);
 
-  const updatePlan = (index: number, patch: Partial<LibraryPlanDraft>) => {
-    setPlans((current) =>
-      current.map((plan, planIndex) => {
-        if (planIndex !== index) return plan;
-        return normalizePlanDraft({
-          ...plan,
-          ...patch,
-          discounted_price: calculateDiscountedPrice(
-            Number(patch.base_price ?? plan.base_price),
-            Number(patch.discount_percentage ?? plan.discount_percentage),
-          ),
-        });
-      }),
-    );
-  };
+  const serializedPlans = useMemo(
+    () =>
+      rows
+        .map((row) => mergePlanRow(row))
+        .filter((plan): plan is LibraryPlanDraft => Boolean(plan) && plan.base_price > 0),
+    [rows],
+  );
 
   const applyGlobalDiscount = () => {
     const nextDiscount = Math.max(0, Math.min(100, Number(globalDiscount) || 0));
-    setPlans((current) =>
-      current.map((plan) =>
-        normalizePlanDraft({
-          ...plan,
-          discount_percentage: nextDiscount,
-        }),
-      ),
+    setRows((current) =>
+      current.map((row) => ({
+        ...row,
+        draft: {
+          ...row.draft,
+          discount_percentage: String(nextDiscount),
+        },
+      })),
     );
   };
 
   return (
     <div className="min-w-0 space-y-4">
-      <input type="hidden" name={inputName} value={JSON.stringify(plans)} />
+      <input type="hidden" name={inputName} value={JSON.stringify(serializedPlans)} />
       <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -319,6 +357,7 @@ export function PlansEditor({
               max="100"
               value={globalDiscount}
               onChange={(event) => setGlobalDiscount(event.target.value)}
+              placeholder="Optional"
               className="min-w-0 rounded-2xl bg-white"
             />
           </div>
@@ -337,20 +376,34 @@ export function PlansEditor({
       </div>
 
       <div className="min-w-0 space-y-3">
-        {plans.map((plan, index) => (
+        {rows.map((row, index) => (
           <DraftCard
-            key={`${plan.duration_key}-${index}`}
-            plan={plan}
+            key={`${row.baseline?.duration_key ?? "draft"}-${index}`}
+            row={row}
             index={index}
-            onChange={updatePlan}
-            onRemove={(planIndex) =>
-              setPlans((current) =>
+            onChange={(rowIndex, patch) =>
+              setRows((current) =>
+                current.map((rowItem, currentIndex) =>
+                  currentIndex === rowIndex
+                    ? {
+                        ...rowItem,
+                        draft: {
+                          ...rowItem.draft,
+                          ...patch,
+                        },
+                      }
+                    : rowItem,
+                ),
+              )
+            }
+            onRemove={(rowIndex) =>
+              setRows((current) =>
                 current.length > 1
-                  ? current.filter((_, currentIndex) => currentIndex !== planIndex)
+                  ? current.filter((_, currentIndex) => currentIndex !== rowIndex)
                   : current,
               )
             }
-            removable={plans.length > 1}
+            removable={rows.length > 1}
           />
         ))}
       </div>
@@ -360,7 +413,12 @@ export function PlansEditor({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setPlans((current) => [...current, { ...DEFAULT_PLAN }])}
+          onClick={() =>
+            setRows((current) => [
+              ...current,
+              { baseline: null, draft: createEmptyDraft() },
+            ])
+          }
           className="rounded-full"
         >
           <Plus className="mr-1 h-3.5 w-3.5" />

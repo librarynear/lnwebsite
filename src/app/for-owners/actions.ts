@@ -39,6 +39,23 @@ type ExistingOwnerSubmission = {
   status: string;
   image_urls: string[] | null;
   submitted_library_branch_id: string | null;
+  display_name: string | null;
+  city: string | null;
+  locality: string | null;
+  district: string | null;
+  state: string | null;
+  pin_code: string | null;
+  full_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone_number: string | null;
+  whatsapp_number: string | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  total_seats: number | null;
+  map_link: string | null;
+  description: string | null;
+  amenities_text: string | null;
 };
 
 function getTrimmedString(formData: FormData, key: string) {
@@ -73,7 +90,7 @@ function isEditableOwnerSubmissionStatus(status: string): status is EditableOwne
 async function loadExistingOwnerSubmission(userId: string) {
   const { data, error } = await supabaseServer
     .from("owner_library_submissions")
-    .select("id, status, image_urls, submitted_library_branch_id")
+    .select("id, status, image_urls, submitted_library_branch_id, display_name, city, locality, district, state, pin_code, full_address, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -107,29 +124,35 @@ export async function submitOwnerLibrary(formData: FormData) {
     ownerErrorRedirect("duplicate_submission");
   }
 
-  const displayName = getTrimmedString(formData, "display_name");
-  const locality = getTrimmedString(formData, "locality");
-  const city = getTrimmedString(formData, "city");
-  const district = getTrimmedString(formData, "district") || null;
-  const state = getTrimmedString(formData, "state");
-  const pinCode = getTrimmedString(formData, "pin_code");
-  const fullAddress = getTrimmedString(formData, "full_address");
-  const openingTime = getTrimmedString(formData, "opening_time");
-  const closingTime = getTrimmedString(formData, "closing_time");
-  const rawMapLink = getTrimmedString(formData, "map_link");
-  const description = getTrimmedString(formData, "description") || null;
+  const displayName = getTrimmedString(formData, "display_name") || existingSubmission?.display_name || "";
+  const locality = getTrimmedString(formData, "locality") || existingSubmission?.locality || "";
+  const city = getTrimmedString(formData, "city") || existingSubmission?.city || "";
+  const district = getTrimmedString(formData, "district") || existingSubmission?.district || null;
+  const state = getTrimmedString(formData, "state") || existingSubmission?.state || "";
+  const pinCode = getTrimmedString(formData, "pin_code") || existingSubmission?.pin_code || "";
+  const fullAddress = getTrimmedString(formData, "full_address") || existingSubmission?.full_address || "";
+  const openingTime = getTrimmedString(formData, "opening_time") || existingSubmission?.opening_time || "";
+  const closingTime = getTrimmedString(formData, "closing_time") || existingSubmission?.closing_time || "";
+  const rawMapLink = getTrimmedString(formData, "map_link") || existingSubmission?.map_link || "";
+  const description = getTrimmedString(formData, "description") || existingSubmission?.description || null;
   const totalSeatsRaw = getTrimmedString(formData, "total_seats");
-  const totalSeats = totalSeatsRaw ? Number.parseInt(totalSeatsRaw, 10) : Number.NaN;
-  const rawPhone = getTrimmedString(formData, "phone_number");
-  const rawWhatsapp = getTrimmedString(formData, "whatsapp_number");
+  const totalSeats = totalSeatsRaw ? Number.parseInt(totalSeatsRaw, 10) : Number(existingSubmission?.total_seats ?? Number.NaN);
+  const rawPhone = getTrimmedString(formData, "phone_number") || existingSubmission?.phone_number || "";
+  const rawWhatsapp = getTrimmedString(formData, "whatsapp_number") || existingSubmission?.whatsapp_number || "";
   const normalizedPhone = normalizeIndianPhone(rawPhone);
   const normalizedWhatsapp = rawWhatsapp ? normalizeIndianPhone(rawWhatsapp) : null;
   const rawPlansJson = String(formData.get("fee_plans_json") ?? "");
   const feePlans = parsePlanDraftsJson(rawPlansJson);
-  const amenityValues = formData
+  const amenityValuesRaw = formData
     .getAll("amenities")
     .map((value) => String(value).trim())
     .filter(Boolean);
+  const amenityValues = amenityValuesRaw.length > 0
+    ? amenityValuesRaw
+    : String(existingSubmission?.amenities_text ?? "")
+        .split(/[,|\n]/)
+        .map((value) => value.trim())
+        .filter(Boolean);
   const amenitiesText = amenityValues.length > 0 ? amenityValues.join(", ") : null;
   const existingImageUrls = existingSubmission ? getExistingImageUrls(formData) : [];
   const uploadedImageUrls = getUploadedImageUrls(formData);
@@ -197,10 +220,10 @@ export async function submitOwnerLibrary(formData: FormData) {
 
   const latitude = formData.get("latitude")
     ? Number(formData.get("latitude"))
-    : resolvedMap.coordinates?.latitude ?? null;
+    : resolvedMap.coordinates?.latitude ?? existingSubmission?.latitude ?? null;
   const longitude = formData.get("longitude")
     ? Number(formData.get("longitude"))
-    : resolvedMap.coordinates?.longitude ?? null;
+    : resolvedMap.coordinates?.longitude ?? existingSubmission?.longitude ?? null;
 
   if (
     typeof latitude !== "number" ||

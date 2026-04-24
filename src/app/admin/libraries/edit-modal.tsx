@@ -195,22 +195,22 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                 <Section title="Core details">
                   <div className="grid min-w-0 gap-4">
                       <Field label="Display name" required>
-                        <Input name="display_name" defaultValue={library.display_name} required className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="display_name" placeholder={library.display_name} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                       <Field label="Locality" required>
-                        <Input name="locality" defaultValue={library.locality || ""} required className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="locality" placeholder={library.locality || "Enter locality"} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                       <Field label="City" required>
-                        <Input name="city" defaultValue={library.city} required className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="city" placeholder={library.city || "Enter city"} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                       <Field label="District">
-                        <Input name="district" defaultValue={library.district || ""} className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="district" placeholder={library.district || "Enter district"} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                       <Field label="State" required>
-                        <Input name="state" defaultValue={library.state || "Delhi"} required className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="state" placeholder={library.state || "Enter state"} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                       <Field label="PIN code" required>
-                        <Input name="pin_code" defaultValue={library.pin_code} required className="min-w-0 rounded-2xl bg-white" />
+                        <Input name="pin_code" placeholder={library.pin_code || "Enter PIN code"} className="min-w-0 rounded-2xl bg-white" />
                       </Field>
                   </div>
                 </Section>
@@ -220,10 +220,9 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                     <Field label="Full address" required>
                       <textarea
                         name="full_address"
-                        defaultValue={library.full_address || ""}
+                        placeholder={library.full_address || "Enter full address"}
                         rows={3}
                         className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
-                        required
                       />
                     </Field>
 
@@ -232,9 +231,8 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                       initialLatitude={library.latitude}
                       initialLongitude={library.longitude}
                       storageKey={`library-edit-map:${library.id}`}
-                      mapLinkRequired
-                      coordinatesRequired
                       helperText="Nearest metro will be calculated automatically from your location."
+                      usePlaceholdersOnly
                     />
 
                     <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
@@ -251,7 +249,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         <Field label="Nearest metro">
                           <Input
                             name="nearest_metro"
-                            defaultValue={library.nearest_metro || ""}
+                            placeholder={library.nearest_metro || "Nearest metro"}
                             disabled={!overrideNearestMetro}
                             className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
@@ -261,7 +259,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                             name="nearest_metro_distance_km"
                             type="number"
                             step="0.01"
-                            defaultValue={library.nearest_metro_distance_km ?? ""}
+                            placeholder={library.nearest_metro_distance_km ? String(library.nearest_metro_distance_km) : "Distance in KM"}
                             disabled={!overrideNearestMetro}
                             className="min-w-0 rounded-2xl bg-white disabled:bg-muted"
                           />
@@ -275,10 +273,10 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                   <div className="min-w-0 space-y-4">
                     <div className="grid min-w-0 gap-4">
                         <Field label="Opening time" required>
-                          <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="min-w-0 rounded-2xl bg-white" />
+                          <Input name="opening_time" type="time" placeholder={library.opening_time || "HH:MM"} className="min-w-0 rounded-2xl bg-white" />
                         </Field>
                         <Field label="Closing time" required>
-                          <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="min-w-0 rounded-2xl bg-white" />
+                          <Input name="closing_time" type="time" placeholder={library.closing_time || "HH:MM"} className="min-w-0 rounded-2xl bg-white" />
                         </Field>
                     </div>
 
@@ -287,6 +285,8 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                         initialPhone={library.phone_number || ""}
                         initialWhatsapp={library.whatsapp_number || ""}
                         storageKey={`library-edit-phone:${library.id}`}
+                        usePlaceholdersOnly
+                        phoneRequired={false}
                       />
                     </div>
 
@@ -302,13 +302,13 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
                     <Field label="Description">
                       <textarea
                         name="description"
-                        defaultValue={library.description || ""}
+                        placeholder={library.description || "Tell students about this library"}
                         rows={4}
                         className="w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                       />
                     </Field>
                     <Field label="Seats" required>
-                      <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="min-w-0 rounded-2xl bg-white" />
+                      <Input name="total_seats" type="number" min="1" placeholder={library.total_seats ? String(library.total_seats) : "Enter seats"} className="min-w-0 rounded-2xl bg-white" />
                     </Field>
                   </div>
                 </Section>

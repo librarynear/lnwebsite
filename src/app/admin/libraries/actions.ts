@@ -31,28 +31,45 @@ function getTrimmedString(formData: FormData, key: string) {
 export async function updateLibraryBranch(id: string, formData: FormData) {
   await requireApprovedStaff(["sales", "admin"]);
 
+  const { data: existingLibrary, error: existingLibraryError } = await supabaseServer
+    .from("library_branches")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingLibraryError || !existingLibrary) {
+    return { success: false, error: existingLibraryError?.message || "Library not found." };
+  }
+
   const previousTarget = await getLibraryCacheTarget(id);
   const actorUserId = await getCurrentActorUserId();
-  const displayName = getTrimmedString(formData, "display_name");
-  const locality = getTrimmedString(formData, "locality");
-  const city = getTrimmedString(formData, "city");
-  const district = getTrimmedString(formData, "district") || null;
-  const state = getTrimmedString(formData, "state");
-  const pinCode = getTrimmedString(formData, "pin_code");
-  const fullAddress = getTrimmedString(formData, "full_address");
-  const openingTime = getTrimmedString(formData, "opening_time");
-  const closingTime = getTrimmedString(formData, "closing_time");
-  const mapLink = getTrimmedString(formData, "map_link");
-  const description = getTrimmedString(formData, "description") || null;
-  const phoneNumber = normalizeIndianPhone(getTrimmedString(formData, "phone_number"));
+  const displayName = getTrimmedString(formData, "display_name") || existingLibrary.display_name || "";
+  const locality = getTrimmedString(formData, "locality") || existingLibrary.locality || "";
+  const city = getTrimmedString(formData, "city") || existingLibrary.city || "";
+  const district = getTrimmedString(formData, "district") || existingLibrary.district || null;
+  const state = getTrimmedString(formData, "state") || existingLibrary.state || "";
+  const pinCode = getTrimmedString(formData, "pin_code") || existingLibrary.pin_code || "";
+  const fullAddress = getTrimmedString(formData, "full_address") || existingLibrary.full_address || "";
+  const openingTime = getTrimmedString(formData, "opening_time") || existingLibrary.opening_time || "";
+  const closingTime = getTrimmedString(formData, "closing_time") || existingLibrary.closing_time || "";
+  const mapLink = getTrimmedString(formData, "map_link") || existingLibrary.map_link || "";
+  const description = getTrimmedString(formData, "description") || existingLibrary.description || null;
+  const phoneNumber = normalizeIndianPhone(getTrimmedString(formData, "phone_number") || existingLibrary.phone_number || "");
   const rawWhatsapp = getTrimmedString(formData, "whatsapp_number");
-  const whatsappNumber = rawWhatsapp ? normalizeIndianPhone(rawWhatsapp) : null;
+  const whatsappSource = rawWhatsapp || existingLibrary.whatsapp_number || "";
+  const whatsappNumber = whatsappSource ? normalizeIndianPhone(whatsappSource) : null;
   const totalSeatsRaw = getTrimmedString(formData, "total_seats");
-  const totalSeats = totalSeatsRaw ? Number.parseInt(totalSeatsRaw, 10) : Number.NaN;
-  const amenityValues = formData
+  const totalSeats = totalSeatsRaw ? Number.parseInt(totalSeatsRaw, 10) : Number(existingLibrary.total_seats ?? Number.NaN);
+  const amenityValuesRaw = formData
     .getAll("amenities")
     .map((value) => String(value).trim())
     .filter(Boolean);
+  const amenityValues = amenityValuesRaw.length > 0
+    ? amenityValuesRaw
+    : String(existingLibrary.amenities_text ?? "")
+        .split(/[,|\n]/)
+        .map((value) => value.trim())
+        .filter(Boolean);
   const rawPlansJson = getTrimmedString(formData, "fee_plans_json");
   const feePlans = parsePlanDraftsJson(rawPlansJson);
   const overrideNearestMetro = String(formData.get("override_nearest_metro") ?? "") === "on";

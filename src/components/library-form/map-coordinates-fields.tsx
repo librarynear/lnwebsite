@@ -35,6 +35,7 @@ export function MapCoordinatesFields({
   coordinatesRequired = false,
   clearOnMount = false,
   helperText,
+  usePlaceholdersOnly = false,
 }: {
   initialMapLink?: string;
   initialLatitude?: number | null;
@@ -44,11 +45,12 @@ export function MapCoordinatesFields({
   coordinatesRequired?: boolean;
   clearOnMount?: boolean;
   helperText?: string;
+  usePlaceholdersOnly?: boolean;
 }) {
   const storedDraft = !clearOnMount ? readStoredMapDraft(storageKey) : null;
-  const [mapLink, setMapLink] = useState(storedDraft?.mapLink ?? initialMapLink);
-  const [latitude, setLatitude] = useState(storedDraft?.latitude ?? toInputValue(initialLatitude));
-  const [longitude, setLongitude] = useState(storedDraft?.longitude ?? toInputValue(initialLongitude));
+  const [mapLink, setMapLink] = useState(storedDraft?.mapLink ?? (usePlaceholdersOnly ? "" : initialMapLink));
+  const [latitude, setLatitude] = useState(storedDraft?.latitude ?? (usePlaceholdersOnly ? "" : toInputValue(initialLatitude)));
+  const [longitude, setLongitude] = useState(storedDraft?.longitude ?? (usePlaceholdersOnly ? "" : toInputValue(initialLongitude)));
 
   useEffect(() => {
     if (storageKey && clearOnMount) {
@@ -94,7 +96,7 @@ export function MapCoordinatesFields({
           name="map_link"
           value={mapLink}
           onChange={(event) => handleMapLinkChange(event.target.value)}
-          placeholder="https://maps.google.com/..."
+          placeholder={initialMapLink || "https://maps.google.com/..."}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           required={mapLinkRequired}
         />
@@ -112,6 +114,7 @@ export function MapCoordinatesFields({
           step="0.000001"
           value={latitude}
           onChange={(event) => setLatitude(event.target.value)}
+          placeholder={toInputValue(initialLatitude) || "e.g. 28.6139"}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           required={coordinatesRequired}
         />
@@ -128,6 +131,7 @@ export function MapCoordinatesFields({
           step="0.000001"
           value={longitude}
           onChange={(event) => setLongitude(event.target.value)}
+          placeholder={toInputValue(initialLongitude) || "e.g. 77.2090"}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           required={coordinatesRequired}
         />

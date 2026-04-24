@@ -26,17 +26,21 @@ export function PhoneWhatsappFields({
   initialWhatsapp = "",
   storageKey,
   clearOnMount = false,
+  usePlaceholdersOnly = false,
+  phoneRequired = true,
 }: {
   initialPhone?: string;
   initialWhatsapp?: string;
   storageKey?: string;
   clearOnMount?: boolean;
+  usePlaceholdersOnly?: boolean;
+  phoneRequired?: boolean;
 }) {
   const storedDraft = !clearOnMount ? readStoredPhoneDraft(storageKey) : null;
-  const [phone, setPhone] = useState(storedDraft?.phone ?? initialPhone);
-  const [whatsapp, setWhatsapp] = useState(storedDraft?.whatsapp ?? initialWhatsapp);
+  const [phone, setPhone] = useState(storedDraft?.phone ?? (usePlaceholdersOnly ? "" : initialPhone));
+  const [whatsapp, setWhatsapp] = useState(storedDraft?.whatsapp ?? (usePlaceholdersOnly ? "" : initialWhatsapp));
   const [sameAsPhone, setSameAsPhone] = useState(
-    storedDraft?.sameAsPhone ?? (Boolean(initialPhone) && initialPhone === initialWhatsapp),
+    storedDraft?.sameAsPhone ?? (!usePlaceholdersOnly && Boolean(initialPhone) && initialPhone === initialWhatsapp),
   );
 
   useEffect(() => {
@@ -66,9 +70,9 @@ export function PhoneWhatsappFields({
           name="phone_number"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
-          placeholder="10-digit mobile number"
+          placeholder={initialPhone || "10-digit mobile number"}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
-          required
+          required={phoneRequired}
         />
       </div>
       <div className="space-y-2">
@@ -80,6 +84,7 @@ export function PhoneWhatsappFields({
           name="whatsapp_number"
           value={effectiveWhatsapp}
           onChange={(event) => setWhatsapp(event.target.value)}
+          placeholder={initialWhatsapp || "Optional WhatsApp number"}
           className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30"
           disabled={sameAsPhone}
         />

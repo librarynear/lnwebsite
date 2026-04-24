@@ -135,6 +135,7 @@ export default async function ForOwnersPage({
       ? latestSubmission
       : null;
   const hasLockedSubmission = Boolean(latestSubmission) && !editableSubmission;
+  const placeholderOnlyEditMode = Boolean(editableSubmission);
 
   if (submissionsMeasurement) {
     logPerf("forOwners", [submissionsMeasurement.metric], `user=1 submissions=${submissions.length}`);
@@ -374,22 +375,22 @@ export default async function ForOwnersPage({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="display_name" className="text-sm font-medium text-black">Display name <span className="text-destructive">*</span></label>
-                    <Input id="display_name" name="display_name" placeholder="Example Library, Rajendra Nagar" defaultValue={editableSubmission?.display_name ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="display_name" name="display_name" placeholder={editableSubmission?.display_name ?? "Example Library, Rajendra Nagar"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="locality" className="text-sm font-medium text-black">Locality <span className="text-destructive">*</span></label>
-                    <Input id="locality" name="locality" placeholder="Mukherjee Nagar" defaultValue={editableSubmission?.locality ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="locality" name="locality" placeholder={editableSubmission?.locality ?? "Mukherjee Nagar"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="city" className="text-sm font-medium text-black">City <span className="text-destructive">*</span></label>
-                    <Input id="city" name="city" defaultValue={editableSubmission?.city ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                    <Input id="city" name="city" placeholder={editableSubmission?.city ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="district" className="text-sm font-medium text-black">District</label>
-                    <Input id="district" name="district" defaultValue={editableSubmission?.district ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
+                    <Input id="district" name="district" placeholder={editableSubmission?.district ?? "District"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" />
                   </div>
                 </div>
 
@@ -402,21 +403,20 @@ export default async function ForOwnersPage({
                     id="full_address"
                     name="full_address"
                     rows={3}
-                    placeholder="House number, street, landmark, locality"
-                    defaultValue={editableSubmission?.full_address ?? ""}
+                    placeholder={editableSubmission?.full_address ?? "House number, street, landmark, locality"}
                     className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
-                    required
+                    required={!placeholderOnlyEditMode}
                   />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="state" className="text-sm font-medium text-black">State <span className="text-destructive">*</span></label>
-                    <Input id="state" name="state" defaultValue={editableSubmission?.state ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                     <Input id="state" name="state" placeholder={editableSubmission?.state ?? "Delhi"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="pin_code" className="text-sm font-medium text-black">PIN code <span className="text-destructive">*</span></label>
-                    <Input id="pin_code" name="pin_code" defaultValue={editableSubmission?.pin_code ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                     <Input id="pin_code" name="pin_code" placeholder={editableSubmission?.pin_code ?? "110001"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                 </div>
 
@@ -425,10 +425,11 @@ export default async function ForOwnersPage({
                   initialMapLink={editableSubmission?.map_link ?? ""}
                   initialLatitude={editableSubmission?.latitude ?? null}
                   initialLongitude={editableSubmission?.longitude ?? null}
-                  mapLinkRequired
-                  coordinatesRequired
+                  mapLinkRequired={!placeholderOnlyEditMode}
+                  coordinatesRequired={!placeholderOnlyEditMode}
                   clearOnMount={submitted === "1"}
                   helperText="Nearest metro will be calculated automatically from your location."
+                  usePlaceholdersOnly={placeholderOnlyEditMode}
                 />
 
                 <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
@@ -441,11 +442,11 @@ export default async function ForOwnersPage({
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="opening_time" className="text-sm font-medium text-black">Opening time <span className="text-destructive">*</span></label>
-                    <Input id="opening_time" name="opening_time" type="time" defaultValue={editableSubmission?.opening_time ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                     <Input id="opening_time" name="opening_time" type="time" placeholder={editableSubmission?.opening_time ?? "HH:MM"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="closing_time" className="text-sm font-medium text-black">Closing time <span className="text-destructive">*</span></label>
-                    <Input id="closing_time" name="closing_time" type="time" defaultValue={editableSubmission?.closing_time ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                     <Input id="closing_time" name="closing_time" type="time" placeholder={editableSubmission?.closing_time ?? "HH:MM"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                   </div>
                 </div>
 
@@ -455,6 +456,8 @@ export default async function ForOwnersPage({
                     initialWhatsapp={editableSubmission?.whatsapp_number ?? ""}
                     storageKey="owner-library-phone-fields"
                     clearOnMount={submitted === "1"}
+                    usePlaceholdersOnly={placeholderOnlyEditMode}
+                    phoneRequired={!placeholderOnlyEditMode}
                   />
                 </div>
 
@@ -472,15 +475,14 @@ export default async function ForOwnersPage({
                     id="description"
                     name="description"
                     rows={4}
-                    placeholder="Tell students what makes your library a great place to study."
-                    defaultValue={editableSubmission?.description ?? ""}
+                    placeholder={editableSubmission?.description ?? "Tell students what makes your library a great place to study."}
                     className="w-full rounded-2xl border border-border/80 bg-slate-50/50 px-3 py-2 text-sm outline-none transition-colors shadow-sm focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="total_seats" className="text-sm font-medium text-black">Seats available <span className="text-destructive">*</span></label>
-                  <Input id="total_seats" name="total_seats" type="number" min="1" defaultValue={editableSubmission?.total_seats ?? ""} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required />
+                  <Input id="total_seats" name="total_seats" type="number" min="1" placeholder={editableSubmission?.total_seats ? String(editableSubmission.total_seats) : "Seats available"} className="rounded-2xl border-border/80 bg-slate-50/50 shadow-sm focus-visible:ring-primary/30" required={!placeholderOnlyEditMode} />
                 </div>
 
                 <PlansEditor
