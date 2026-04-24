@@ -29,21 +29,6 @@ export function OwnerFeePlansInput() {
       <input type="hidden" name="fee_plans_json" value={JSON.stringify(plans)} />
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-black">Fee Plans</label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            setPlans((current) => [
-              ...current,
-              { duration_label: "Monthly", seat_type: "Unreserved", price: 0 },
-            ])
-          }
-          className="rounded-full"
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add Plan
-        </Button>
       </div>
 
       <div className="space-y-3">
@@ -71,7 +56,7 @@ export function OwnerFeePlansInput() {
             <Input
               type="number"
               min="0"
-              value={plan.price}
+              value={plan.price > 0 ? String(plan.price) : ""}
               onChange={(event) => updatePlan(index, { price: Number(event.target.value) })}
               placeholder="Price"
               className="rounded-xl bg-white"
@@ -90,6 +75,22 @@ export function OwnerFeePlansInput() {
           </div>
         ))}
       </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          setPlans((current) => [
+            ...current,
+            { duration_label: "Monthly", seat_type: "Unreserved", price: 0 },
+          ])
+        }
+        className="rounded-full"
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" />
+        Add Plan
+      </Button>
     </div>
   );
 }

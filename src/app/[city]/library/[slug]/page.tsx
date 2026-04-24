@@ -83,6 +83,12 @@ const LIBRARY_DETAIL_SELECT = `
     description,
     duration_label,
     seat_type,
+    hours_per_day,
+    base_price,
+    discount_percentage,
+    discounted_price,
+    plan_category,
+    offer_name,
     sort_order,
     is_active
   ),
@@ -422,16 +428,6 @@ export default async function LibraryDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
-          </section>
-
-          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-            <h2 className="text-xl font-bold text-black">How to evaluate this library</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Before you decide, compare commute time, study environment, seat comfort, operating
-              hours, amenities, and price against other libraries in {lib.locality ?? lib.city}.
-              If you study daily, reliable access and consistency usually matter more than the
-              cheapest monthly fee alone.
-            </p>
           </section>
 
           <AmenitiesGrid amenities={amenities} />

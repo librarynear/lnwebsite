@@ -17,6 +17,12 @@ import {
   type LibraryPlanDraft,
 } from "@/lib/library-plans";
 
+function numberInputValue(value: number, blankWhenZero = false) {
+  if (!Number.isFinite(value)) return "";
+  if (blankWhenZero && value === 0) return "";
+  return String(value);
+}
+
 function readStoredPlanDraft(storageKey?: string) {
   if (!storageKey || typeof window === "undefined") return null;
 
@@ -135,10 +141,11 @@ function DraftCard({
             type="number"
             min="1"
             max="24"
-            value={plan.hours_per_day}
+            value={numberInputValue(plan.hours_per_day)}
             onChange={(event) =>
               onChange(index, { hours_per_day: Number(event.target.value) || 1 })
             }
+            placeholder="Hours"
             className="rounded-2xl bg-white"
           />
         </div>
@@ -165,10 +172,11 @@ function DraftCard({
             type="number"
             min="0"
             step="1"
-            value={plan.base_price}
+            value={numberInputValue(plan.base_price, true)}
             onChange={(event) =>
               onChange(index, { base_price: Math.max(0, Number(event.target.value) || 0) })
             }
+            placeholder="e.g. 2500"
             className="rounded-2xl bg-white"
           />
         </div>
@@ -180,12 +188,13 @@ function DraftCard({
             min="0"
             max="100"
             step="1"
-            value={plan.discount_percentage}
+            value={numberInputValue(plan.discount_percentage, true)}
             onChange={(event) =>
               onChange(index, {
                 discount_percentage: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
               })
             }
+            placeholder="Optional"
             className="rounded-2xl bg-white"
           />
         </div>
@@ -193,8 +202,9 @@ function DraftCard({
         <div className="space-y-2">
           <label className="text-sm font-medium text-black">Discounted price</label>
           <Input
-            value={plan.discounted_price}
+            value={plan.base_price > 0 ? numberInputValue(plan.discounted_price) : ""}
             readOnly
+            placeholder="Auto"
             className="rounded-2xl bg-muted/40"
           />
         </div>
@@ -244,7 +254,7 @@ export function PlansEditor({
       ? normalizePlanDrafts(storedDraft.plans)
       : normalizedInitialPlans,
   );
-  const [globalDiscount, setGlobalDiscount] = useState(storedDraft?.globalDiscount ?? "0");
+  const [globalDiscount, setGlobalDiscount] = useState(storedDraft?.globalDiscount ?? "");
 
   useEffect(() => {
     if (storageKey && clearOnMount) {
@@ -296,16 +306,6 @@ export function PlansEditor({
               Plans are optional. Discounted prices are calculated automatically.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPlans((current) => [...current, { ...DEFAULT_PLAN }])}
-            className="rounded-full"
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Add Plan
-          </Button>
         </div>
 
         <div className="grid gap-3 rounded-2xl border border-dashed border-border/70 bg-slate-50/50 p-3 md:grid-cols-[180px_auto] md:items-end">
@@ -351,6 +351,19 @@ export function PlansEditor({
             removable={plans.length > 1}
           />
         ))}
+      </div>
+
+      <div className="flex justify-start">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setPlans((current) => [...current, { ...DEFAULT_PLAN }])}
+          className="rounded-full"
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Add Plan
+        </Button>
       </div>
     </div>
   );

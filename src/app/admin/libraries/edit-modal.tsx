@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Edit3, ImagePlus, Loader2, Save, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Tables } from "@/types/supabase";
 import { deleteLibraryBranch, updateLibraryBranch } from "./actions";
-import { deleteLibraryImage, uploadLibraryImage } from "./image-actions";
+import { deleteLibraryImage } from "./image-actions";
 import { AmenitiesChecklist } from "@/components/library-form/amenities-checklist";
 import { FormDraftPersistence } from "@/components/library-form/form-draft-persistence";
 import { MapCoordinatesFields } from "@/components/library-form/map-coordinates-fields";
@@ -35,6 +36,26 @@ function parseAmenities(amenitiesText: string | null | undefined) {
     .filter(Boolean);
 }
 
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-border/70 bg-white p-5 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-black">{title}</h3>
+        {description ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function EditLibraryModal({ library, allowDelete = false }: EditLibraryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -54,14 +75,21 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("libraryId", library.id);
 
     try {
-      const result = await uploadLibraryImage(library.id, formData);
+      const response = await fetch("/api/admin/library-images", {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { success?: boolean; image?: LibraryImage; error?: string }
+        | null;
 
-      if (result.success && result.image) {
-        setImages((current) => [...current, result.image]);
+      if (response.ok && result?.success && result.image) {
+        setImages((current) => [...current, result.image!]);
       } else {
-        alert("Upload failed: " + result.error);
+        alert("Upload failed: " + (result?.error || "Unknown error"));
       }
     } catch (error) {
       alert(`Upload failed: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -128,227 +156,259 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
       {isOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
+          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-start justify-between border-b border-border/70 bg-white px-6 py-5">
               <div>
-                <h2 className="text-xl font-bold">Edit library details</h2>
+                <h2 className="text-2xl font-bold text-black">Edit library details</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{library.display_name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">ID: {library.id}</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)} className="h-8 w-8 rounded-full p-0">
+              <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)} className="h-9 w-9 rounded-full p-0">
                 <X className="h-5 w-5 text-muted-foreground" />
               </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6" id={formId}>
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 md:px-6" id={formId}>
               <FormDraftPersistence formId={formId} storageKey={`library-edit-draft:${library.id}`} />
-              <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">Core Details</h3>
-                </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Display Name *</label>
-                  <input name="display_name" defaultValue={library.display_name} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">City *</label>
-                  <input name="city" defaultValue={library.city} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">State *</label>
-                  <input name="state" defaultValue={library.state || "Delhi"} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">District</label>
-                  <input name="district" defaultValue={library.district || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-
-                <div className="md:col-span-2 mt-2">
-                  <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">Location Details</h3>
-                </div>
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Full Address *</label>
-                  <textarea name="full_address" defaultValue={library.full_address || ""} rows={2} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">PIN Code *</label>
-                  <input name="pin_code" defaultValue={library.pin_code} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Locality *</label>
-                  <input name="locality" defaultValue={library.locality || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="md:col-span-2">
-                  <MapCoordinatesFields
-                    initialMapLink={library.map_link || ""}
-                    initialLatitude={library.latitude}
-                    initialLongitude={library.longitude}
-                    storageKey={`library-edit-map:${library.id}`}
-                    mapLinkRequired
-                    coordinatesRequired
-                    helperText="Nearest metro will be calculated automatically from your location."
-                  />
-                </div>
-                <div className="md:col-span-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
-                  Nearest metro will be calculated automatically from your location.
-                </div>
-                <div className="md:col-span-2 space-y-3 rounded-xl border border-border bg-slate-50/70 p-4">
-                  <label className="flex items-center gap-2 text-sm font-medium text-black">
-                    <input
-                      type="checkbox"
-                      name="override_nearest_metro"
-                      checked={overrideNearestMetro}
-                      onChange={(event) => setOverrideNearestMetro(event.target.checked)}
-                    />
-                    Override nearest metro manually
-                  </label>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nearest Metro</label>
-                      <input
-                        name="nearest_metro"
-                        defaultValue={library.nearest_metro || ""}
-                        className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted"
-                        disabled={!overrideNearestMetro}
-                      />
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="space-y-6">
+                  <Section title="Core details">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">Display name *</label>
+                        <Input name="display_name" defaultValue={library.display_name} required className="rounded-2xl bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">Locality *</label>
+                        <Input name="locality" defaultValue={library.locality || ""} required className="rounded-2xl bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">City *</label>
+                        <Input name="city" defaultValue={library.city} required className="rounded-2xl bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">District</label>
+                        <Input name="district" defaultValue={library.district || ""} className="rounded-2xl bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">State *</label>
+                        <Input name="state" defaultValue={library.state || "Delhi"} required className="rounded-2xl bg-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">PIN code *</label>
+                        <Input name="pin_code" defaultValue={library.pin_code} required className="rounded-2xl bg-white" />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metro Distance (KM)</label>
-                      <input
-                        name="nearest_metro_distance_km"
-                        type="number"
-                        step="0.01"
-                        defaultValue={library.nearest_metro_distance_km ?? ""}
-                        className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:bg-muted"
-                        disabled={!overrideNearestMetro}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Leave this off in normal cases. Turn it on only if you need to override the auto-calculated metro.
-                  </p>
-                </div>
+                  </Section>
 
-                <div className="md:col-span-2 mt-2">
-                  <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">Facilities & Logistics</h3>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opening Time *</label>
-                  <input name="opening_time" type="time" defaultValue={library.opening_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Closing Time *</label>
-                  <input name="closing_time" type="time" defaultValue={library.closing_time || ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-                <PhoneWhatsappFields
-                  initialPhone={library.phone_number || ""}
-                  initialWhatsapp={library.whatsapp_number || ""}
-                  storageKey={`library-edit-phone:${library.id}`}
-                />
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amenities *</label>
-                  <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
-                </div>
-
-                <div className="md:col-span-2 mt-2">
-                  <h3 className="mb-4 border-b pb-2 text-sm font-semibold text-black">About & Seats</h3>
-                </div>
-                <div className="md:col-span-2 flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
-                  <textarea name="description" defaultValue={library.description || ""} rows={4} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seats *</label>
-                  <input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary" required />
-                </div>
-
-                <div className="md:col-span-2 mt-2">
-                  <PlansEditor
-                    initialPlans={normalizePlanDrafts(library.library_fee_plans || [])}
-                    storageKey={`library-edit-plans:${library.id}`}
-                    note="Admin and sales use the same plan form. Admins also have the extra delete action below."
-                  />
-                </div>
-
-                <div className="md:col-span-2 mt-2">
-                  <div className="mb-4 flex items-center justify-between border-b pb-2">
-                    <h3 className="text-sm font-semibold text-black">Photos</h3>
-                    <div>
-                      <input
-                        type="file"
-                        id={`photo-upload-${library.id}`}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                      <label
-                        htmlFor={`photo-upload-${library.id}`}
-                        className={`inline-flex h-7 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? "pointer-events-none opacity-50" : ""}`}
-                      >
-                        {isUploading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="mr-1 h-3.5 w-3.5" />}
-                        {isUploading ? "Uploading..." : "Add Photo"}
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
-                    {images.map((img) => (
-                      <div key={img.id} className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
-                        <Image
-                          src={`${img.imagekit_url}?tr=w-150,h-150,fo-auto`}
-                          alt="Library Photo"
-                          fill
-                          className="object-cover"
+                  <Section title="Location details" description="Coordinates and nearest metro are calculated from the Google Maps link unless you explicitly override them.">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">Full address *</label>
+                        <textarea
+                          name="full_address"
+                          defaultValue={library.full_address || ""}
+                          rows={3}
+                          className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                          required
                         />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Button type="button" variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteImage(img.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      </div>
+
+                      <MapCoordinatesFields
+                        initialMapLink={library.map_link || ""}
+                        initialLatitude={library.latitude}
+                        initialLongitude={library.longitude}
+                        storageKey={`library-edit-map:${library.id}`}
+                        mapLinkRequired
+                        coordinatesRequired
+                        helperText="Nearest metro will be calculated automatically from your location."
+                      />
+
+                      <div className="space-y-3 rounded-2xl border border-border/70 bg-slate-50/70 p-4">
+                        <label className="flex items-center gap-2 text-sm font-medium text-black">
+                          <input
+                            type="checkbox"
+                            name="override_nearest_metro"
+                            checked={overrideNearestMetro}
+                            onChange={(event) => setOverrideNearestMetro(event.target.checked)}
+                          />
+                          Override nearest metro manually
+                        </label>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-black">Nearest metro</label>
+                            <Input
+                              name="nearest_metro"
+                              defaultValue={library.nearest_metro || ""}
+                              disabled={!overrideNearestMetro}
+                              className="rounded-2xl bg-white disabled:bg-muted"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-black">Metro distance (KM)</label>
+                            <Input
+                              name="nearest_metro_distance_km"
+                              type="number"
+                              step="0.01"
+                              defaultValue={library.nearest_metro_distance_km ?? ""}
+                              disabled={!overrideNearestMetro}
+                              className="rounded-2xl bg-white disabled:bg-muted"
+                            />
+                          </div>
                         </div>
                       </div>
-                    ))}
-                    {images.length === 0 ? (
-                      <div className="col-span-full rounded-lg border-2 border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-                        No photos added yet.
+                    </div>
+                  </Section>
+
+                  <Section title="Facilities and logistics">
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-black">Opening time *</label>
+                          <Input name="opening_time" type="time" defaultValue={library.opening_time || ""} required className="rounded-2xl bg-white" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-black">Closing time *</label>
+                          <Input name="closing_time" type="time" defaultValue={library.closing_time || ""} required className="rounded-2xl bg-white" />
+                        </div>
                       </div>
-                    ) : null}
-                  </div>
+
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <PhoneWhatsappFields
+                          initialPhone={library.phone_number || ""}
+                          initialWhatsapp={library.whatsapp_number || ""}
+                          storageKey={`library-edit-phone:${library.id}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">Amenities *</label>
+                        <AmenitiesChecklist initialSelected={parseAmenities(library.amenities_text)} />
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="About and seats">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-black">Description</label>
+                        <textarea
+                          name="description"
+                          defaultValue={library.description || ""}
+                          rows={4}
+                          className="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-3 focus-visible:ring-primary/30"
+                        />
+                      </div>
+                      <div className="space-y-2 md:max-w-xs">
+                        <label className="text-sm font-medium text-black">Seats *</label>
+                        <Input name="total_seats" type="number" min="1" defaultValue={library.total_seats ?? ""} required className="rounded-2xl bg-white" />
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Plans" description="Use the same plan editor owners see. Hours, discounts, and seat types will show on the public page.">
+                    <PlansEditor
+                      initialPlans={normalizePlanDrafts(library.library_fee_plans || [])}
+                      storageKey={`library-edit-plans:${library.id}`}
+                      note="Add as many plans as you need. The Add Plan button is below the list for faster repeated entry."
+                    />
+                  </Section>
+                </div>
+
+                <div className="space-y-6">
+                  <Section title="Photos" description="Uploading through this panel now keeps the editor open instead of closing the modal.">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">{images.length} photo{images.length === 1 ? "" : "s"}</p>
+                        <div>
+                          <input
+                            type="file"
+                            id={`photo-upload-${library.id}`}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={isUploading}
+                          />
+                          <label
+                            htmlFor={`photo-upload-${library.id}`}
+                            className={`inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-input bg-white px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? "pointer-events-none opacity-50" : ""}`}
+                          >
+                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                            {isUploading ? "Uploading..." : "Add photo"}
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {images.map((img) => (
+                          <div key={img.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
+                            <Image
+                              src={`${img.imagekit_url}?tr=w-300,h-300,fo-auto`}
+                              alt="Library photo"
+                              fill
+                              className="object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteImage(img.id)}
+                              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow-sm transition-colors hover:bg-white"
+                              aria-label="Delete photo"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                        {images.length === 0 ? (
+                          <div className="col-span-full rounded-2xl border-2 border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+                            No photos added yet.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </Section>
+
+                  {allowDelete ? (
+                    <Section title="Danger zone" description="This keeps the delete action accessible without burying it inside the form.">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => void handleDeleteLibrary()}
+                        disabled={isDeleting || isSaving}
+                        className="w-full font-semibold"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Library
+                          </>
+                        )}
+                      </Button>
+                    </Section>
+                  ) : null}
                 </div>
               </div>
             </form>
 
-            <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/10 px-6 py-4">
-              <div>
-                {allowDelete ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => void handleDeleteLibrary()}
-                    disabled={isDeleting || isSaving}
-                    className="font-semibold"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Library
-                      </>
-                    )}
-                  </Button>
-                ) : null}
-              </div>
+            <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-white px-6 py-4">
+              <p className="text-xs text-muted-foreground">
+                Changes here update the live library data after save.
+              </p>
               <div className="flex items-center justify-end gap-3">
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" form={formId} disabled={isSaving || isDeleting} className="min-w-32 font-semibold">
+                <Button type="submit" form={formId} disabled={isSaving || isDeleting || isUploading} className="min-w-36 font-semibold">
                   {isSaving ? (
-                    "Saving..."
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
