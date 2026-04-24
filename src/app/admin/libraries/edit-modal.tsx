@@ -176,7 +176,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
 
       {isOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-[1280px] flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex max-h-[92vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[28px] bg-slate-50 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-start justify-between border-b border-border/70 bg-white px-6 py-5">
               <div>
                 <h2 className="text-2xl font-bold text-black">Edit library details</h2>
@@ -191,7 +191,7 @@ export function EditLibraryModal({ library, allowDelete = false }: EditLibraryMo
             <form onSubmit={handleSubmit} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-5 md:px-6" id={formId}>
               <FormDraftPersistence formId={formId} storageKey={`library-edit-draft:${library.id}`} />
 
-              <div className="mx-auto w-full max-w-6xl min-w-0 space-y-6">
+              <div className="mx-auto w-full max-w-4xl min-w-0 space-y-6">
                 <Section title="Core details">
                   <div className="grid min-w-0 gap-4">
                       <Field label="Display name" required>

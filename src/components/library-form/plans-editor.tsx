@@ -51,7 +51,7 @@ function PlanField({
 }) {
   return (
     <div className="min-w-0 space-y-2">
-      <label className="text-sm font-medium text-black">
+      <label className="block text-sm font-medium text-black">
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
       </label>
@@ -99,7 +99,7 @@ function DraftCard({
             onChange={(event) =>
               onChange(index, { plan_category: event.target.value as LibraryPlanDraft["plan_category"] })
             }
-            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
             {PLAN_CATEGORY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -118,7 +118,7 @@ function DraftCard({
                 duration_label: getDurationLabel(event.target.value),
               })
             }
-            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
             {DURATION_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -134,7 +134,7 @@ function DraftCard({
             onChange={(event) =>
               onChange(index, { seat_type: event.target.value as LibraryPlanDraft["seat_type"] })
             }
-            className="h-10 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-3 text-sm"
+            className="h-11 w-full min-w-0 rounded-2xl border border-border/80 bg-white px-4 text-sm"
           >
             {SEAT_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -310,9 +310,9 @@ export function PlansEditor({
           </div>
         </div>
 
-        <div className="grid min-w-0 gap-3 rounded-2xl border border-dashed border-border/70 bg-slate-50/50 p-3 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:items-end">
-          <div className="min-w-0 space-y-2">
-            <label className="text-sm font-medium text-black">Global discount %</label>
+        <div className="grid min-w-0 gap-4 rounded-2xl border border-dashed border-border/70 bg-slate-50/50 p-4">
+          <div className="max-w-xs min-w-0 space-y-2">
+            <label className="block text-sm font-medium text-black">Global discount %</label>
             <Input
               type="number"
               min="0"
