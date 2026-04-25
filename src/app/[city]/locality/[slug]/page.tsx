@@ -278,14 +278,6 @@ export default async function LocalityPage({ params }: PageProps) {
               availability, cleanliness, and how quiet the study environment feels during peak hours.
             </p>
           </section>
-          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-            <h2 className="text-xl font-bold text-black">What to compare before you choose</h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              Look beyond just the price. The best library for one student may depend on early opening
-              hours, late closing times, AC, Wi-Fi, charging points, or how quickly you can reach it
-              from your nearest metro station.
-            </p>
-          </section>
         </div>
       </div>
     </div>

@@ -553,14 +553,6 @@ export default async function LibraryDetailPage({ params }: PageProps) {
 
           <AmenitiesGrid amenities={amenities} />
 
-          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-            <h2 className="text-xl font-bold text-black">What to compare before you choose</h2>
-            <div className="mt-3 space-y-4 text-sm leading-7 text-muted-foreground">
-              {comparisonTips.map((item) => (
-                <p key={item}>{item}</p>
-              ))}
-            </div>
-          </section>
 
           {/* Location */}
           <section>
