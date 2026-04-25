@@ -1,11 +1,10 @@
 import Image from "next/image";
 import { ArrowRight, Heart, PlusSquare, User2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
-import { upsertProfileFromUser } from "@/lib/auth/profile";
+import { getCurrentViewer, upsertProfileFromUser } from "@/lib/auth/profile";
 import { logPerf, measureAsync } from "@/lib/perf";
-import type { Tables } from "@/types/supabase";
+import { supabaseServer } from "@/lib/supabase-server";
 
 type OwnerSubmissionRow = {
   id: string;
@@ -15,7 +14,6 @@ type OwnerSubmissionRow = {
   city: string;
   created_at: string | null;
 };
-type ProfileSummary = Pick<Tables<"profiles">, "full_name" | "avatar_url" | "email">;
 
 export const metadata = {
   title: "Profile",
@@ -40,10 +38,7 @@ function formatStatus(status: string) {
 }
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentViewer();
 
   if (!user) {
     return (
@@ -70,16 +65,11 @@ export default async function ProfilePage() {
 
   const profileMeasurement = await measureAsync("profileQueries", async () =>
     Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, avatar_url, email")
-        .eq("id", user.id)
-        .maybeSingle(),
-      supabase
+      supabaseServer
         .from("user_saved_libraries")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id),
-      supabase
+      supabaseServer
         .from("owner_library_submissions")
         .select("id, status, display_name, locality, city, created_at")
         .eq("user_id", user.id)
@@ -88,8 +78,7 @@ export default async function ProfilePage() {
     ]),
   );
 
-  const [{ data: profileData }, { count: savedCount }, submissionsResponse] = profileMeasurement.result;
-  const profile = (profileData as ProfileSummary | null) ?? null;
+  const [{ count: savedCount }, submissionsResponse] = profileMeasurement.result;
 
   const displayName =
     profile?.full_name ??

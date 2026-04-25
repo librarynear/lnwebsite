@@ -1,25 +1,10 @@
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentViewer } from "@/lib/auth/profile";
 import { UserMenu } from "@/components/auth/user-menu";
 import { IntentLink } from "@/components/intent-link";
-import type { Tables } from "@/types/supabase";
-
-type NavbarProfile = Pick<Tables<"profiles">, "full_name" | "avatar_url" | "email">;
 
 export async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profileData } = user
-    ? await supabase
-      .from("profiles")
-      .select("full_name, avatar_url, email")
-      .eq("id", user.id)
-      .maybeSingle()
-    : { data: null };
-  const profile = (profileData as NavbarProfile | null) ?? null;
+  const { user, profile } = await getCurrentViewer();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-white">

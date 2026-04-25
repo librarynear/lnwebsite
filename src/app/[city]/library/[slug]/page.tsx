@@ -116,7 +116,116 @@ export async function generateStaticParams() {
   return rows.map((b) => ({ city: b.city.toLowerCase(), slug: b.slug }));
 }
 
-export const revalidate = 120;
+export const revalidate = 300;
+
+function formatTimeLabel(value: string | null | undefined) {
+  if (!value) return null;
+
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return value;
+  }
+
+  const period = hours >= 12 ? "PM" : "AM";
+  const normalizedHours = hours % 12 || 12;
+  return `${normalizedHours}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
+function formatCurrency(value: number | null | undefined, currency = "INR") {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function getStartingPrice(feePlans: FeePlan[]) {
+  const prices = feePlans
+    .map((plan) => plan.discounted_price ?? plan.price)
+    .filter((value): value is number => typeof value === "number" && !Number.isNaN(value));
+
+  if (prices.length === 0) return null;
+  return Math.min(...prices);
+}
+
+function buildLibraryDescription(lib: LibraryDetailData, feePlans: FeePlan[], amenities: string[]) {
+  const locationParts = [lib.locality, lib.district, lib.city].filter(Boolean);
+  const locationLabel = locationParts.join(", ");
+  const openingLabel = formatTimeLabel(lib.opening_time);
+  const closingLabel = formatTimeLabel(lib.closing_time);
+  const startingPrice = getStartingPrice(feePlans);
+  const priceLabel = formatCurrency(startingPrice, feePlans[0]?.currency ?? "INR");
+  const amenityHighlights = amenities.slice(0, 4).join(", ");
+
+  const parts = [
+    `${lib.display_name} is a study library in ${locationLabel || lib.city}.`,
+    lib.nearest_metro
+      ? lib.nearest_metro_distance_km
+        ? `It is around ${lib.nearest_metro_distance_km} km from ${lib.nearest_metro} metro station.`
+        : `It is located near ${lib.nearest_metro} metro station.`
+      : null,
+    openingLabel && closingLabel
+      ? `Typical operating hours are from ${openingLabel} to ${closingLabel}.`
+      : null,
+    lib.total_seats ? `The library lists ${lib.total_seats} seats for students.` : null,
+    priceLabel ? `Plans start from ${priceLabel}.` : null,
+    amenityHighlights ? `Common amenities include ${amenityHighlights}.` : null,
+  ];
+
+  return parts.filter(Boolean).join(" ");
+}
+
+function buildMetadataDescription(lib: LibraryDetailData, feePlans: FeePlan[]) {
+  const startingPrice = getStartingPrice(feePlans);
+  const priceLabel = formatCurrency(startingPrice, feePlans[0]?.currency ?? "INR");
+
+  return [
+    `Study at ${lib.display_name}`,
+    lib.locality ?? lib.district ?? lib.city,
+    lib.nearest_metro ? `Near ${lib.nearest_metro}` : null,
+    priceLabel ? `Plans from ${priceLabel}` : null,
+    "See photos, fees, amenities, and directions.",
+  ]
+    .filter(Boolean)
+    .join(". ");
+}
+
+function buildFeatureHighlights(lib: LibraryDetailData, feePlans: FeePlan[], amenities: string[]) {
+  const openingLabel = formatTimeLabel(lib.opening_time);
+  const closingLabel = formatTimeLabel(lib.closing_time);
+  const startingPrice = getStartingPrice(feePlans);
+  const priceLabel = formatCurrency(startingPrice, feePlans[0]?.currency ?? "INR");
+
+  return [
+    lib.nearest_metro
+      ? lib.nearest_metro_distance_km
+        ? `Located about ${lib.nearest_metro_distance_km} km from ${lib.nearest_metro} metro station.`
+        : `Located near ${lib.nearest_metro} metro station.`
+      : null,
+    openingLabel && closingLabel
+      ? `Operating hours are listed from ${openingLabel} to ${closingLabel}.`
+      : null,
+    lib.total_seats ? `This listing mentions ${lib.total_seats} total seats.` : null,
+    priceLabel ? `The current price range starts from ${priceLabel}.` : null,
+    amenities.length ? `Amenities highlighted include ${amenities.slice(0, 5).join(", ")}.` : null,
+  ].filter(Boolean) as string[];
+}
+
+function buildComparisonTips(lib: LibraryDetailData, feePlans: FeePlan[]) {
+  const hasReservedPlan = feePlans.some((plan) => plan.seat_type === "reserved");
+  const hasOffers = feePlans.some((plan) => plan.plan_category === "offer");
+
+  return [
+    `Compare ${lib.display_name} with nearby libraries by checking commute time from ${lib.nearest_metro ?? "your nearest metro"}, daily study hours, and the overall environment for focused study.`,
+    hasReservedPlan
+      ? "This listing includes reserved seating options, which can matter if you want a fixed seat every day."
+      : "Check whether you prefer reserved or flexible seating when comparing this library with other options nearby.",
+    hasOffers
+      ? "Review both regular plans and offer-based pricing so you understand the actual monthly cost before you choose."
+      : "Look at the total monthly cost, seating comfort, and amenities together instead of comparing on price alone.",
+  ];
+}
 
 function normalizeLibraryDetail(data: LibraryDetailData): LibraryDetailData {
   const library_fee_plans = (data.library_fee_plans ?? [])
@@ -153,7 +262,7 @@ const getCachedLibraryDetailData = unstable_cache(
   async (slug: string) => getLibraryDetailData(slug),
   ["library-detail-data"],
   {
-    revalidate: 120,
+    revalidate: 300,
     tags: ["library-detail", "library-cards"],
   },
 );
@@ -165,6 +274,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { city, slug } = await params;
   const lib = await getLibraryDetailForRoute(slug);
   if (!lib) return { title: "Library Not Found" };
+  const feePlans = lib.library_fee_plans ?? [];
+  const amenities = parseAmenities(lib.amenities_text);
 
   const siteUrl = getSiteUrl();
   const pageUrl = `${siteUrl}/${city}/library/${slug}`;
@@ -173,14 +284,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ? getOptimizedImageUrl(lib.library_images[0].imagekit_url, "detailHero")
       : null) || `${siteUrl}/logo.png`;
   const previewTitle = `${lib.display_name}${lib.locality ? `, ${lib.locality}` : ""} | LibraryNear`;
-  const previewDescription = [
-    `Study at ${lib.display_name}`,
-    lib.locality ?? lib.district ?? lib.city,
-    lib.nearest_metro ? `Near ${lib.nearest_metro}` : null,
-    "See photos, fees, amenities, and directions.",
-  ]
-    .filter(Boolean)
-    .join(". ");
+  const previewDescription = buildMetadataDescription(lib, feePlans);
   const keywords = [
     lib.display_name,
     lib.locality,
@@ -188,6 +292,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     lib.nearest_metro ? `${lib.nearest_metro} metro` : null,
     "study library",
     "reading room",
+    ...(amenities.slice(0, 4)),
   ].filter(Boolean) as string[];
 
   return {
@@ -247,6 +352,9 @@ export default async function LibraryDetailPage({ params }: PageProps) {
     )
     .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
   const amenities = parseAmenities(lib.amenities_text);
+  const fallbackDescription = buildLibraryDescription(lib, feePlans, amenities);
+  const featureHighlights = buildFeatureHighlights(lib, feePlans, amenities);
+  const comparisonTips = buildComparisonTips(lib, feePlans);
   logPerf(
     "libraryDetail",
     [libraryMeasurement.metric],
@@ -263,7 +371,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
     "@type": "LocalBusiness",
     name: lib.display_name,
     url: pageUrl,
-    description: lib.description || `Study library in ${lib.locality ?? lib.city}`,
+    description: lib.description || fallbackDescription,
     image: images.slice(0, 6),
     address: {
       "@type": "PostalAddress",
@@ -412,15 +520,17 @@ export default async function LibraryDetailPage({ params }: PageProps) {
 
           {/* About */}
           <section>
-            {/* About & Description */}
             <h2 className="text-xl font-bold mb-4">About</h2>
-            {lib.description && (
+            {lib.description ? (
               <p className="text-muted-foreground leading-relaxed mb-6 whitespace-pre-wrap">
                 {lib.description}
               </p>
+            ) : (
+              <p className="text-muted-foreground leading-relaxed mb-6">
+                {fallbackDescription}
+              </p>
             )}
 
-            {/* Amenities Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm text-muted-foreground">
               {lib.total_seats && (
                 <div className="flex items-center gap-2">
@@ -430,7 +540,27 @@ export default async function LibraryDetailPage({ params }: PageProps) {
             </div>
           </section>
 
+          {featureHighlights.length > 0 ? (
+            <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+              <h2 className="text-xl font-bold text-black">Library highlights</h2>
+              <ul className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
+                {featureHighlights.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <AmenitiesGrid amenities={amenities} />
+
+          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+            <h2 className="text-xl font-bold text-black">What to compare before you choose</h2>
+            <div className="mt-3 space-y-4 text-sm leading-7 text-muted-foreground">
+              {comparisonTips.map((item) => (
+                <p key={item}>{item}</p>
+              ))}
+            </div>
+          </section>
 
           {/* Location */}
           <section>

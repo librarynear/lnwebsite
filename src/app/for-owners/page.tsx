@@ -1,11 +1,11 @@
 import { CheckCircle2, Clock3, LockKeyhole, MapPin, ShieldCheck } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { IntentLink } from "@/components/intent-link";
 import { Input } from "@/components/ui/input";
 import { submitOwnerLibrary } from "@/app/for-owners/actions";
 import { OwnerPhotosInput } from "@/app/for-owners/owner-photos-input";
-import { upsertProfileFromUser } from "@/lib/auth/profile";
+import { getCurrentViewer, upsertProfileFromUser } from "@/lib/auth/profile";
+import { supabaseServer } from "@/lib/supabase-server";
 import { logPerf, measureAsync } from "@/lib/perf";
 import { PlansEditor } from "@/components/library-form/plans-editor";
 import { AmenitiesChecklist } from "@/components/library-form/amenities-checklist";
@@ -107,10 +107,7 @@ export default async function ForOwnersPage({
   searchParams: Promise<{ submitted?: string; error?: string; plans_updated?: string; plans_error?: string }>;
 }) {
   const { submitted, error, plans_updated, plans_error } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await getCurrentViewer();
 
   if (user) {
     await upsertProfileFromUser(user);
@@ -119,7 +116,7 @@ export default async function ForOwnersPage({
   const submissionsMeasurement = user
     ? await measureAsync("ownerSubmissions", async () =>
         (
-          await supabase
+          await supabaseServer
             .from("owner_library_submissions")
             .select("id, status, display_name, city, locality, district, state, pin_code, full_address, latitude, longitude, phone_number, whatsapp_number, opening_time, closing_time, total_seats, map_link, description, amenities_text, image_urls, reviewer_notes, created_at, fee_plans")
             .eq("user_id", user.id)

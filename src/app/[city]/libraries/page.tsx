@@ -83,7 +83,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   };
 }
 
-export const revalidate = 120;
+export const revalidate = 300;
 
 function formatDistance(distanceKm?: number | null) {
   if (typeof distanceKm !== "number") return null;
@@ -316,6 +316,58 @@ async function getLocalities(city: string): Promise<string[]> {
     .map(([name]) => name);
 }
 
+async function LibraryFiltersSidebar({
+  city,
+  locality,
+  sort,
+  q,
+  verifiedOnly,
+  nearbyMode,
+  lat,
+  lng,
+  totalCount,
+}: {
+  city: string;
+  locality?: string;
+  sort?: string;
+  q?: string;
+  verifiedOnly: boolean;
+  nearbyMode: boolean;
+  lat?: string;
+  lng?: string;
+  totalCount: number;
+}) {
+  const localities = await getLibrariesLocalities(city);
+
+  return (
+    <LibraryFilters
+      city={city}
+      localities={localities}
+      currentLocality={locality}
+      currentSort={nearbyMode ? (sort ?? "distance") : sort}
+      currentQ={nearbyMode ? undefined : q}
+      verifiedOnly={verifiedOnly}
+      nearbyMode={nearbyMode}
+      nearbyLat={lat}
+      nearbyLng={lng}
+      totalCount={totalCount}
+    />
+  );
+}
+
+function LibraryFiltersSidebarFallback() {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-white p-4">
+      <div className="h-5 w-28 rounded-full bg-muted" />
+      <div className="mt-4 space-y-3">
+        <div className="h-10 rounded-xl bg-muted/80" />
+        <div className="h-10 rounded-xl bg-muted/80" />
+        <div className="h-10 rounded-xl bg-muted/80" />
+      </div>
+    </div>
+  );
+}
+
 const getCachedSearchLibraries = unstable_cache(
   async (
     city: string,
@@ -326,7 +378,7 @@ const getCachedSearchLibraries = unstable_cache(
   ) => searchLibraries(city, q, locality, sort, verifiedOnly),
   ["libraries-search-results"],
   {
-    revalidate: 120,
+    revalidate: 300,
     tags: ["library-cards", "library-search-results"],
   },
 );
@@ -338,7 +390,7 @@ const getCachedLocalities = unstable_cache(
   async (city: string) => getLocalities(city),
   ["library-localities"],
   {
-    revalidate: 120,
+    revalidate: 300,
     tags: ["library-localities", "home-top-localities"],
   },
 );
@@ -350,7 +402,7 @@ const getCachedZeroResultSuggestions = unstable_cache(
   async (city: string) => getZeroResultSuggestions(city),
   ["zero-result-suggestions"],
   {
-    revalidate: 120,
+    revalidate: 300,
     tags: ["library-cards", "zero-result-suggestions"],
   },
 );
@@ -478,17 +530,13 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
   const latitude = lat ? Number(lat) : undefined;
   const longitude = lng ? Number(lng) : undefined;
 
-  const [searchMeasurement, localitiesMeasurement] = await Promise.all([
-    measureAsync("searchLibraries", () =>
-      nearbyMode
-        ? searchLibraries(city, q, locality, sort, verifiedOnly, nearbyMode, latitude, longitude)
-        : getLibrariesSearchResults(city, q, locality, sort, verifiedOnly),
-    ),
-    measureAsync("localities", () => getLibrariesLocalities(city)),
-  ]);
+  const searchMeasurement = await measureAsync("searchLibraries", () =>
+    nearbyMode
+      ? searchLibraries(city, q, locality, sort, verifiedOnly, nearbyMode, latitude, longitude)
+      : getLibrariesSearchResults(city, q, locality, sort, verifiedOnly),
+  );
 
   const { results: libraries, usedRpc, mode } = searchMeasurement.result;
-  const localities = localitiesMeasurement.result;
 
   const zeroResults = libraries.length === 0;
   const zeroSuggestionsMeasurement = zeroResults
@@ -510,7 +558,6 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
     "librariesPage",
     [
       searchMeasurement.metric,
-      localitiesMeasurement.metric,
       ...(zeroSuggestionsMeasurement ? [zeroSuggestionsMeasurement.metric] : []),
       librariesWithImagesMeasurement.metric,
       ...(suggestionsWithImagesMeasurement ? [suggestionsWithImagesMeasurement.metric] : []),
@@ -631,17 +678,16 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
         <div className="flex gap-10 mt-6">
           <aside className="hidden lg:block w-56 shrink-0">
             <div className="sticky top-40">
-              <Suspense fallback={null}>
-                <LibraryFilters
+              <Suspense fallback={<LibraryFiltersSidebarFallback />}>
+                <LibraryFiltersSidebar
                   city={city}
-                  localities={localities}
-                  currentLocality={locality}
-                  currentSort={nearbyMode ? (sort ?? "distance") : sort}
-                  currentQ={nearbyMode ? undefined : q}
+                  locality={locality}
+                  sort={sort}
+                  q={q}
                   verifiedOnly={verifiedOnly}
                   nearbyMode={nearbyMode}
-                  nearbyLat={lat}
-                  nearbyLng={lng}
+                  lat={lat}
+                  lng={lng}
                   totalCount={libraries.length}
                 />
               </Suspense>
@@ -680,15 +726,6 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
               />
             ) : (
               <>
-                <div className="mb-8 rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-                  <h2 className="text-lg font-bold text-black">How to shortlist the right library</h2>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    Compare libraries by locality, nearest metro, quiet study environment, seating,
-                    timings, amenities, and monthly fees. Verified libraries and high-completeness
-                    profiles are a useful first filter when you want stronger quality signals.
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
                   {librariesWithCovers.map((lib, index) => (
                     <LibraryCard

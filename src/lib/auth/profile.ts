@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 import { createClient } from "@/lib/supabase/server";
@@ -44,7 +45,7 @@ export async function upsertProfileFromUser(user: User) {
   }
 }
 
-export async function getCurrentViewer() {
+export const getCurrentViewer = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -64,4 +65,4 @@ export async function getCurrentViewer() {
     user,
     profile,
   };
-}
+});

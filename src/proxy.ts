@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const STAFF_LOGIN_PATH = "/staff-access";
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -33,11 +35,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Admin route protection
-  if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/login')) {
+  if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!user) {
       // no user, redirect to login
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
+      url.pathname = STAFF_LOGIN_PATH
       return NextResponse.redirect(url)
     }
 
@@ -47,7 +49,7 @@ export async function proxy(request: NextRequest) {
       // User is logged in but not the admin. Sign them out and redirect.
       await supabase.auth.signOut()
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
+      url.pathname = STAFF_LOGIN_PATH
       url.searchParams.set('error', 'Unauthorized. Admin access only.')
       return NextResponse.redirect(url)
     }

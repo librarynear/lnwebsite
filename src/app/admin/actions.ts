@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+const STAFF_LOGIN_PATH = "/staff-access";
+
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
@@ -17,7 +19,7 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    redirect("/admin/login?error=" + encodeURIComponent(error.message));
+    redirect(`${STAFF_LOGIN_PATH}?error=` + encodeURIComponent(error.message));
   }
 
   revalidatePath("/admin", "layout");
@@ -27,5 +29,5 @@ export async function login(formData: FormData) {
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/admin/login");
+  redirect(STAFF_LOGIN_PATH);
 }

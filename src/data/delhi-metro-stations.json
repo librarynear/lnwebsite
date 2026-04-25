@@ -1,0 +1,1478 @@
+[
+  {
+    "station_name": "A.I.I.M.S.",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5668602,
+    "longitude": 77.2078058
+  },
+  {
+    "station_name": "Adarsh Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7165805,
+    "longitude": 77.1704223
+  },
+  {
+    "station_name": "Anand Vihar (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6468336,
+    "longitude": 77.3158749
+  },
+  {
+    "station_name": "Anand Vihar (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6466157,
+    "longitude": 77.3155317
+  },
+  {
+    "station_name": "Arjan Garh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4807352,
+    "longitude": 77.1257622
+  },
+  {
+    "station_name": "Ashok Park Main",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6716045,
+    "longitude": 77.155291
+  },
+  {
+    "station_name": "Ashram",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5724231,
+    "longitude": 77.2585979
+  },
+  {
+    "station_name": "Azadpur (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7057821,
+    "longitude": 77.1819488
+  },
+  {
+    "station_name": "Azadpur (Yellow Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7070448,
+    "longitude": 77.1803722
+  },
+  {
+    "station_name": "Badhkal Mor",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4227134,
+    "longitude": 77.3103481
+  },
+  {
+    "station_name": "Bahadurgarh City",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6907783,
+    "longitude": 76.9354807
+  },
+  {
+    "station_name": "Barakhambha Road",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6297676,
+    "longitude": 77.2250046
+  },
+  {
+    "station_name": "Belvedere Towers",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4917023,
+    "longitude": 77.0881318
+  },
+  {
+    "station_name": "Bhajanpura",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7035987,
+    "longitude": 77.2626474
+  },
+  {
+    "station_name": "Bhalaswa",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7369574,
+    "longitude": 77.168087
+  },
+  {
+    "station_name": "Bhikaji Cama Place",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5702618,
+    "longitude": 77.1878709
+  },
+  {
+    "station_name": "Botanical Garden (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5639434,
+    "longitude": 77.3343995
+  },
+  {
+    "station_name": "Botanical Garden (Magenta Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5639051,
+    "longitude": 77.3338373
+  },
+  {
+    "station_name": "Brigadier Hoshiyar Singh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6974603,
+    "longitude": 76.9192027
+  },
+  {
+    "station_name": "Burari",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7298286,
+    "longitude": 77.1995697
+  },
+  {
+    "station_name": "Central Secretariat",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6158794,
+    "longitude": 77.2122822
+  },
+  {
+    "station_name": "Chandni Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6584227,
+    "longitude": 77.2303375
+  },
+  {
+    "station_name": "Chawri Bazaar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6492649,
+    "longitude": 77.2265153
+  },
+  {
+    "station_name": "Chhatarpur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5067242,
+    "longitude": 77.1750019
+  },
+  {
+    "station_name": "Chirag Delhi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5411108,
+    "longitude": 77.2303164
+  },
+  {
+    "station_name": "Civil Lines",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6768508,
+    "longitude": 77.2250299
+  },
+  {
+    "station_name": "Cyber City",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4980703,
+    "longitude": 77.0892567
+  },
+  {
+    "station_name": "Dabri Mor - Janakpuri South",
+    "line_name": "Delhi Metro",
+    "latitude": 28.61572,
+    "longitude": 77.0851893
+  },
+  {
+    "station_name": "Dashrath Puri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.60185,
+    "longitude": 77.0823751
+  },
+  {
+    "station_name": "Deepali Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6981,
+    "longitude": 77.1182795
+  },
+  {
+    "station_name": "Delhi Aerocity",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5487786,
+    "longitude": 77.1207949
+  },
+  {
+    "station_name": "Delhi Cantt",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6086201,
+    "longitude": 77.1404187
+  },
+  {
+    "station_name": "Delhi Gate",
+    "line_name": "Violet Line",
+    "latitude": 28.6392174,
+    "longitude": 77.2407795
+  },
+  {
+    "station_name": "Dhansa Bus Stand",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6119086,
+    "longitude": 76.9785264
+  },
+  {
+    "station_name": "Dhaula Kuan",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5918719,
+    "longitude": 77.1617158
+  },
+  {
+    "station_name": "Dilli Haat - INA (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5736524,
+    "longitude": 77.2075857
+  },
+  {
+    "station_name": "Dilli Haat - INA (Yellow Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5741769,
+    "longitude": 77.2093017
+  },
+  {
+    "station_name": "DLF Phase 1",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4714258,
+    "longitude": 77.0939606
+  },
+  {
+    "station_name": "DLF Phase 2",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4875596,
+    "longitude": 77.0929909
+  },
+  {
+    "station_name": "Dwarka (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6149362,
+    "longitude": 77.0227628
+  },
+  {
+    "station_name": "Dwarka (Grey Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6158874,
+    "longitude": 77.0224342
+  },
+  {
+    "station_name": "Dwarka Mor",
+    "line_name": "Delhi Metro",
+    "latitude": 28.61931,
+    "longitude": 77.0332792
+  },
+  {
+    "station_name": "Dwarka Sector 10",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5810577,
+    "longitude": 77.0574996
+  },
+  {
+    "station_name": "Dwarka Sector 11",
+    "line_name": "Delhi Metro",
+    "latitude": 28.586443,
+    "longitude": 77.0494433
+  },
+  {
+    "station_name": "Dwarka Sector 12",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5922362,
+    "longitude": 77.0407315
+  },
+  {
+    "station_name": "Dwarka Sector 13",
+    "line_name": "Delhi Metro",
+    "latitude": 28.597009,
+    "longitude": 77.0335407
+  },
+  {
+    "station_name": "Dwarka Sector 14",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6022218,
+    "longitude": 77.0259765
+  },
+  {
+    "station_name": "Dwarka Sector 21",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5519218,
+    "longitude": 77.0585605
+  },
+  {
+    "station_name": "Dwarka Sector 8",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5656109,
+    "longitude": 77.0670366
+  },
+  {
+    "station_name": "Dwarka Sector 9",
+    "line_name": "Delhi Metro",
+    "latitude": 28.574272,
+    "longitude": 77.0653316
+  },
+  {
+    "station_name": "East Azad Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6646764,
+    "longitude": 77.2848431
+  },
+  {
+    "station_name": "East Vinod Nagar - Mayur Vihar - II",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6200437,
+    "longitude": 77.3054069
+  },
+  {
+    "station_name": "ESI - Basaidarapur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6580737,
+    "longitude": 77.1272678
+  },
+  {
+    "station_name": "Ghevra",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6852384,
+    "longitude": 76.9961591
+  },
+  {
+    "station_name": "Ghitorni",
+    "line_name": "Delhi Metro",
+    "latitude": 28.493751,
+    "longitude": 77.1491866
+  },
+  {
+    "station_name": "Gokulpuri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7024752,
+    "longitude": 77.2861253
+  },
+  {
+    "station_name": "Golf Course",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5673755,
+    "longitude": 77.3463247
+  },
+  {
+    "station_name": "Govind Puri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5445521,
+    "longitude": 77.2642761
+  },
+  {
+    "station_name": "Greater Kailash",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5419077,
+    "longitude": 77.2384925
+  },
+  {
+    "station_name": "Green Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5580071,
+    "longitude": 77.2067933
+  },
+  {
+    "station_name": "GTB Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6981333,
+    "longitude": 77.2063998
+  },
+  {
+    "station_name": "Guru Dronacharya",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4820212,
+    "longitude": 77.1022685
+  },
+  {
+    "station_name": "Haiderpur Badli Mor",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7299398,
+    "longitude": 77.1491044
+  },
+  {
+    "station_name": "Haiderpur Village",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7248993,
+    "longitude": 77.142467
+  },
+  {
+    "station_name": "Harkesh Nagar Okhla",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5429338,
+    "longitude": 77.2750407
+  },
+  {
+    "station_name": "Hauz Khas (Magenta Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5433691,
+    "longitude": 77.2050447
+  },
+  {
+    "station_name": "Hauz Khas (Yellow Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5442564,
+    "longitude": 77.2067072
+  },
+  {
+    "station_name": "IFFCO Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4723277,
+    "longitude": 77.0724222
+  },
+  {
+    "station_name": "IGI Airport",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5564626,
+    "longitude": 77.0866995
+  },
+  {
+    "station_name": "IIT Delhi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5470121,
+    "longitude": 77.1945546
+  },
+  {
+    "station_name": "Inderlok (Green Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6727066,
+    "longitude": 77.1691872
+  },
+  {
+    "station_name": "Inderlok (Red Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6735891,
+    "longitude": 77.1703467
+  },
+  {
+    "station_name": "Indraprastha",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6206019,
+    "longitude": 77.249551
+  },
+  {
+    "station_name": "IP Extension",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6319032,
+    "longitude": 77.310718
+  },
+  {
+    "station_name": "ITO",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6281909,
+    "longitude": 77.2410437
+  },
+  {
+    "station_name": "Jaffrabad",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6826822,
+    "longitude": 77.2748055
+  },
+  {
+    "station_name": "Jagatpur - Wazirabad",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7211162,
+    "longitude": 77.223995
+  },
+  {
+    "station_name": "Jahangirpuri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7259717,
+    "longitude": 77.162658
+  },
+  {
+    "station_name": "Jamia Millia Islamia",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5630488,
+    "longitude": 77.2863387
+  },
+  {
+    "station_name": "Janakpuri East",
+    "line_name": "Delhi Metro",
+    "latitude": 28.633021,
+    "longitude": 77.086757
+  },
+  {
+    "station_name": "Janakpuri West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6289471,
+    "longitude": 77.0779492
+  },
+  {
+    "station_name": "Janakpuri West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6295839,
+    "longitude": 77.078085
+  },
+  {
+    "station_name": "Jangpura",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5830386,
+    "longitude": 77.2393151
+  },
+  {
+    "station_name": "Janpath",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6240485,
+    "longitude": 77.2192587
+  },
+  {
+    "station_name": "Jasola Vihar Shaheen Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5458279,
+    "longitude": 77.2966578
+  },
+  {
+    "station_name": "Jawaharlal Nehru Stadium",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5882347,
+    "longitude": 77.2337833
+  },
+  {
+    "station_name": "Jhandewalan",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6443188,
+    "longitude": 77.1999165
+  },
+  {
+    "station_name": "Jharoda Majra",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7249649,
+    "longitude": 77.2137118
+  },
+  {
+    "station_name": "Jhilmil",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6757197,
+    "longitude": 77.3123949
+  },
+  {
+    "station_name": "Johri Enclave",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7128806,
+    "longitude": 77.2901293
+  },
+  {
+    "station_name": "Jor Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5865094,
+    "longitude": 77.2125273
+  },
+  {
+    "station_name": "Kailash Colony",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5553298,
+    "longitude": 77.2419637
+  },
+  {
+    "station_name": "Kalindi Kunj",
+    "line_name": "Delhi Metro",
+    "latitude": 28.542916,
+    "longitude": 77.3101107
+  },
+  {
+    "station_name": "Kalkaji Mandir",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5494785,
+    "longitude": 77.25909
+  },
+  {
+    "station_name": "Kalkaji Mandir",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5503522,
+    "longitude": 77.2569441
+  },
+  {
+    "station_name": "Kanhaiya Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6824082,
+    "longitude": 77.1647754
+  },
+  {
+    "station_name": "Karkarduma (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6483176,
+    "longitude": 77.3055178
+  },
+  {
+    "station_name": "Karkarduma (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6493434,
+    "longitude": 77.3060686
+  },
+  {
+    "station_name": "Karkarduma Court",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6536001,
+    "longitude": 77.2957877
+  },
+  {
+    "station_name": "Karol Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6440122,
+    "longitude": 77.1885235
+  },
+  {
+    "station_name": "Kashmere Gate",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6674493,
+    "longitude": 77.2282488
+  },
+  {
+    "station_name": "Kashmere Gate",
+    "line_name": "",
+    "latitude": 28.6686728,
+    "longitude": 77.228051
+  },
+  {
+    "station_name": "Kaushambi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6452857,
+    "longitude": 77.3243429
+  },
+  {
+    "station_name": "Keshav Puram",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6889264,
+    "longitude": 77.1616833
+  },
+  {
+    "station_name": "Khajuri Khas",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7052606,
+    "longitude": 77.2544989
+  },
+  {
+    "station_name": "Khan Market",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6022446,
+    "longitude": 77.2291281
+  },
+  {
+    "station_name": "Kirti Nagar (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.655746,
+    "longitude": 77.1506635
+  },
+  {
+    "station_name": "Kirti Nagar (Green Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6545409,
+    "longitude": 77.1513605
+  },
+  {
+    "station_name": "Kohat Enclave",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6980415,
+    "longitude": 77.1405393
+  },
+  {
+    "station_name": "Krishna Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6578127,
+    "longitude": 77.2901199
+  },
+  {
+    "station_name": "Krishna Park Extension",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6477917,
+    "longitude": 77.0843425
+  },
+  {
+    "station_name": "Lajpat Nagar (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.56958,
+    "longitude": 77.2385055
+  },
+  {
+    "station_name": "Lajpat Nagar (Violet Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5705968,
+    "longitude": 77.2364011
+  },
+  {
+    "station_name": "Lal Quila",
+    "line_name": "Delhi Metro",
+    "latitude": 28.657483,
+    "longitude": 77.2366607
+  },
+  {
+    "station_name": "Laxmi Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6305974,
+    "longitude": 77.277523
+  },
+  {
+    "station_name": "Lok Kalyan Marg",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5973513,
+    "longitude": 77.2110967
+  },
+  {
+    "station_name": "M G Road",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4795543,
+    "longitude": 77.0798926
+  },
+  {
+    "station_name": "Madhuban Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7032676,
+    "longitude": 77.1322497
+  },
+  {
+    "station_name": "Madhuban Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7035674,
+    "longitude": 77.1300725
+  },
+  {
+    "station_name": "Madipur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6764752,
+    "longitude": 77.1193599
+  },
+  {
+    "station_name": "Majlis Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.724403,
+    "longitude": 77.1818406
+  },
+  {
+    "station_name": "Major Mohit Sharma Rajendra Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6776112,
+    "longitude": 77.3581426
+  },
+  {
+    "station_name": "Malviya Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5290656,
+    "longitude": 77.2048241
+  },
+  {
+    "station_name": "Mandawali - West Vinod Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.624979,
+    "longitude": 77.3044525
+  },
+  {
+    "station_name": "Mandi House",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6255149,
+    "longitude": 77.2341926
+  },
+  {
+    "station_name": "Mandi House",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6256122,
+    "longitude": 77.2341966
+  },
+  {
+    "station_name": "Mansarovar Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.675385,
+    "longitude": 77.3008678
+  },
+  {
+    "station_name": "Maujpur-Babarpur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6920781,
+    "longitude": 77.2796973
+  },
+  {
+    "station_name": "Mayapuri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6371795,
+    "longitude": 77.1297333
+  },
+  {
+    "station_name": "Mayur Vihar - I (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.604064,
+    "longitude": 77.2895398
+  },
+  {
+    "station_name": "Mayur Vihar - I (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6036425,
+    "longitude": 77.2909319
+  },
+  {
+    "station_name": "Millennium City Centre Gurugram",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4593429,
+    "longitude": 77.0726571
+  },
+  {
+    "station_name": "Model Town",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7027136,
+    "longitude": 77.1939912
+  },
+  {
+    "station_name": "Moolchand",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5644044,
+    "longitude": 77.2342555
+  },
+  {
+    "station_name": "Moti Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.657859,
+    "longitude": 77.1424288
+  },
+  {
+    "station_name": "Moulsari Avenue Station",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.5007775,
+    "longitude": 77.0946306
+  },
+  {
+    "station_name": "Mundka",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6824341,
+    "longitude": 77.0305741
+  },
+  {
+    "station_name": "Mundka Industrial Area",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6833701,
+    "longitude": 77.0171485
+  },
+  {
+    "station_name": "Munirka",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5568967,
+    "longitude": 77.1750592
+  },
+  {
+    "station_name": "Najafgarh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6124504,
+    "longitude": 76.9865067
+  },
+  {
+    "station_name": "Nanaksar - Sonia Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7087185,
+    "longitude": 77.2425095
+  },
+  {
+    "station_name": "Nangli",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6173003,
+    "longitude": 77.0104375
+  },
+  {
+    "station_name": "Nangloi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6824007,
+    "longitude": 77.0647319
+  },
+  {
+    "station_name": "Nangloi Railway Station",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6822009,
+    "longitude": 77.0562463
+  },
+  {
+    "station_name": "Naraina Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6243852,
+    "longitude": 77.1364438
+  },
+  {
+    "station_name": "Nawada",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6202758,
+    "longitude": 77.0450787
+  },
+  {
+    "station_name": "Nehru Enclave",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5460584,
+    "longitude": 77.2515057
+  },
+  {
+    "station_name": "Nehru Place",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5514171,
+    "longitude": 77.2517386
+  },
+  {
+    "station_name": "Netaji Subhash Place (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6947146,
+    "longitude": 77.1542607
+  },
+  {
+    "station_name": "Netaji Subhash Place (Red Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6960485,
+    "longitude": 77.1524856
+  },
+  {
+    "station_name": "New Ashok Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5890885,
+    "longitude": 77.3015085
+  },
+  {
+    "station_name": "New Delhi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6434826,
+    "longitude": 77.2227421
+  },
+  {
+    "station_name": "New Delhi Airport Express Terminal",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6424786,
+    "longitude": 77.2231116
+  },
+  {
+    "station_name": "Nirman Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6364592,
+    "longitude": 77.2868145
+  },
+  {
+    "station_name": "Noida City Centre",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5747334,
+    "longitude": 77.3561638
+  },
+  {
+    "station_name": "Noida Office",
+    "line_name": "Aqua Line",
+    "latitude": 28.5453808,
+    "longitude": 77.3377141
+  },
+  {
+    "station_name": "Noida Sector 15",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5848835,
+    "longitude": 77.3116118
+  },
+  {
+    "station_name": "Noida Sector 16",
+    "line_name": "Delhi Metro",
+    "latitude": 28.578081,
+    "longitude": 77.3177778
+  },
+  {
+    "station_name": "Noida Sector 18",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5707583,
+    "longitude": 77.3260756
+  },
+  {
+    "station_name": "Noida Sector 44",
+    "line_name": "Aqua Line",
+    "latitude": 28.5512763,
+    "longitude": 77.3352465
+  },
+  {
+    "station_name": "Okhla Bird Sanctuary",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5529418,
+    "longitude": 77.321595
+  },
+  {
+    "station_name": "Okhla Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5613002,
+    "longitude": 77.2919304
+  },
+  {
+    "station_name": "Palam",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5889102,
+    "longitude": 77.0830764
+  },
+  {
+    "station_name": "Panchsheel Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5423747,
+    "longitude": 77.2210916
+  },
+  {
+    "station_name": "Pandit Shree Ram Sharma",
+    "line_name": "Delhi Metro",
+    "latitude": 28.689281,
+    "longitude": 76.9511988
+  },
+  {
+    "station_name": "Paschim Vihar East",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6773563,
+    "longitude": 77.1122823
+  },
+  {
+    "station_name": "Paschim Vihar West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.678613,
+    "longitude": 77.1022154
+  },
+  {
+    "station_name": "Patel Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6229664,
+    "longitude": 77.214031
+  },
+  {
+    "station_name": "Patel Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6450127,
+    "longitude": 77.1692817
+  },
+  {
+    "station_name": "Peera Garhi",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6798074,
+    "longitude": 77.0926793
+  },
+  {
+    "station_name": "Phase 3 Station",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4935677,
+    "longitude": 77.093661
+  },
+  {
+    "station_name": "Prashant Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7130743,
+    "longitude": 77.1387306
+  },
+  {
+    "station_name": "Pratap Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6667177,
+    "longitude": 77.1988974
+  },
+  {
+    "station_name": "Preet Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6414176,
+    "longitude": 77.2952819
+  },
+  {
+    "station_name": "Pul Bangash",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6664068,
+    "longitude": 77.2074156
+  },
+  {
+    "station_name": "Punjabi Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.672995,
+    "longitude": 77.1461239
+  },
+  {
+    "station_name": "Punjabi Bagh West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6727671,
+    "longitude": 77.1391976
+  },
+  {
+    "station_name": "Qutab Minar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.512951,
+    "longitude": 77.1864532
+  },
+  {
+    "station_name": "R. K. Puram",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5503805,
+    "longitude": 77.1855231
+  },
+  {
+    "station_name": "Raj Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6770876,
+    "longitude": 77.3468279
+  },
+  {
+    "station_name": "Rajdhani Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6823085,
+    "longitude": 77.0439437
+  },
+  {
+    "station_name": "Rajendra Place",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6424955,
+    "longitude": 77.1782756
+  },
+  {
+    "station_name": "Rajiv Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6327062,
+    "longitude": 77.2193123
+  },
+  {
+    "station_name": "Rajiv Chowk",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6327786,
+    "longitude": 77.2196985
+  },
+  {
+    "station_name": "Rajouri Garden (Blue Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6490563,
+    "longitude": 77.1227198
+  },
+  {
+    "station_name": "Rajouri Garden (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6511896,
+    "longitude": 77.1242597
+  },
+  {
+    "station_name": "Ramakrishna Ashram Marg",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6392436,
+    "longitude": 77.2085787
+  },
+  {
+    "station_name": "Ramesh Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6527444,
+    "longitude": 77.1316496
+  },
+  {
+    "station_name": "Rithala",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7208064,
+    "longitude": 77.1071813
+  },
+  {
+    "station_name": "Rohini East",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7075774,
+    "longitude": 77.1259971
+  },
+  {
+    "station_name": "Rohini Sector 18, 19",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7383795,
+    "longitude": 77.1398526
+  },
+  {
+    "station_name": "Rohini West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7149569,
+    "longitude": 77.115385
+  },
+  {
+    "station_name": "Sadar Bazar Cantonment",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5771145,
+    "longitude": 77.1111279
+  },
+  {
+    "station_name": "Saket",
+    "line_name": "Delhi Metro",
+    "latitude": 28.521168,
+    "longitude": 77.2022237
+  },
+  {
+    "station_name": "Samaypur Badli",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7446411,
+    "longitude": 77.1382701
+  },
+  {
+    "station_name": "Sarai Kale Khan - Nizamuddin",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5887494,
+    "longitude": 77.2572494
+  },
+  {
+    "station_name": "Sarojini Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.575817,
+    "longitude": 77.1980786
+  },
+  {
+    "station_name": "Satguru Ramsingh Marg",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6620531,
+    "longitude": 77.1577026
+  },
+  {
+    "station_name": "Sector 42-43",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4574254,
+    "longitude": 77.0969529
+  },
+  {
+    "station_name": "Sector 53-54",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4463829,
+    "longitude": 77.1004632
+  },
+  {
+    "station_name": "Sector 54 Chowk",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4329768,
+    "longitude": 77.1048971
+  },
+  {
+    "station_name": "Sector 55–56",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4233556,
+    "longitude": 77.1051327
+  },
+  {
+    "station_name": "Seelampur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6698165,
+    "longitude": 77.2668137
+  },
+  {
+    "station_name": "Seva Teerth",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6095136,
+    "longitude": 77.211796
+  },
+  {
+    "station_name": "Shadipur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6515829,
+    "longitude": 77.1582587
+  },
+  {
+    "station_name": "Shahdara",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6734298,
+    "longitude": 77.2898858
+  },
+  {
+    "station_name": "Shaheed Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6766619,
+    "longitude": 77.3339154
+  },
+  {
+    "station_name": "Shakurpur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6857668,
+    "longitude": 77.1496094
+  },
+  {
+    "station_name": "Shalimar Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7019574,
+    "longitude": 77.1654317
+  },
+  {
+    "station_name": "Shankar Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5608462,
+    "longitude": 77.1402814
+  },
+  {
+    "station_name": "Shastri Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6700885,
+    "longitude": 77.1818589
+  },
+  {
+    "station_name": "Shastri Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6684339,
+    "longitude": 77.2505301
+  },
+  {
+    "station_name": "Shiv Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.721381,
+    "longitude": 77.2894599
+  },
+  {
+    "station_name": "Shivaji Park",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6750317,
+    "longitude": 77.1304722
+  },
+  {
+    "station_name": "Shivaji Stadium",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6288963,
+    "longitude": 77.2113218
+  },
+  {
+    "station_name": "Shree Ram Mandir Mayur Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6058619,
+    "longitude": 77.2987023
+  },
+  {
+    "station_name": "Sikanderpur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4812716,
+    "longitude": 77.0930017
+  },
+  {
+    "station_name": "Sikanderpur RMRG Station",
+    "line_name": "Rapid Metro Gurgaon",
+    "latitude": 28.4809969,
+    "longitude": 77.0944367
+  },
+  {
+    "station_name": "Sir M. Vishweshwaraiah Moti Bagh",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5785326,
+    "longitude": 77.175741
+  },
+  {
+    "station_name": "Soorghat",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7102223,
+    "longitude": 77.2274526
+  },
+  {
+    "station_name": "South Extension",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5685664,
+    "longitude": 77.2205677
+  },
+  {
+    "station_name": "Subhash Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6404593,
+    "longitude": 77.1051815
+  },
+  {
+    "station_name": "Sukhdev Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5597477,
+    "longitude": 77.2749004
+  },
+  {
+    "station_name": "Sultanpur",
+    "line_name": "Delhi Metro",
+    "latitude": 28.4991235,
+    "longitude": 77.1613745
+  },
+  {
+    "station_name": "Supreme Court",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6234752,
+    "longitude": 77.2425278
+  },
+  {
+    "station_name": "Surajmal Stadium",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6818775,
+    "longitude": 77.074
+  },
+  {
+    "station_name": "Tagore Garden",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6437265,
+    "longitude": 77.11282
+  },
+  {
+    "station_name": "Terminal 1 IGI Airport",
+    "line_name": "Delhi Metro",
+    "latitude": 28.564835,
+    "longitude": 77.1226566
+  },
+  {
+    "station_name": "Tikri Border",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6880254,
+    "longitude": 76.9640828
+  },
+  {
+    "station_name": "Tikri Kalan",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6868849,
+    "longitude": 76.9772082
+  },
+  {
+    "station_name": "Tilak Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6365482,
+    "longitude": 77.0964961
+  },
+  {
+    "station_name": "Tis Hazari",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6671626,
+    "longitude": 77.2166306
+  },
+  {
+    "station_name": "Trilokpuri Sanjay Lake",
+    "line_name": "Delhi Metro",
+    "latitude": 28.613453,
+    "longitude": 77.3088549
+  },
+  {
+    "station_name": "Udyog Nagar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.681103,
+    "longitude": 77.0808492
+  },
+  {
+    "station_name": "Uttam Nagar East",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6248465,
+    "longitude": 77.0652861
+  },
+  {
+    "station_name": "Uttam Nagar West",
+    "line_name": "Delhi Metro",
+    "latitude": 28.621757,
+    "longitude": 77.0557122
+  },
+  {
+    "station_name": "Vaishali",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6496701,
+    "longitude": 77.339575
+  },
+  {
+    "station_name": "Vasant Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.557827,
+    "longitude": 77.1611168
+  },
+  {
+    "station_name": "Vidhan Sabha",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6863222,
+    "longitude": 77.2217271
+  },
+  {
+    "station_name": "Vinobapuri",
+    "line_name": "Delhi Metro",
+    "latitude": 28.565871,
+    "longitude": 77.2492973
+  },
+  {
+    "station_name": "Vishwa Vidyalaya",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6950772,
+    "longitude": 77.2147459
+  },
+  {
+    "station_name": "Welcome (Pink Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6724018,
+    "longitude": 77.2770239
+  },
+  {
+    "station_name": "Welcome (Red Line)",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6717907,
+    "longitude": 77.2778473
+  },
+  {
+    "station_name": "Yamuna Bank",
+    "line_name": "Delhi Metro",
+    "latitude": 28.6233124,
+    "longitude": 77.268013
+  },
+  {
+    "station_name": "Yamuna Vihar",
+    "line_name": "Delhi Metro",
+    "latitude": 28.7023762,
+    "longitude": 77.2773106
+  },
+  {
+    "station_name": "Yashobhoomi Dwarka Sector 25",
+    "line_name": "Delhi Metro",
+    "latitude": 28.5508323,
+    "longitude": 77.0453073
+  }
+]

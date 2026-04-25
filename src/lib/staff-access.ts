@@ -1,10 +1,9 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { supabaseServer } from "@/lib/supabase-server";
 import type { Tables } from "@/types/supabase";
-import { upsertProfileFromUser } from "@/lib/auth/profile";
+import { getCurrentViewer, upsertProfileFromUser } from "@/lib/auth/profile";
 
 export type StaffRole = "admin" | "sales";
 
@@ -19,20 +18,22 @@ function getBootstrapAdminEmails() {
 }
 
 export async function getCurrentStaffContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentViewer();
 
   if (!user) {
-    return { user: null, staffUser: null as StaffUser | null, profile: null as Profile | null, bootstrapAdmin: false };
+    return {
+      user: null,
+      staffUser: null as StaffUser | null,
+      profile: null as Profile | null,
+      bootstrapAdmin: false,
+      bootstrapAdminAllowed: false,
+    };
   }
 
   await upsertProfileFromUser(user);
 
-  const [{ data: staffUser }, { data: profile }, { count: approvedAdminCount }] = await Promise.all([
+  const [{ data: staffUser }, { count: approvedAdminCount }] = await Promise.all([
     supabaseServer.from("staff_users").select("*").eq("user_id", user.id).maybeSingle(),
-    supabaseServer.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     supabaseServer
       .from("staff_users")
       .select("user_id", { count: "exact", head: true })
