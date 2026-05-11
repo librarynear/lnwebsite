@@ -11,7 +11,15 @@ export function HomeSearchShell() {
 
     function updateCompactState() {
       ticking = false;
-      setIsCompact(window.scrollY > 72);
+      
+      // Use hysteresis (a deadzone) to prevent rapid toggling when scrolling
+      // right around the threshold. Shrink at 90px, but don't expand until
+      // scrolling back up past 40px.
+      setIsCompact((current) => {
+        if (current && window.scrollY <= 40) return false;
+        if (!current && window.scrollY >= 90) return true;
+        return current;
+      });
     }
 
     function onScroll() {
@@ -20,19 +28,21 @@ export function HomeSearchShell() {
       window.requestAnimationFrame(updateCompactState);
     }
 
+    // Initial check
     updateCompactState();
+    
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
     <section
-      className={`sticky top-16 md:top-20 z-40 w-full border-b border-border/40 bg-white/95 backdrop-blur-xl transition-[padding,box-shadow] duration-300 ease-out ${
+      className={`sticky top-16 md:top-20 z-40 w-full border-b border-border/40 bg-white/95 backdrop-blur-xl transition-all duration-300 ease-out ${
         isCompact ? "py-2.5 shadow-sm" : "py-5 md:py-8"
       }`}
     >
       <div
-        className={`mx-auto w-full px-4 transition-[max-width] duration-300 ease-out ${
+        className={`mx-auto w-full px-4 transition-all duration-300 ease-out ${
           isCompact ? "max-w-[500px]" : "max-w-[560px]"
         }`}
       >
