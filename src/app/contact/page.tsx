@@ -23,7 +23,7 @@ export default function ContactPage() {
 
       <section className="container mx-auto grid gap-6 px-6 py-12 md:grid-cols-3 md:px-10">
         <a
-          href="tel:+919354610893"
+          href="tel:+918796190507"
           className="rounded-3xl border border-border bg-white p-6 shadow-sm transition-colors hover:bg-muted/30"
         >
           <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -31,7 +31,7 @@ export default function ContactPage() {
           </div>
           <h2 className="text-lg font-bold text-black">Phone</h2>
           <p className="mt-2 text-sm text-muted-foreground">Call us for quick owner onboarding support.</p>
-          <p className="mt-4 text-sm font-semibold text-black">9354610893</p>
+          <p className="mt-4 text-sm font-semibold text-black">8796190507</p>
         </a>
 
         <a
