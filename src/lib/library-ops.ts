@@ -19,7 +19,7 @@ export type LibraryOpsFilters = {
   verified?: string;
   sort?: string;
   page?: number;
-  allowedLocalities?: string[];
+  allowedLocalityIds?: string[];
 };
 
 export async function getLibraryOpsPage({
@@ -29,14 +29,14 @@ export async function getLibraryOpsPage({
   verified,
   sort,
   page = 1,
-  allowedLocalities,
+  allowedLocalityIds,
 }: LibraryOpsFilters) {
   const pageSize = 100;
   const safePage = Math.max(1, page);
   const from = (safePage - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  if (Array.isArray(allowedLocalities) && allowedLocalities.length === 0) {
+  if (Array.isArray(allowedLocalityIds) && allowedLocalityIds.length === 0) {
     return {
       libraries: [] as AdminLibraryBranch[],
       totalCount: 0,
@@ -62,8 +62,8 @@ export async function getLibraryOpsPage({
     query = query.eq("locality", locality);
   }
 
-  if (allowedLocalities && allowedLocalities.length > 0) {
-    query = query.in("locality", allowedLocalities);
+  if (allowedLocalityIds && allowedLocalityIds.length > 0) {
+    query = query.in("locality_id", allowedLocalityIds);
   }
 
   if (verified === "verified") {

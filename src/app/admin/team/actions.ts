@@ -71,18 +71,28 @@ export async function addStaffByEmail(formData: FormData): Promise<void> {
 
 export async function assignLocality(formData: FormData): Promise<void> {
   const userId = formData.get("user_id") as string;
-  const city = formData.get("city") as string;
-  const locality = formData.get("locality") as string;
+  const localityId = formData.get("locality_id") as string;
   const actorUserId = await getCurrentActorUserId();
 
-  if (!userId || !city || !locality) {
+  if (!userId || !localityId) {
+    redirect(`/admin/team/${userId}`);
+  }
+
+  const { data: locality } = await supabaseServer
+    .from("localities")
+    .select("id, city, name")
+    .eq("id", localityId)
+    .maybeSingle();
+
+  if (!locality) {
     redirect(`/admin/team/${userId}`);
   }
 
   const { error } = await supabaseServer.from("sales_locality_assignments").insert({
     user_id: userId,
-    city,
-    locality,
+    locality_id: locality.id,
+    city: locality.city,
+    locality: locality.name,
     assigned_by: actorUserId,
   });
 

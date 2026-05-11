@@ -52,6 +52,7 @@ export type Database = {
           last_verification_updated_at?: string | null;
           last_verification_updated_by?: string | null;
           source_submission_id?: string | null;
+          locality_id?: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["library_branches"]["Row"]> & {
           slug: string;
@@ -263,6 +264,7 @@ export type Database = {
           user_id: string;
           city: string;
           locality: string;
+          locality_id: string | null;
           assigned_by: string | null;
           created_at: string | null;
         };
@@ -272,6 +274,23 @@ export type Database = {
           locality: string;
         };
         Update: Partial<Database["public"]["Tables"]["sales_locality_assignments"]["Row"]>;
+        Relationships: [];
+      };
+      localities: {
+        Row: {
+          id: string;
+          city: string;
+          name: string;
+          slug: string | null;
+          is_active: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["localities"]["Row"]> & {
+          city: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["localities"]["Row"]>;
         Relationships: [];
       };
       library_activity_logs: {

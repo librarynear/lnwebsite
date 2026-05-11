@@ -39,12 +39,11 @@ export default async function AdminTeamMemberPage({
     supabaseServer.from("sales_locality_assignments").select("*").eq("user_id", id).order("city"),
     supabaseServer.from("library_activity_logs").select("*").eq("actor_user_id", id).order("created_at", { ascending: false }).limit(25),
     supabaseServer
-      .from("library_branches")
-      .select("city, locality")
-      .not("city", "is", null)
-      .not("locality", "is", null)
+      .from("localities")
+      .select("id, city, name")
+      .eq("is_active", true)
       .order("city")
-      .order("locality"),
+      .order("name"),
   ]);
 
   if (!profile) notFound();
@@ -52,13 +51,12 @@ export default async function AdminTeamMemberPage({
   const totalActions = (activityLogs ?? []).length;
   const verifiedActions = (activityLogs ?? []).filter((item) => item.action_type === "verification_updated").length;
   const editActions = (activityLogs ?? []).filter((item) => item.action_type === "library_updated").length;
-  const assignmentOptions = Array.from(
-    new Map(
-      (localityRows ?? [])
-        .filter((row) => row.city && row.locality)
-        .map((row) => [`${row.city}::${row.locality}`, { city: row.city!, locality: row.locality! }]),
-    ).values(),
-  );
+  const assignmentOptions = (localityRows ?? [])
+    .filter((row) => row.city && row.name)
+    .map((row) => ({ id: row.id, city: row.city, locality: row.name }));
+  const existingAssignmentLocalityIds = (assignments ?? [])
+    .map((assignment) => assignment.locality_id)
+    .filter((value): value is string => Boolean(value));
 
   return (
     <div className="p-8 space-y-8">
@@ -108,10 +106,7 @@ export default async function AdminTeamMemberPage({
           <AssignmentForm
             userId={profile.id}
             options={assignmentOptions}
-            existingAssignments={(assignments ?? []).map((assignment) => ({
-              city: assignment.city,
-              locality: assignment.locality,
-            }))}
+            existingAssignmentLocalityIds={existingAssignmentLocalityIds}
             action={assignLocality}
           />
 

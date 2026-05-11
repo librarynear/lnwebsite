@@ -27,12 +27,14 @@ export default async function SalesLibrariesPage({
 
   const { data: assignments } = await supabaseServer
     .from("sales_locality_assignments")
-    .select("locality, city")
+    .select("locality, city, locality_id")
     .eq("user_id", staff.user.id);
 
   const normalizedAssignments = (assignments ?? []).filter((assignment) => !city || assignment.city === city);
-  const allowedLocalities = staff.effectiveRole === "sales"
-    ? normalizedAssignments.map((assignment) => assignment.locality)
+  const allowedLocalityIds = staff.effectiveRole === "sales"
+    ? normalizedAssignments
+        .map((assignment) => assignment.locality_id)
+        .filter((value): value is string => Boolean(value))
     : undefined;
 
   const { libraries, totalCount, pageSize, error } = await getLibraryOpsPage({
@@ -41,7 +43,7 @@ export default async function SalesLibrariesPage({
     verified,
     sort,
     page: currentPage,
-    allowedLocalities,
+    allowedLocalityIds,
   });
 
   if (error) {
