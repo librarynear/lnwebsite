@@ -1,11 +1,18 @@
 import prisma from "@/lib/prisma"
 import Link from "next/link"
+import { redirect } from "next/navigation"
+import { getSession } from "@/app/actions/auth-actions"
 import { Star, Heart } from "lucide-react"
 import { ClientSearch } from "./ClientSearch"
 
 export const dynamic = 'force-dynamic'
 
 export default async function LibrariesPage(props: any) {
+  const session = await getSession();
+  if (session?.role === 'LIBRARIAN') {
+    redirect('/dashboard');
+  }
+
   const searchParams = await props.searchParams;
   const query = searchParams?.query || "";
   const isNearMe = !!searchParams?.lat && !!searchParams?.lng;

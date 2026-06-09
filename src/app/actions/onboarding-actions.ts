@@ -6,8 +6,8 @@ import { redirect } from "next/navigation"
 
 export async function completeOnboarding(formData: FormData) {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN') {
-    throw new Error("Unauthorized");
+  if (!session) {
+    throw new Error("Unauthorized: Please sign in first");
   }
 
   const name = formData.get("name") as string;
@@ -54,6 +54,12 @@ export async function completeOnboarding(formData: FormData) {
       city: "Demo City", // Default since it wasn't in onboarding MVP form
       locality: "Demo Locality",
     }
+  });
+
+  // Upgrade the user to a LIBRARIAN
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: { role: 'LIBRARIAN' }
   });
 
   redirect("/dashboard");
