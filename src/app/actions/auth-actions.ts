@@ -103,6 +103,11 @@ export async function signup(prevState: any, formData: FormData) {
     }
   }
 
+  // If email confirmation is required, session will be null
+  if (!data.session) {
+    return { success: 'Please check your email to verify your account!' }
+  }
+
   redirect('/')
 }
 

@@ -35,6 +35,13 @@ export default function SignupPage() {
             </div>
           )}
 
+          {state?.success && (
+            <div className="p-4 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200 flex flex-col gap-2">
+              <span className="font-bold text-base">Check your email!</span>
+              <span>{state.success}</span>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input 

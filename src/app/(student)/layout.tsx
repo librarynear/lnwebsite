@@ -17,8 +17,8 @@ export default async function StudentLayout({ children }: { children: ReactNode 
 
         <div className="flex items-center gap-6">
           <nav className="hidden md:flex gap-6">
-            <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Find a Library
+            <Link href="/onboarding" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              List Your Library
             </Link>
             {session && (
               <Link href="/student/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
