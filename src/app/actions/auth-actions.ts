@@ -32,7 +32,7 @@ export async function getSession() {
 
   if (!user) return null;
 
-  return { userId: user.id, role: user.role };
+  return { userId: user.id, role: user.role, email: user.email };
 }
 
 export async function login(prevState: any, formData: FormData) {

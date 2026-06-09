@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   STUDENT
   LIBRARIAN
+  ADMIN
 }
 
 model User {
@@ -61,7 +62,7 @@ model Library {
   
   // Banking/KYC (Handled by Razorpay)
   paymentAccountId String?
-  kycStatus        String?   @default("PENDING")
+  kycStatus        KycStatus @default(PENDING)
 
   seats         Seat[]
   plans         Plan[]
@@ -71,6 +72,12 @@ model Library {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum SeatType {

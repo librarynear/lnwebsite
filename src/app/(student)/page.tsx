@@ -18,14 +18,17 @@ export default async function LibrariesPage(props: any) {
   const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
 
   let libraries = await prisma.library.findMany({
-    where: query ? {
-      OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { locality: { contains: query, mode: 'insensitive' } },
-        { metroStation: { contains: query, mode: 'insensitive' } },
-        { city: { contains: query, mode: 'insensitive' } }
-      ]
-    } : undefined,
+    where: {
+      kycStatus: "APPROVED",
+      ...(query ? {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { locality: { contains: query, mode: 'insensitive' } },
+          { metroStation: { contains: query, mode: 'insensitive' } },
+          { city: { contains: query, mode: 'insensitive' } }
+        ]
+      } : {})
+    },
     include: {
       plans: true,
       seats: true,
