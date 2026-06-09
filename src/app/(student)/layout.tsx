@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ReactNode } from "react";
+import { logout } from "@/app/actions/auth-actions";
 
 export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
@@ -24,9 +25,11 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
             <Link href="/student/dashboard" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Profile
             </Link>
-            <button className="text-sm font-medium text-destructive hover:opacity-80 transition-colors">
-              Logout
-            </button>
+            <form action={logout}>
+              <button type="submit" className="text-sm font-medium text-destructive hover:opacity-80 transition-colors">
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </header>

@@ -6,7 +6,9 @@ const envs = {
   RAZORPAY_KEY_SECRET: "05lLAKpRASK6FeTSDR1ztIK4",
   NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT: "https://ik.imagekit.io/focusdesk",
   NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY: "public_S+7Rxy8bxpnUY1iqcyTtIJNIJj0=",
-  IMAGEKIT_PRIVATE_KEY: "private_PIkkTsCHgkhA3lLKUqOMLlB38L0="
+  IMAGEKIT_PRIVATE_KEY: "private_PIkkTsCHgkhA3lLKUqOMLlB38L0=",
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJvbW90ZWQtZGlub3NhdXItNjMuY2xlcmsuYWNjb3VudHMuZGV2JA",
+  CLERK_SECRET_KEY: "sk_test_erEHcHwf3C5o4H3irkRu3IgV62If22BUiABm4yeiPN"
 };
 
 for (const [key, value] of Object.entries(envs)) {

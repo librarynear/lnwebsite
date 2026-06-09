@@ -1,7 +1,9 @@
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { getSession } from "./actions/auth-actions";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 md:px-12">
@@ -9,21 +11,20 @@ export default function Home() {
           FocusDesk
         </div>
         <div className="flex gap-4 items-center">
-          <Show when="signed-out">
-            <SignInButton mode="modal">
-              <button className="text-sm font-medium hover:text-primary transition-colors py-2">
+          {!session ? (
+            <>
+              <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors py-2">
                 Sign In
-              </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 transition-opacity">
+              </Link>
+              <Link href="/signup" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:opacity-90 transition-opacity">
                 Register
-              </button>
-            </SignUpButton>
-          </Show>
-          <Show when="signed-in">
-            <UserButton afterSignOutUrl="/" />
-          </Show>
+              </Link>
+            </>
+          ) : (
+            <Link href={session.role === 'LIBRARIAN' ? '/dashboard' : '/student/dashboard'} className="text-sm font-medium bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80 transition-colors">
+              Go to Dashboard
+            </Link>
+          )}
         </div>
       </header>
 
