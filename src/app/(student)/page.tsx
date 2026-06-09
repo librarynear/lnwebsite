@@ -32,30 +32,13 @@ export default async function LibrariesPage(props: any) {
     }
   });
 
-  // Sort Kripa and Gyan Vatika to the top, then sort by distance if Near Me is active
+  // Sort by distance if Near Me is active
   libraries.sort((a, b) => {
-    // Exact name matches for pinning
-    const aIsKripa = a.name === "Kripa Library";
-    const bIsKripa = b.name === "Kripa Library";
-    const aIsGyan = a.name === "Gyan Vatika Library";
-    const bIsGyan = b.name === "Gyan Vatika Library";
-
-    // 1. Kripa comes absolutely first
-    if (aIsKripa && !bIsKripa) return -1;
-    if (!aIsKripa && bIsKripa) return 1;
-
-    // 2. Gyan comes second
-    if (aIsGyan && !bIsGyan) return -1;
-    if (!aIsGyan && bIsGyan) return 1;
-
-    // 3. Normal sorting (by metro distance if near me is active)
     if (isNearMe) {
       const distA = a.metroDistance || 999;
       const distB = b.metroDistance || 999;
       return distA - distB;
     }
-
-    // Default: return 0 to maintain original DB order
     return 0;
   });
 
@@ -100,13 +83,6 @@ export default async function LibrariesPage(props: any) {
                       alt={library.name}
                       className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
-                    
-                    {/* Verified Badge */}
-                    {(library.name === "Kripa Library" || library.name === "Gyan Vatika Library") && (
-                      <div className="absolute top-3 left-3 bg-background/95 backdrop-blur-sm px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold text-foreground shadow-sm uppercase tracking-wide">
-                        Verified
-                      </div>
-                    )}
                     
                     {/* Heart Icon */}
                     <button className="absolute top-3 right-3 text-white/80 hover:text-white hover:scale-110 transition-all drop-shadow-md">

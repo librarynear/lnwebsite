@@ -11,6 +11,32 @@ export default async function LibrarianDashboardPage() {
   const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
   if (!library) redirect("/onboarding");
 
+  const studentCount = (await prisma.booking.findMany({
+    where: { libraryId: library.id, status: 'CONFIRMED' },
+    distinct: ['studentId']
+  })).length;
+
+  const totalSeats = await prisma.seat.count({ where: { libraryId: library.id } }) || library.seatsAvailable || 1;
+  const bookedSeats = await prisma.booking.count({ 
+    where: { 
+      libraryId: library.id, 
+      status: 'CONFIRMED',
+      startTime: { lte: new Date() },
+      endTime: { gte: new Date() }
+    } 
+  });
+  
+  const occupancyPercentage = Math.round((bookedSeats / totalSeats) * 100);
+  const pendingQueries = await prisma.query.count({ where: { libraryId: library.id } });
+
+  // Fetch recent bookings
+  const recentBookings = await prisma.booking.findMany({
+    where: { libraryId: library.id },
+    include: { student: true, plan: true, seat: true },
+    orderBy: { createdAt: 'desc' },
+    take: 3
+  });
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -34,11 +60,11 @@ export default async function LibrarianDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Active Students</p>
-              <h3 className="text-2xl font-bold text-foreground">124</h3>
+              <h3 className="text-2xl font-bold text-foreground">{studentCount}</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-success flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" /> +12% from last month
+            Real-time count
           </div>
         </div>
 
@@ -49,11 +75,11 @@ export default async function LibrarianDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Seat Occupancy</p>
-              <h3 className="text-2xl font-bold text-foreground">85%</h3>
+              <h3 className="text-2xl font-bold text-foreground">{occupancyPercentage}%</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-muted-foreground">
-            42 of 50 seats currently booked
+            {bookedSeats} of {totalSeats} seats currently booked
           </div>
         </div>
 
@@ -64,7 +90,7 @@ export default async function LibrarianDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
-              <h3 className="text-2xl font-bold text-foreground">8</h3>
+              <h3 className="text-2xl font-bold text-foreground">0</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-muted-foreground">
@@ -79,7 +105,7 @@ export default async function LibrarianDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Pending Queries</p>
-              <h3 className="text-2xl font-bold text-foreground">3</h3>
+              <h3 className="text-2xl font-bold text-foreground">{pendingQueries}</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-destructive">
@@ -93,24 +119,32 @@ export default async function LibrarianDashboardPage() {
         
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col">
           <div className="p-6 border-b border-border flex justify-between items-center">
-            <h2 className="text-xl font-bold text-foreground">Today's Activity</h2>
-            <button className="text-primary text-sm font-medium hover:underline">View All</button>
+            <h2 className="text-xl font-bold text-foreground">Recent Activity</h2>
+            <Link href="/dashboard/students" className="text-primary text-sm font-medium hover:underline">View All</Link>
           </div>
           <div className="p-6 flex-1">
             <div className="space-y-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5" />
-                    {i !== 3 && <div className="w-0.5 h-full bg-border mt-1" />}
+              {recentBookings.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-4">No recent activity</div>
+              ) : (
+                recentBookings.map((booking, i) => (
+                  <div key={booking.id} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5" />
+                      {i !== recentBookings.length - 1 && <div className="w-0.5 h-full bg-border mt-1" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">New student enrolled: <span className="font-bold">{booking.student?.name || 'Unknown'}</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {booking.seat ? `Booked Seat ${booking.seat.name}` : 'No seat assigned'} • {booking.plan?.name || 'Custom Plan'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 font-mono">
+                        {booking.createdAt.toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">New student enrolled: <span className="font-bold">Sarah Jenkins</span></p>
-                    <p className="text-xs text-muted-foreground mt-1">Booked Seat A-12 • Monthly Fixed Plan</p>
-                    <p className="text-xs text-muted-foreground mt-1 font-mono">10:42 AM</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
