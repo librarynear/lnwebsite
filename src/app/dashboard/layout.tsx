@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { MobileNav } from "./MobileNav";
-import { logout } from "@/app/actions/auth-actions";
+import { logout, getSession } from "@/app/actions/auth-actions";
+import prisma from "@/lib/prisma";
+import { ExternalLink } from "lucide-react";
 
-export default function LibrarianLayout({ children }: { children: ReactNode }) {
+export default async function LibrarianLayout({ children }: { children: ReactNode }) {
+  const session = await getSession();
+  const library = session ? await prisma.library.findFirst({ where: { librarianId: session.userId } }) : null;
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
@@ -30,6 +34,11 @@ export default function LibrarianLayout({ children }: { children: ReactNode }) {
           <Link href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Queries
           </Link>
+          {library && (
+            <Link href={`/library/${library.id}`} target="_blank" className="flex items-center justify-between px-4 py-2.5 rounded-lg font-medium text-primary hover:bg-primary/10 transition-colors mt-4 border border-primary/20">
+              View Public Page <ExternalLink className="w-4 h-4" />
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-sidebar-border mt-auto">

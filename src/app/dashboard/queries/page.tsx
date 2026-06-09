@@ -1,8 +1,17 @@
 import prisma from "@/lib/prisma";
 import { QueriesClient } from "./QueriesClient";
+import { getSession } from "@/app/actions/auth-actions";
+import { redirect } from "next/navigation";
 
 export default async function QueriesPage() {
+  const session = await getSession();
+  if (!session || session.role !== 'LIBRARIAN') redirect("/");
+
+  const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
+  if (!library) redirect("/onboarding");
+
   const queries = await prisma.query.findMany({
+    where: { libraryId: library.id },
     include: {
       student: true
     },

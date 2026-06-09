@@ -146,13 +146,12 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              alert("Payment Successful! Booking Confirmed.");
-              router.push("/libraries");
+              router.push("/checkout/success");
             } else {
-              alert("Payment verification failed.");
+              router.push("/checkout/failed");
             }
           } catch (e) {
-            alert("Error verifying payment.");
+            router.push("/checkout/failed");
           } finally {
             setIsProcessing(false);
           }
@@ -169,8 +168,8 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response: any){
-        alert("Payment Failed: " + response.error.description);
         setIsProcessing(false);
+        router.push("/checkout/failed");
       });
       rzp.open();
 

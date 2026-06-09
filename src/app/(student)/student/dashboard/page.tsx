@@ -1,6 +1,36 @@
-import { Calendar, Clock, MapPin, User as UserIcon } from "lucide-react";
+import { Calendar, Clock, MapPin, User as UserIcon, BookOpen, Key } from "lucide-react";
+import prisma from "@/lib/prisma";
+import { getSession } from "@/app/actions/auth-actions";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
-export default function StudentDashboardPage() {
+export default async function StudentDashboardPage() {
+  const session = await getSession();
+  if (!session || session.role !== 'STUDENT') redirect("/login");
+
+  const student = await prisma.user.findUnique({
+    where: { id: session.userId },
+  });
+
+  if (!student) redirect("/login");
+
+  const now = new Date();
+
+  // Fetch all bookings for this student, including full relational data
+  const allBookings = await prisma.booking.findMany({
+    where: { studentId: student.id },
+    include: {
+      library: true,
+      plan: true,
+      seat: true,
+      standaloneLocker: true
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const activeBookings = allBookings.filter(b => b.endTime > now);
+  const pastBookings = allBookings.filter(b => b.endTime <= now);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <h1 className="text-4xl font-heading font-bold text-foreground mb-8">My Dashboard</h1>
@@ -15,7 +45,7 @@ export default function StudentDashboardPage() {
                 <UserIcon className="w-8 h-8" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">John Doe</h2>
+                <h2 className="text-xl font-bold text-foreground">{student.name}</h2>
                 <p className="text-muted-foreground">Student</p>
               </div>
             </div>
@@ -23,11 +53,11 @@ export default function StudentDashboardPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">FocusDesk ID</p>
-                <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg tracking-widest text-center text-foreground border border-border/50">
-                  A9X3B2
+                <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg tracking-widest text-center text-foreground border border-border/50 select-all">
+                  {student.uniqueId}
                 </div>
                 <p className="text-xs text-center text-muted-foreground mt-2">
-                  Show this ID to the librarian for manual bookings
+                  Show this ID to the librarian for manual check-ins
                 </p>
               </div>
               
@@ -36,12 +66,14 @@ export default function StudentDashboardPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email</span>
-                  <span className="font-medium text-foreground">john@example.com</span>
+                  <span className="font-medium text-foreground">{student.email}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Phone</span>
-                  <span className="font-medium text-foreground">+1 234 567 8900</span>
-                </div>
+                {student.phone && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Phone</span>
+                    <span className="font-medium text-foreground">{student.phone}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -54,58 +86,110 @@ export default function StudentDashboardPage() {
           <div>
             <h2 className="text-2xl font-heading font-bold text-foreground mb-4">Active Bookings</h2>
             
-            <div className="bg-card rounded-2xl border border-border p-6 shadow-sm border-l-4 border-l-success">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="bg-success/10 text-success text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider">Confirmed</span>
-                    <span className="text-sm text-muted-foreground">Fixed Plan</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground">Central City Library</h3>
-                  <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-                    <MapPin className="w-4 h-4" /> Downtown Metro Station
-                  </div>
-                </div>
-                <div className="bg-muted px-4 py-3 rounded-xl text-center min-w-[120px]">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Seat</p>
-                  <p className="text-2xl font-bold text-primary">A-12</p>
-                </div>
+            {activeBookings.length === 0 ? (
+              <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center shadow-sm">
+                <BookOpen className="w-12 h-12 text-muted-foreground opacity-50 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-foreground">No Active Bookings</h3>
+                <p className="text-muted-foreground text-sm mt-1 mb-6">You don't have any ongoing library subscriptions.</p>
+                <Link href="/libraries" className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Find a Library
+                </Link>
               </div>
-              
-              <hr className="border-border my-4" />
-              
-              <div className="flex flex-wrap gap-6 text-sm">
-                <div className="flex items-center gap-2 text-foreground">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <span className="font-medium">Today, June 4th</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span className="font-medium">08:00 AM - 10:00 PM</span>
-                </div>
+            ) : (
+              <div className="space-y-4">
+                {activeBookings.map((booking) => (
+                  <div key={booking.id} className="bg-card rounded-2xl border border-border p-6 shadow-sm border-l-4 border-l-success">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${booking.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                            {booking.status}
+                          </span>
+                          <span className="text-sm text-muted-foreground font-medium">{booking.plan.name}</span>
+                        </div>
+                        <Link href={`/library/${booking.libraryId}`} className="text-xl font-bold text-foreground hover:underline inline-block">
+                          {booking.library.name}
+                        </Link>
+                        <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
+                          <MapPin className="w-4 h-4" /> {booking.library.locality}, {booking.library.city}
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 shrink-0">
+                        {booking.seat ? (
+                          <div className="bg-primary/5 border border-primary/20 px-4 py-3 rounded-xl text-center min-w-[80px]">
+                            <p className="text-xs text-primary uppercase tracking-wider font-bold mb-1">Seat</p>
+                            <p className="text-xl font-black text-primary">{booking.seat.name}</p>
+                          </div>
+                        ) : (
+                          <div className="bg-muted border border-border px-4 py-3 rounded-xl text-center min-w-[80px]">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Seat</p>
+                            <p className="text-sm font-bold text-foreground mt-1">FLEXIBLE</p>
+                          </div>
+                        )}
+
+                        {booking.hasLocker && (
+                          <div className="bg-muted border border-border px-4 py-3 rounded-xl text-center min-w-[80px]">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Locker</p>
+                            <p className="text-xl font-black text-foreground">
+                              {booking.standaloneLocker ? booking.standaloneLocker.name : "Attached"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <hr className="border-border my-4" />
+                    
+                    <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                      <div className="flex items-center gap-2 text-foreground">
+                        <Calendar className="w-4 h-4 text-primary" />
+                        <span className="font-medium">Valid until {booking.endTime.toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-foreground">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <span className="font-medium">
+                          {booking.plan.durationHours ? `${booking.plan.durationHours} hr access/day` : 'Full Day access'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-foreground">
+                        <Key className="w-4 h-4 text-primary" />
+                        <span className="font-medium">Access Code: {booking.id.split('-')[0].toUpperCase()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Past Bookings */}
-          <div>
-            <h2 className="text-2xl font-heading font-bold text-foreground mb-4">Past Bookings</h2>
-            
-            <div className="space-y-4">
-              <div className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-75">
-                <div>
-                  <h3 className="font-bold text-foreground">Tech Study Space</h3>
-                  <div className="flex items-center gap-4 text-sm mt-1">
-                    <span className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> May 28th</span>
-                    <span className="text-muted-foreground flex items-center gap-1">Seat B-05</span>
+          {pastBookings.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-heading font-bold text-foreground mb-4">Past Bookings</h2>
+              
+              <div className="space-y-3">
+                {pastBookings.map((booking) => (
+                  <div key={booking.id} className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-75 hover:opacity-100 transition-opacity">
+                    <div>
+                      <h3 className="font-bold text-foreground">{booking.library.name}</h3>
+                      <div className="flex items-center gap-4 text-sm mt-1">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" /> Expired {booking.endTime.toLocaleDateString()}
+                        </span>
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/library/${booking.libraryId}`} className="text-sm font-medium text-primary hover:underline self-start sm:self-center shrink-0">
+                      Book Again
+                    </Link>
                   </div>
-                </div>
-                <button className="text-sm font-medium text-primary hover:underline self-start sm:self-center">
-                  Leave a Review
-                </button>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
         </div>
       </div>

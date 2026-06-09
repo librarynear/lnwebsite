@@ -124,7 +124,7 @@ export function StudentsClient({ bookings, plans }: { bookings: any[], plans: an
                     </td>
                     <td className="p-4">
                       <div className="font-bold text-foreground">{booking.student.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{booking.student.phone}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{booking.student.email}</div>
                     </td>
                     <td className="p-4">
                       <div className="text-sm text-foreground">{booking.plan.name}</div>
