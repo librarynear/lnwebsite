@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  LIBRARIAN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  authId    String?  @unique // Supabase auth user ID
+  role      Role     @default(STUDENT)
+  email     String   @unique
+  password  String?  // Hashed password for MVP auth
+  name      String
+  phone     String?
+  area      String?
+  uniqueId  String?  @unique // 6-character alphanumeric
+  
+  // Relationships
+  libraries Library[]  @relation("LibrarianLibraries")
+  bookings  Booking[]
+  queries   Query[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Library {
+  id            String   @id @default(uuid())
+  librarianId   String
+  librarian     User     @relation("LibrarianLibraries", fields: [librarianId], references: [id])
+  name          String
+  managerName   String?
+  managerPhone  String?
+  address       String
+  locality      String?
+  city          String?
+  district      String?
+  state         String?
+  pinCode       String?
+
+  metroStation  String?
+  metroDistance Float?
+  googleMapsUrl String?
+  
+  openingTime   String?
+  closingTime   String?
+  
+  whatsapp      String?
+  description   String?
+  seatsAvailable Int?
+  photos        String[]
+
+  facilities    String[] 
+  
+  // Banking/KYC (Handled by Razorpay)
+  paymentAccountId String?
+  kycStatus        String?   @default("PENDING")
+
+  seats         Seat[]
+  plans         Plan[]
+  standaloneLockers StandaloneLocker[]
+  bookings      Booking[]
+  queries       Query[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum SeatType {
+  RESERVED
+  NORMAL
+  NON_RESERVABLE
+}
+
+model Seat {
+  id        String   @id @default(uuid())
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+  name      String   // e.g., "A1", "B2"
+  type      SeatType @default(NORMAL)
+  gridX     Int      // For the visual Instagram-style grid
+  gridY     Int
+  hasLocker Boolean  @default(false)
+  lockerPriceMonthly Float?
+  
+  bookings  Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PlanType {
+  FIXED
+  FLEXIBLE
+}
+
+model Plan {
+  id            String   @id @default(uuid())
+  libraryId     String
+  library       Library  @relation(fields: [libraryId], references: [id])
+  name          String   // e.g., "Monthly Fixed", "6-Hour Flexible"
+  type          PlanType
+  durationHours Int?     // Null for fixed whole-day/monthly
+  validityDays  Int      // 1 for daily, 30 for monthly, etc.
+  price         Float
+  discount      Float?
+  
+  bookings      Booking[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model StandaloneLocker {
+  id        String   @id @default(uuid())
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+  name      String   // e.g. "L1"
+  price     Float
+  
+  bookings  Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+  seatId    String?
+  seat      Seat?    @relation(fields: [seatId], references: [id])
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id])
+  
+  hasLocker Boolean  @default(false)
+  standaloneLockerId String?
+  standaloneLocker   StandaloneLocker? @relation(fields: [standaloneLockerId], references: [id])
+  
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(PENDING_PAYMENT)
+  paymentRef String? // Razorpay order ID or "CASH"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum QueryType {
+  FEEDBACK
+  COMPLAINT
+  REVIEW
+}
+
+model Query {
+  id        String   @id @default(uuid())
+  type      QueryType
+  content   String
+  rating    Int?     // For REVIEW type
+  
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+
+  createdAt DateTime @default(now())
+}
