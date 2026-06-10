@@ -121,8 +121,6 @@ body.scroll-down .navbar-sticky {
   transform: translateY(-100%);
 }
 
-@media (max-width: 767px) {
-  body.scroll-down .search-bar-sticky {
-    top: 0 !important;
-  }
+body.scroll-down .search-bar-sticky {
+  top: 0 !important;
 }
