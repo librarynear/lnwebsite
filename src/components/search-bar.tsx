@@ -547,20 +547,20 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             className={`relative overflow-hidden flex flex-col items-center justify-center gap-0.5 rounded-full border transition-all ${
               compact ? "h-8 w-14 md:w-auto md:px-2.5 md:flex-row md:gap-1.5" : "h-10 w-16 md:h-12 md:w-auto md:px-4 md:flex-row md:gap-1.5"
             } ${nearbyMode
-                ? "border-primary/40 text-primary shadow-sm"
-                : "border-slate-300 text-slate-900 hover:border-slate-400 hover:text-black shadow-sm"
+                ? "border-primary/30 text-black shadow-sm"
+                : "border-border/80 text-black hover:border-primary/30 shadow-sm"
               } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
             aria-label="Find libraries near me"
             title="Find libraries near me"
           >
-            <div className={`absolute inset-0 bg-gradient-to-r ${nearbyMode ? "from-blue-50 via-blue-100 to-blue-50" : "from-white via-slate-100 to-white"} bg-[length:200%_200%] animate-liquid z-0`} />
+            <div className={`absolute inset-0 bg-gradient-to-r ${nearbyMode ? "from-blue-100 via-indigo-200 to-blue-100" : "from-slate-100 via-slate-300 to-slate-100"} bg-[length:200%_200%] animate-liquid z-0`} />
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5">
               {nearbyLoading ? (
                 <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
               ) : (
                 <MapPin className="h-4 w-4 md:h-4 md:w-4" />
               )}
-              <span className="text-[10px] md:text-xs font-bold leading-none md:leading-normal tracking-tight">
+              <span className="text-[9px] md:text-xs font-medium leading-none md:leading-normal">
                 {nearbyPhase === "locating"
                   ? "Locating"
                   : nearbyPhase === "searching"
