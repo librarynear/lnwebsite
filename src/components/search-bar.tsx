@@ -544,29 +544,32 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             type="button"
             onClick={handleNearMeClick}
             disabled={nearbyLoading}
-            className={`flex flex-col items-center justify-center gap-0.5 rounded-full border transition-all ${
+            className={`relative overflow-hidden flex flex-col items-center justify-center gap-0.5 rounded-full border transition-all ${
               compact ? "h-8 w-12 md:w-auto md:px-2.5 md:flex-row md:gap-1.5" : "h-10 w-14 md:h-12 md:w-auto md:px-4 md:flex-row md:gap-1.5"
             } ${nearbyMode
-                ? "border-primary bg-primary/10 text-primary shadow-sm"
-                : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+                ? "border-primary/30 text-primary shadow-sm"
+                : "border-border/80 text-slate-700 hover:border-primary/30 hover:text-primary shadow-sm"
               } ${nearbyLoading ? "cursor-wait opacity-90" : ""}`}
             aria-label="Find libraries near me"
             title="Find libraries near me"
           >
-            {nearbyLoading ? (
-              <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
-            ) : (
-              <MapPin className="h-4 w-4 md:h-4 md:w-4" />
-            )}
-            <span className="text-[9px] md:text-xs font-semibold leading-none md:leading-normal">
-              {nearbyPhase === "locating"
-                ? "Locating"
-                : nearbyPhase === "searching"
-                  ? "Finding"
-                  : nearbyMode
-                    ? "Nearby"
-                    : "Near Me"}
-            </span>
+            <div className={`absolute inset-0 bg-gradient-to-r ${nearbyMode ? "from-blue-100 via-indigo-200 to-blue-100" : "from-slate-50 via-slate-200 to-slate-50"} animate-liquid -z-10`} />
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5">
+              {nearbyLoading ? (
+                <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
+              ) : (
+                <MapPin className="h-4 w-4 md:h-4 md:w-4" />
+              )}
+              <span className="text-[9px] md:text-xs font-semibold leading-none md:leading-normal">
+                {nearbyPhase === "locating"
+                  ? "Locating"
+                  : nearbyPhase === "searching"
+                    ? "Finding"
+                    : nearbyMode
+                      ? "Nearby"
+                      : "Near Me"}
+              </span>
+            </div>
           </button>
         </div>
       </form>
