@@ -115,3 +115,14 @@ body.nav-pending {
   background-size: 300% 300%;
   animation: liquid 8s ease-in-out infinite;
 }
+
+/* Scroll direction behavior for sticky headers */
+body.scroll-down .navbar-sticky {
+  transform: translateY(-100%);
+}
+
+@media (max-width: 767px) {
+  body.scroll-down .search-bar-sticky {
+    top: 0 !important;
+  }
+}

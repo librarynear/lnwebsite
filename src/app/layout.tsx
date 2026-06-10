@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { AuthSavedSync } from "@/components/auth/auth-saved-sync";
 import { NavigationFeedback } from "@/components/navigation-feedback";
+import { ScrollDirection } from "@/components/scroll-direction";
 import { Suspense } from "react";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -62,6 +63,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <PostHogProvider>
+            <ScrollDirection />
             <AuthSavedSync />
             <Suspense fallback={null}>
               <NavigationFeedback />

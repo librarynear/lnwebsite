@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
-import { MapPin, SlidersHorizontal, SearchX, ArrowRight, Navigation } from "lucide-react";
+import { MapPin, SlidersHorizontal, SearchX, ArrowRight, Navigation, BookOpen } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase-server";
 import {
   type LibraryCardData,
@@ -442,8 +442,10 @@ function LibraryCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <MapPin className="h-10 w-10 text-muted-foreground/20" />
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+            <BookOpen className="h-10 w-10 text-primary/20 mb-2 relative z-10" />
+            <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-widest relative z-10">Library</span>
           </div>
         )}
         <DeferredSaveButton libraryId={lib.id} />
@@ -633,7 +635,7 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(librariesSchema) }}
       />
-      <div className="sticky top-16 md:top-20 z-30 bg-white border-b border-border/50 py-2 md:py-3">
+      <div className="search-bar-sticky sticky top-16 md:top-20 z-30 bg-white border-b border-border/50 py-2 md:py-3 transition-all duration-300 ease-in-out">
         <div className="container mx-auto px-4 md:px-10">
           <div className="mx-auto flex w-full justify-center">
             <div className="w-full max-w-xl">
@@ -703,25 +705,28 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
           </aside>
 
           <div className="flex-1 min-w-0">
-            <div className="flex lg:hidden items-center gap-2 mb-5 overflow-x-auto no-scrollbar pb-1">
-              <div className="flex items-center gap-1 text-sm font-semibold border border-border rounded-full px-3 py-1.5 shrink-0">
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+            <div className="relative lg:hidden mb-5">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pr-6">
+                <div className="flex items-center gap-1 text-sm font-semibold border border-border rounded-full px-3 py-1.5 shrink-0">
+                  <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+                </div>
+                {nearbyMode && (
+                  <span className="flex items-center gap-1 bg-sky-50 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                    Nearby
+                  </span>
+                )}
+                {locality && (
+                  <span className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                    {locality}
+                  </span>
+                )}
+                {verifiedOnly && (
+                  <span className="flex items-center bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                    Verified only
+                  </span>
+                )}
               </div>
-              {nearbyMode && (
-                <span className="flex items-center gap-1 bg-sky-50 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                  Nearby
-                </span>
-              )}
-              {locality && (
-                <span className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                  {locality}
-                </span>
-              )}
-              {verifiedOnly && (
-                <span className="flex items-center bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                  Verified only
-                </span>
-              )}
+              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
             </div>
 
             {zeroResults ? (
