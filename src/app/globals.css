@@ -122,5 +122,11 @@ body.scroll-down .navbar-sticky {
 }
 
 body.scroll-down .search-bar-sticky {
-  top: 0 !important;
+  transform: translateY(-4rem); /* 64px (h-16) */
+}
+
+@media (min-width: 768px) {
+  body.scroll-down .search-bar-sticky {
+    transform: translateY(-5rem); /* 80px (h-20) */
+  }
 }

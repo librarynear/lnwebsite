@@ -37,7 +37,7 @@ export function HomeSearchShell() {
 
   return (
     <section
-      className={`search-bar-sticky sticky top-16 md:top-20 z-40 w-full border-b border-border/40 bg-white/95 backdrop-blur-xl transition-all duration-300 ease-out ${
+      className={`search-bar-sticky sticky top-16 md:top-20 z-40 w-full border-b border-border/40 bg-white/95 backdrop-blur-xl transition-all duration-300 ease-in-out ${
         isCompact ? "py-2.5 shadow-sm" : "py-5 md:py-8"
       }`}
     >
