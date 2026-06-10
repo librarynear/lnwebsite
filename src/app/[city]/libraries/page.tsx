@@ -633,8 +633,8 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(librariesSchema) }}
       />
-      <div className="sticky top-20 z-30 bg-white border-b border-border/50 py-3">
-        <div className="container mx-auto px-6 md:px-10">
+      <div className="sticky top-16 md:top-20 z-30 bg-white border-b border-border/50 py-2 md:py-3">
+        <div className="container mx-auto px-4 md:px-10">
           <div className="mx-auto flex w-full justify-center">
             <div className="w-full max-w-xl">
             <Suspense fallback={null}>
