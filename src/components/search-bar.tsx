@@ -497,12 +497,12 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
         className={`flex items-center w-full bg-white rounded-full border border-border transition-shadow ${
           compact
             ? "shadow-none pl-4 md:pl-5 pr-1.5 py-1.5"
-            : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] pl-4 md:pl-8 pr-1 md:pr-2 py-1 md:py-2"
+            : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] pl-4 md:pl-8 pr-1.5 md:pr-2 py-1.5 md:py-2"
         }`}
       >
-        <div className={`flex-1 flex flex-col justify-center min-w-0 ${compact ? "" : "py-1"}`}>
-          {!compact ? <span className="text-[10px] font-bold tracking-wider text-black md:text-[11px]">Where</span> : null}
-          <div className={`${compact ? "min-h-8" : "min-h-7 md:min-h-8"} flex items-center gap-2`}>
+        <div className={`flex-1 flex flex-col justify-center min-w-0 ${compact ? "" : "md:py-1"}`}>
+          {!compact ? <span className="hidden md:block text-[10px] font-bold tracking-wider text-black md:text-[11px]">Where</span> : null}
+          <div className={`${compact ? "min-h-8" : "min-h-10 md:min-h-8"} flex items-center gap-2`}>
             <input
               ref={inputRef}
               type="text"
@@ -528,13 +528,13 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             )}
           </div>
         </div>
-        <div className="ml-2 md:ml-3 flex shrink-0 items-center gap-1.5 md:gap-2 self-stretch">
+        <div className="ml-2 md:ml-3 flex shrink-0 items-center gap-2 self-stretch">
           <button
             type="button"
             onClick={handleNearMeClick}
             disabled={nearbyLoading}
-            className={`inline-flex items-center justify-center gap-1 md:gap-1.5 rounded-full border text-[11px] md:text-xs font-semibold tracking-wide transition-all ${
-              compact ? "h-8 px-2 md:px-2.5" : "h-8 px-2 md:h-9 md:px-3"
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border text-xs font-semibold tracking-wide transition-all ${
+              compact ? "h-8 w-8 md:w-auto md:px-2.5" : "h-10 w-10 md:h-12 md:w-auto md:px-4"
             } ${nearbyMode
                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                 : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
@@ -543,9 +543,9 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             title="Find libraries near me"
           >
             {nearbyLoading ? (
-              <Loader2 className="h-3 w-3 md:h-3.5 md:w-3.5 animate-spin" />
+              <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
             ) : (
-              <NearbyGlyph className="h-3 w-3 md:h-3.5 md:w-3.5" />
+              <NearbyGlyph className="h-4 w-4 md:h-4 md:w-4" />
             )}
             <span className="hidden sm:inline">
               {nearbyPhase === "locating"
@@ -559,7 +559,7 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
           </button>
           <button
             type="submit"
-            className={`${compact ? "h-8 w-8 md:h-10 md:w-10" : "h-8 w-8 md:h-12 md:w-12"} rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm`}
+            className={`${compact ? "h-8 w-8 md:h-10 md:w-10" : "h-10 w-10 md:h-12 md:w-12"} rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm`}
             aria-label="Search"
           >
             {loading ? (
