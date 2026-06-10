@@ -496,10 +496,21 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
         onSubmit={handleSearch}
         className={`flex items-center w-full bg-white rounded-full border border-border transition-shadow ${
           compact
-            ? "shadow-none pl-4 md:pl-5 pr-1.5 py-1.5"
-            : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] pl-4 md:pl-8 pr-1.5 md:pr-2 py-1.5 md:py-2"
+            ? "shadow-none pl-1.5 md:pl-2 pr-1.5 py-1.5"
+            : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] hover:shadow-[0_4px_22px_-2px_rgba(0,0,0,0.16)] pl-1.5 md:pl-2 pr-1.5 md:pr-2 py-1.5 md:py-2"
         }`}
       >
+        <button
+          type="submit"
+          className={`${compact ? "h-8 w-8 md:h-10 md:w-10" : "h-10 w-10 md:h-12 md:w-12"} rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm mr-2 md:mr-3`}
+          aria-label="Search"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin" strokeWidth={3} />
+          ) : (
+            <Search className="h-4 w-4 md:h-5 md:w-5" strokeWidth={3} />
+          )}
+        </button>
         <div className={`flex-1 flex flex-col justify-center min-w-0 ${compact ? "" : "md:py-1"}`}>
           {!compact ? <span className="hidden md:block text-[10px] font-bold tracking-wider text-black md:text-[11px]">Where</span> : null}
           <div className={`${compact ? "min-h-8" : "min-h-10 md:min-h-8"} flex items-center gap-2`}>
@@ -533,8 +544,8 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             type="button"
             onClick={handleNearMeClick}
             disabled={nearbyLoading}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-full border text-xs font-semibold tracking-wide transition-all ${
-              compact ? "h-8 w-8 md:w-auto md:px-2.5" : "h-10 w-10 md:h-12 md:w-auto md:px-4"
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-full border transition-all ${
+              compact ? "h-8 w-12 md:w-auto md:px-2.5 md:flex-row md:gap-1.5" : "h-10 w-14 md:h-12 md:w-auto md:px-4 md:flex-row md:gap-1.5"
             } ${nearbyMode
                 ? "border-primary bg-primary/10 text-primary shadow-sm"
                 : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
@@ -545,28 +556,17 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             {nearbyLoading ? (
               <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />
             ) : (
-              <NearbyGlyph className="h-4 w-4 md:h-4 md:w-4" />
+              <MapPin className="h-4 w-4 md:h-4 md:w-4" />
             )}
-            <span className="hidden sm:inline">
+            <span className="text-[9px] md:text-xs font-semibold leading-none md:leading-normal">
               {nearbyPhase === "locating"
-                ? "Locating..."
+                ? "Locating"
                 : nearbyPhase === "searching"
-                  ? "Finding..."
+                  ? "Finding"
                   : nearbyMode
                     ? "Nearby"
-                    : "Near me"}
+                    : "Near Me"}
             </span>
-          </button>
-          <button
-            type="submit"
-            className={`${compact ? "h-8 w-8 md:h-10 md:w-10" : "h-10 w-10 md:h-12 md:w-12"} rounded-full bg-primary text-white flex items-center justify-center shrink-0 hover:bg-primary/90 transition-colors shadow-sm`}
-            aria-label="Search"
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin" strokeWidth={3} />
-            ) : (
-              <Search className="h-4 w-4 md:h-5 md:w-5" strokeWidth={3} />
-            )}
           </button>
         </div>
       </form>
