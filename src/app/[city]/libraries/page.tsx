@@ -462,6 +462,7 @@ function LibraryCard({
             alt={`${lib.display_name} thumbnail`}
             fill
             priority={priority}
+            fetchPriority={priority ? "high" : "auto"}
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
@@ -761,17 +762,17 @@ async function LibrariesContent({
             />
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
-                {librariesWithCovers.map((lib, index) => (
-                  <LibraryCard
-                    key={lib.id}
-                    lib={lib}
-                    city={city}
-                    nearbyMode={nearbyMode}
-                    priority={index < 4}
-                  />
-                ))}
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
+                  {librariesWithCovers.map((lib, index) => (
+                    <LibraryCard
+                      key={lib.id}
+                      lib={lib}
+                      city={city}
+                      nearbyMode={nearbyMode}
+                      priority={index === 0}
+                    />
+                  ))}
+                </div>
 
               <div className="mt-10 grid gap-6 lg:grid-cols-2">
                 <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">

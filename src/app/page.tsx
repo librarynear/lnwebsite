@@ -227,7 +227,8 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
                       src={lib.coverImageUrl}
                       alt={`${lib.display_name} thumbnail`}
                       fill
-                      priority={index < 4}
+                      priority={index === 0}
+                      fetchPriority={index === 0 ? "high" : "auto"}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     />

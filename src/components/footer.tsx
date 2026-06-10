@@ -48,7 +48,7 @@ export function Footer() {
                   className="h-10 w-auto object-contain shrink-0"
                 />
                 <span className="text-2xl tracking-tight hidden sm:block">
-                  <span className="text-primary/80 font-semibold text-[22px]">Library</span>
+                  <span className="text-slate-800 font-semibold text-[22px]">Library</span>
                   <span className="text-primary font-bold text-[22px]">Near</span>
                 </span>
               </Link>
@@ -100,7 +100,7 @@ export function Footer() {
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-between border-t border-border pt-6">
-            <p className="text-[12px] text-muted-foreground/80 text-center md:text-left mb-4 md:mb-0 max-w-lg">
+            <p className="text-[12px] text-muted-foreground text-center md:text-left mb-4 md:mb-0 max-w-lg">
               ©2026 LibraryNear. Explore study spaces, save your shortlist, and connect students with trusted libraries.
             </p>
             <div className="flex items-center gap-3">

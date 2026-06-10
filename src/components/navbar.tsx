@@ -19,7 +19,7 @@ export async function Navbar() {
             priority
           />
           <span className="text-2xl tracking-tight hidden sm:block">
-            <span className="text-primary/80 font-semibold text-[22px]">Library</span><span className="text-primary font-bold text-[22px]">Near</span>
+            <span className="text-slate-800 font-semibold text-[22px]">Library</span><span className="text-primary font-bold text-[22px]">Near</span>
           </span>
         </IntentLink>
 
