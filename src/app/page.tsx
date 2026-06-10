@@ -9,9 +9,33 @@ import { logPerf, measureAsync } from "@/lib/perf";
 import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { HomeSearchShell } from "@/components/home-search-shell";
 import { IntentLink } from "@/components/intent-link";
+import { LibraryGridSkeleton } from "@/components/library-listing-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const revalidate = 120;
+
+function HomeSkeleton() {
+  return (
+    <>
+      <div className="w-full border-b border-border/50 bg-white shadow-sm">
+        <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+          <Skeleton className="h-9 w-32 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-20 rounded-full" />
+        </div>
+      </div>
+      <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
+        <div className="flex items-center justify-between mb-6">
+          <Skeleton className="h-7 w-48" />
+        </div>
+        <LibraryGridSkeleton count={10} gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10" />
+      </section>
+    </>
+  );
+}
 
 async function getLibraries(locality?: string, q?: string): Promise<LibraryCardData[]> {
   return runLibraryCardQuery((selectClause) => {
@@ -123,9 +147,7 @@ export async function generateMetadata({ searchParams }: HomeProps): Promise<Met
   };
 }
 
-export default async function Home({ searchParams }: HomeProps) {
-  const { locality, q } = await searchParams;
-
+async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
     measureAsync("libraries", () => getHomeLibraries(locality, q)),
     measureAsync("topLocalities", () => getHomeTopLocalities()),
@@ -139,11 +161,7 @@ export default async function Home({ searchParams }: HomeProps) {
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Suspense fallback={null}>
-        <HomeSearchShell />
-      </Suspense>
-
+    <>
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
           <IntentLink
@@ -247,6 +265,22 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
         )}
       </section>
+    </>
+  );
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const { locality, q } = await searchParams;
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Suspense fallback={null}>
+        <HomeSearchShell />
+      </Suspense>
+
+      <Suspense fallback={<HomeSkeleton />}>
+        <HomeContent locality={locality} q={q} />
+      </Suspense>
     </div>
   );
 }

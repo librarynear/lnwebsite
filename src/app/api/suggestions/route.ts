@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
       {
         headers: {
           "Server-Timing": toServerTiming(metrics),
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
       },
     );
@@ -140,6 +141,7 @@ export async function GET(req: NextRequest) {
         {
           headers: {
             "Server-Timing": toServerTiming(metrics),
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
           },
         },
       );
@@ -199,6 +201,7 @@ export async function GET(req: NextRequest) {
       {
         headers: {
           "Server-Timing": toServerTiming(metrics),
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
       },
     );
@@ -217,6 +220,7 @@ export async function GET(req: NextRequest) {
     {
       headers: {
         "Server-Timing": toServerTiming(metrics),
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
       },
     },
   );

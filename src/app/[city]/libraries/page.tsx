@@ -15,6 +15,30 @@ import { DeferredSaveButton } from "@/components/deferred-save-button";
 import { IntentLink } from "@/components/intent-link";
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
+import { LibraryGridSkeleton, FiltersSkeleton } from "@/components/library-listing-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function LibrariesPageSkeleton() {
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-6">
+        <Skeleton className="h-5 w-48" />
+      </div>
+      <div className="flex items-center justify-between mb-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="flex gap-10 mt-6">
+        <aside className="hidden lg:block w-56 shrink-0">
+          <FiltersSkeleton />
+        </aside>
+        <div className="flex-1 min-w-0">
+          <LibraryGridSkeleton count={12} gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10" />
+        </div>
+      </div>
+    </>
+  );
+}
 
 interface SearchResult extends LibraryCardData {
   distance_km?: number | null;
@@ -532,14 +556,25 @@ function ZeroResultState({
   );
 }
 
-export default async function LibrariesPage({ params, searchParams }: PageProps) {
-  const { city } = await params;
-  const { q, locality, sort, verified, nearby, lat, lng } = await searchParams;
-  const verifiedOnly = verified === "1";
-  const nearbyMode = nearby === "1";
-  const latitude = lat ? Number(lat) : undefined;
-  const longitude = lng ? Number(lng) : undefined;
-
+async function LibrariesContent({
+  city,
+  q,
+  locality,
+  sort,
+  verifiedOnly,
+  nearbyMode,
+  latitude,
+  longitude,
+}: {
+  city: string;
+  q?: string;
+  locality?: string;
+  sort?: string;
+  verifiedOnly: boolean;
+  nearbyMode: boolean;
+  latitude?: number;
+  longitude?: number;
+}) {
   const searchMeasurement = await measureAsync("searchLibraries", () =>
     nearbyMode
       ? searchLibraries(city, q, locality, sort, verifiedOnly, nearbyMode, latitude, longitude)
@@ -630,11 +665,150 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(librariesSchema) }}
       />
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <IntentLink href="/" className="hover:underline">Home</IntentLink>
+        <span>/</span>
+        <IntentLink href={`/${city}`} className="hover:underline capitalize">{cityLabel}</IntentLink>
+        <span>/</span>
+        <span className="text-black font-medium">Libraries</span>
+        {locality && (
+          <>
+            <span>/</span>
+            <span className="text-black font-medium">{locality}</span>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-bold text-black">{visibleTitle}</h1>
+        {!zeroResults && (
+          <span className="text-sm text-muted-foreground shrink-0">
+            {libraries.length} found
+            {nearbyMode ? (
+              <span className="ml-1 text-[11px] text-muted-foreground/70">(closest first)</span>
+            ) : (
+              usedRpc && q && <span className="ml-1 text-[11px] text-muted-foreground/60">(ranked)</span>
+            )}
+          </span>
+        )}
+      </div>
+
+      {nearbyMode && !zeroResults && (
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-800">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-sky-700 shadow-sm">
+            <Navigation className="h-3.5 w-3.5" />
+          </span>
+          Showing the 10 closest libraries to your current location
+        </div>
+      )}
+
+      <div className="flex gap-10 mt-6">
+        <aside className="hidden lg:block w-56 shrink-0">
+          <div className="sticky top-40">
+            <Suspense fallback={<LibraryFiltersSidebarFallback />}>
+              <LibraryFiltersSidebar
+                city={city}
+                locality={locality}
+                sort={sort}
+                q={q}
+                verifiedOnly={verifiedOnly}
+                nearbyMode={nearbyMode}
+                lat={lat?.toString()}
+                lng={lng?.toString()}
+                totalCount={libraries.length}
+              />
+            </Suspense>
+          </div>
+        </aside>
+
+        <div className="flex-1 min-w-0">
+          <div className="relative lg:hidden mb-5">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pr-6">
+              <div className="flex items-center gap-1 text-sm font-semibold border border-border rounded-full px-3 py-1.5 shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+              </div>
+              {nearbyMode && (
+                <span className="flex items-center gap-1 bg-sky-50 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                  Nearby
+                </span>
+              )}
+              {locality && (
+                <span className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                  {locality}
+                </span>
+              )}
+              {verifiedOnly && (
+                <span className="flex items-center bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
+                  Verified only
+                </span>
+              )}
+            </div>
+            <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+          </div>
+
+          {zeroResults ? (
+            <ZeroResultState
+              q={q}
+              locality={locality}
+              city={city}
+              suggestions={suggestionsWithCovers}
+              nearbyMode={nearbyMode}
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
+                {librariesWithCovers.map((lib, index) => (
+                  <LibraryCard
+                    key={lib.id}
+                    lib={lib}
+                    city={city}
+                    nearbyMode={nearbyMode}
+                    priority={index < 4}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-10 grid gap-6 lg:grid-cols-2">
+                <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+                  <h2 className="text-xl font-bold text-black">Best way to compare libraries in {cityLabel}</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    Students usually compare commute time first, then narrow the list using
+                    opening hours, study environment, and pricing. If you already know your preferred
+                    locality, use that filter before comparing the final shortlist.
+                  </p>
+                </section>
+                <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+                  <h2 className="text-xl font-bold text-black">What matters before you choose</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                    A lower monthly fee is not always the best fit. Reliable power backup, Wi-Fi,
+                    seating comfort, cleanliness, and distance from the nearest metro can matter
+                    more when you plan to study there every day.
+                  </p>
+                </section>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default async function LibrariesPage({ params, searchParams }: PageProps) {
+  const { city } = await params;
+  const { q, locality, sort, verified, nearby, lat, lng } = await searchParams;
+  const verifiedOnly = verified === "1";
+  const nearbyMode = nearby === "1";
+  const latitude = lat ? Number(lat) : undefined;
+  const longitude = lng ? Number(lng) : undefined;
+
+  return (
+    <div className="flex flex-col min-h-screen bg-white">
       <div className="search-bar-sticky sticky top-16 md:top-20 z-30 bg-white border-b border-border/50 py-2 md:py-3 transition-all duration-300 ease-in-out">
         <div className="container mx-auto px-4 md:px-10">
           <div className="mx-auto flex w-full justify-center">
@@ -648,131 +822,18 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
       </div>
 
       <div className="container mx-auto px-6 md:px-10 py-8">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <IntentLink href="/" className="hover:underline">Home</IntentLink>
-          <span>/</span>
-          <IntentLink href={`/${city}`} className="hover:underline capitalize">{cityLabel}</IntentLink>
-          <span>/</span>
-          <span className="text-black font-medium">Libraries</span>
-          {locality && (
-            <>
-              <span>/</span>
-              <span className="text-black font-medium">{locality}</span>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-black">{visibleTitle}</h1>
-          {!zeroResults && (
-            <span className="text-sm text-muted-foreground shrink-0">
-              {libraries.length} found
-              {nearbyMode ? (
-                <span className="ml-1 text-[11px] text-muted-foreground/70">(closest first)</span>
-              ) : (
-                usedRpc && q && <span className="ml-1 text-[11px] text-muted-foreground/60">(ranked)</span>
-              )}
-            </span>
-          )}
-        </div>
-
-        {nearbyMode && !zeroResults && (
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-800">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-sky-700 shadow-sm">
-              <Navigation className="h-3.5 w-3.5" />
-            </span>
-            Showing the 10 closest libraries to your current location
-          </div>
-        )}
-
-        <div className="flex gap-10 mt-6">
-          <aside className="hidden lg:block w-56 shrink-0">
-            <div className="sticky top-40">
-              <Suspense fallback={<LibraryFiltersSidebarFallback />}>
-                <LibraryFiltersSidebar
-                  city={city}
-                  locality={locality}
-                  sort={sort}
-                  q={q}
-                  verifiedOnly={verifiedOnly}
-                  nearbyMode={nearbyMode}
-                  lat={lat}
-                  lng={lng}
-                  totalCount={libraries.length}
-                />
-              </Suspense>
-            </div>
-          </aside>
-
-          <div className="flex-1 min-w-0">
-            <div className="relative lg:hidden mb-5">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pr-6">
-                <div className="flex items-center gap-1 text-sm font-semibold border border-border rounded-full px-3 py-1.5 shrink-0">
-                  <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
-                </div>
-                {nearbyMode && (
-                  <span className="flex items-center gap-1 bg-sky-50 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                    Nearby
-                  </span>
-                )}
-                {locality && (
-                  <span className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                    {locality}
-                  </span>
-                )}
-                {verifiedOnly && (
-                  <span className="flex items-center bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full shrink-0">
-                    Verified only
-                  </span>
-                )}
-              </div>
-              <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
-            </div>
-
-            {zeroResults ? (
-              <ZeroResultState
-                q={q}
-                locality={locality}
-                city={city}
-                suggestions={suggestionsWithCovers}
-                nearbyMode={nearbyMode}
-              />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
-                  {librariesWithCovers.map((lib, index) => (
-                    <LibraryCard
-                      key={lib.id}
-                      lib={lib}
-                      city={city}
-                      nearbyMode={nearbyMode}
-                      priority={index < 4}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-10 grid gap-6 lg:grid-cols-2">
-                  <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-                    <h2 className="text-xl font-bold text-black">Best way to compare libraries in {cityLabel}</h2>
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                      Students usually compare commute time first, then narrow the list using
-                      opening hours, study environment, and pricing. If you already know your preferred
-                      locality, use that filter before comparing the final shortlist.
-                    </p>
-                  </section>
-                  <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
-                    <h2 className="text-xl font-bold text-black">What matters before you choose</h2>
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                      A lower monthly fee is not always the best fit. Reliable power backup, Wi-Fi,
-                      seating comfort, cleanliness, and distance from the nearest metro can matter
-                      more when you plan to study there every day.
-                    </p>
-                  </section>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <Suspense fallback={<LibrariesPageSkeleton />}>
+          <LibrariesContent
+            city={city}
+            q={q}
+            locality={locality}
+            sort={sort}
+            verifiedOnly={verifiedOnly}
+            nearbyMode={nearbyMode}
+            latitude={latitude}
+            longitude={longitude}
+          />
+        </Suspense>
       </div>
     </div>
   );
