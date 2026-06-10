@@ -553,7 +553,7 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
             aria-label="Find libraries near me"
             title="Find libraries near me"
           >
-            <div className={`absolute inset-0 bg-gradient-to-r ${nearbyMode ? "from-blue-100 via-indigo-200 to-blue-100" : "from-slate-100 via-slate-300 to-slate-100"} bg-[length:200%_200%] animate-liquid z-0`} />
+            <div className={`absolute inset-0 bg-gradient-to-br ${nearbyMode ? "from-blue-100 via-indigo-200 to-blue-100" : "from-slate-100 via-slate-300 to-slate-100"} animate-liquid z-0`} />
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-1.5">
               {nearbyLoading ? (
                 <Loader2 className="h-4 w-4 md:h-4 md:w-4 animate-spin" />

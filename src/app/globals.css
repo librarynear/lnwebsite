@@ -104,12 +104,14 @@ body.nav-pending {
 }
 
 @keyframes liquid {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% { background-position: 0% 0%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 50%; }
+  100% { background-position: 0% 0%; }
 }
 
 .animate-liquid {
-  background-size: 200% 200%;
-  animation: liquid 5s ease infinite;
+  background-size: 300% 300%;
+  animation: liquid 8s ease-in-out infinite;
 }
