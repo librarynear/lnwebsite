@@ -19,6 +19,8 @@ async function getLibraries(locality?: string, q?: string): Promise<LibraryCardD
       .from("library_branches")
       .select(selectClause)
       .eq("is_active", true)
+      .not("cover_image_url", "is", null)
+      .neq("cover_image_url", "")
       .order("profile_completeness_score", { ascending: false })
       .limit(20);
 
