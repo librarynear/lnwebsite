@@ -79,6 +79,14 @@ const getCachedTopLocalities = unstable_cache(
 const getHomeTopLocalities =
   process.env.NODE_ENV === "development" ? getTopLocalities : getCachedTopLocalities;
 
+function prioritizeLibrariesWithPhotos<T extends { cover_image_url?: string | null }>(libraries: T[]) {
+  return [...libraries].sort((a, b) => {
+    const aHasPhoto = a.cover_image_url ? 0 : 1;
+    const bHasPhoto = b.cover_image_url ? 0 : 1;
+    return aHasPhoto - bHasPhoto;
+  });
+}
+
 interface HomeProps {
   searchParams: Promise<{ locality?: string; q?: string }>;
 }
@@ -120,7 +128,7 @@ export default async function Home({ searchParams }: HomeProps) {
     measureAsync("libraries", () => getHomeLibraries(locality, q)),
     measureAsync("topLocalities", () => getHomeTopLocalities()),
   ]);
-  const libraries = librariesMeasurement.result.map(withCardImage);
+  const libraries = prioritizeLibrariesWithPhotos(librariesMeasurement.result).map(withCardImage);
   const topLocalities = topLocalitiesMeasurement.result;
   logPerf(
     "home",

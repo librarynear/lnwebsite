@@ -93,6 +93,14 @@ function formatDistance(distanceKm?: number | null) {
   return `${distanceKm.toFixed(1)} km away`;
 }
 
+function prioritizeLibrariesWithPhotos<T extends { cover_image_url?: string | null }>(libraries: T[]) {
+  return [...libraries].sort((a, b) => {
+    const aHasPhoto = a.cover_image_url ? 0 : 1;
+    const bHasPhoto = b.cover_image_url ? 0 : 1;
+    return aHasPhoto - bHasPhoto;
+  });
+}
+
 async function getNearbyLibraries(
   city: string,
   latitude: number,
@@ -551,7 +559,7 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
       : Promise.resolve(null),
   ]);
 
-  const librariesWithCovers = librariesWithImagesMeasurement.result;
+  const librariesWithCovers = prioritizeLibrariesWithPhotos(librariesWithImagesMeasurement.result);
   const suggestionsWithCovers = suggestionsWithImagesMeasurement?.result ?? [];
 
   logPerf(
