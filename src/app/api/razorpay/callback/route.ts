@@ -18,7 +18,9 @@ const razorpay = new Razorpay({
  * instead of getSession().
  */
 export async function POST(req: Request) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const host = req.headers.get('host') || 'localhost:3000';
+  const protocol = host.includes('localhost') ? 'http' : 'https';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
 
   try {
     const formData = await req.formData();
