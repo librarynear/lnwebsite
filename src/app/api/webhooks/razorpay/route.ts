@@ -86,6 +86,24 @@ export async function POST(req: Request) {
           }
         });
       }
+    } else if (event.event === "payment.authorized") {
+      const paymentId = event.payload.payment.entity.id;
+      const orderId = event.payload.payment.entity.order_id;
+      const amount = event.payload.payment.entity.amount;
+      const currency = event.payload.payment.entity.currency;
+      
+      try {
+        const Razorpay = require('razorpay');
+        const rzp = new Razorpay({
+          key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+          key_secret: process.env.RAZORPAY_KEY_SECRET!
+        });
+        await rzp.payments.capture(paymentId, amount, currency);
+        console.log(`Webhook auto-captured payment ${paymentId} for order ${orderId}`);
+        // Once captured, Razorpay will fire payment.captured which will create the booking
+      } catch (err) {
+        console.error(`Failed to auto-capture payment ${paymentId}:`, err);
+      }
     }
 
     return NextResponse.json({ status: "ok" });
