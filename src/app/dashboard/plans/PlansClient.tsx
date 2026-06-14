@@ -23,10 +23,11 @@ type Row = {
   hours: number | null; // null = Full Day
   included: boolean;
   basePriceOverride: string;
-  discountedPrice: string;
+  discountPercent: string;
 }
 
 const DURATIONS = [
+  { months: 0, days: 1 },
   { months: 1, days: 28 },
   { months: 3, days: 84 },
   { months: 6, days: 168 },
@@ -83,7 +84,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
           hours: hr,
           included: existing ? existing.included : true,
           basePriceOverride: existing ? existing.basePriceOverride : "",
-          discountedPrice: existing ? existing.discountedPrice : ""
+          discountPercent: existing ? existing.discountPercent : ""
         });
       });
     });
@@ -113,41 +114,35 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
   }
 
   async function handleBatchSubmit() {
-    const base = parseFloat(monthlyPrice);
-    if (isNaN(base) || base <= 0 || !basePlanName.trim()) {
-      alert("Please enter a valid plan name and monthly price.");
+    if (!basePlanName.trim()) {
+      alert("Please enter a valid base plan name.");
       return;
     }
 
+    const base = parseFloat(monthlyPrice);
+
     const plansToCreate = rows.filter(r => r.included).map(r => {
-      const autoCalculated = base * r.months;
+      const autoCalculated = (!isNaN(base) && base > 0) ? base * r.months : 0;
       const customBase = parseFloat(r.basePriceOverride);
       const calculatedTotal = (!isNaN(customBase) && customBase > 0) ? customBase : autoCalculated;
       
-      let finalPrice = calculatedTotal;
-      if (r.discountedPrice && parseFloat(r.discountedPrice) > 0) {
-        finalPrice = parseFloat(r.discountedPrice);
-      }
+      const pct = parseFloat(r.discountPercent);
+      const discountPercent = (!isNaN(pct) && pct > 0 && pct <= 100) ? pct : 0;
       
-      let discountPercent = 0;
-      if (finalPrice < calculatedTotal) {
-        discountPercent = parseFloat(((calculatedTotal - finalPrice) / calculatedTotal * 100).toFixed(1));
-      }
-
       let hourLabel = r.hours ? ` - ${r.hours}hr` : " - Full Day";
 
       return {
-        name: `${basePlanName} - ${r.months} Month${r.months > 1 ? 's' : ''}${hourLabel}`,
+        name: `${basePlanName} - ${r.months > 0 ? r.months + ' Month' + (r.months > 1 ? 's' : '') : r.days + ' Day'}${hourLabel}`,
         type: planType,
         validityDays: r.days,
         durationHours: r.hours,
         price: calculatedTotal,
         discount: discountPercent
       };
-    });
+    }).filter(p => p.price > 0);
 
     if (plansToCreate.length === 0) {
-      alert("Please include at least one plan duration.");
+      alert("Please include at least one plan with a valid base price > 0.");
       return;
     }
 
@@ -326,13 +321,10 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                       const customBase = parseFloat(row.basePriceOverride);
                       const calculatedTotal = (!isNaN(customBase) && customBase > 0) ? customBase : autoCalculated;
 
-                      const finalPriceStr = row.discountedPrice || (calculatedTotal > 0 ? calculatedTotal.toString() : "");
-                      const finalPrice = parseFloat(finalPriceStr);
+                      const dPct = parseFloat(row.discountPercent);
+                      const discountPercent = (!isNaN(dPct) && dPct >= 0 && dPct <= 100) ? dPct : 0;
                       
-                      let discountPercent = "0";
-                      if (calculatedTotal > 0 && finalPrice < calculatedTotal) {
-                        discountPercent = ((calculatedTotal - finalPrice) / calculatedTotal * 100).toFixed(1);
-                      }
+                      const finalPrice = calculatedTotal - (calculatedTotal * discountPercent / 100);
 
                       return (
                         <div key={row.id} className={`grid grid-cols-12 gap-3 items-center p-3 rounded-lg border ${row.included ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/50 opacity-60'}`}>
@@ -344,7 +336,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                           
                           <div className="col-span-2 space-y-1">
                             <div className="font-bold text-sm">
-                              {row.months} Month{row.months > 1 ? 's' : ''}
+                              {row.months > 0 ? `${row.months} Month${row.months > 1 ? 's' : ''}` : `${row.days} Day`}
                             </div>
                             <div className="text-xs text-muted-foreground bg-background border border-border px-1.5 py-0.5 w-max rounded">
                               {row.hours ? `${row.hours}hr` : "Full Day"}
@@ -361,23 +353,26 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                               placeholder={autoCalculated > 0 ? autoCalculated.toString() : "0"}
                               className="h-8 text-sm bg-background"
                               disabled={!row.included}
+                              type="number"
                             />
                           </div>
 
                           <div className="col-span-4 space-y-1">
-                            <div className="text-xs text-muted-foreground">Discounted Price</div>
+                            <div className="text-xs text-muted-foreground">Discount %</div>
                             <Input 
-                              value={row.discountedPrice} 
-                              onChange={e => handleRowChange(index, "discountedPrice", e.target.value)} 
-                              placeholder={calculatedTotal > 0 ? calculatedTotal.toString() : "0"}
+                              value={row.discountPercent} 
+                              onChange={e => handleRowChange(index, "discountPercent", e.target.value)} 
+                              placeholder="0"
                               className="h-8 text-sm bg-background"
                               disabled={!row.included || calculatedTotal === 0}
+                              type="number"
+                              step="0.1"
                             />
                           </div>
                           
                           <div className="col-span-2 space-y-1 text-right">
-                            <div className="text-xs text-muted-foreground">% Off</div>
-                            <div className="font-bold text-success">{discountPercent}%</div>
+                            <div className="text-xs text-muted-foreground">Final Price</div>
+                            <div className="font-bold text-success">₹{finalPrice > 0 ? finalPrice.toFixed(0) : 0}</div>
                           </div>
                         </div>
                       )
@@ -417,7 +412,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                   {plan.discount && plan.discount > 0 ? (
                     <>
                       <span className="text-muted-foreground line-through text-lg">₹{plan.price}</span>
-                      <span className="text-success">₹{(plan.price - (plan.price * plan.discount / 100)).toFixed(0)}</span>
+                      <span className="text-success">₹{Math.round(plan.price - (plan.price * plan.discount / 100))}</span>
                     </>
                   ) : (
                     <>₹{plan.price}</>

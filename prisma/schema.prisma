@@ -16,17 +16,29 @@ model User {
   id        String   @id @default(uuid())
   authId    String?  @unique // Supabase auth user ID
   role      Role     @default(STUDENT)
-  email     String   @unique
+  email     String?  @unique
   password  String?  // Hashed password for MVP auth
   name      String
-  phone     String?
+  phone     String?  @unique
   area      String?
   uniqueId  String?  @unique // 6-character alphanumeric
+  
+  // KYC/Admission Details
+  dob       DateTime?
+  gender    String?
+  address   String?
+  locality  String?
+  qualification String?
+  organization  String?
+  profilePhotoUrl String?
+  digilockerVerified Boolean @default(false)
   
   // Relationships
   libraries Library[]  @relation("LibrarianLibraries")
   bookings  Booking[]
   queries   Query[]
+  checkins  CheckinLog[] @relation("StudentCheckins")
+  platformFeedbacks PlatformFeedback[] @relation("SubmitterPlatformFeedback")
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -60,8 +72,9 @@ model Library {
 
   facilities    String[] 
   
-  // Banking/KYC (Handled by Razorpay)
-  paymentAccountId String?
+  // Banking/KYC
+  paymentAccountId String? // Handled by Razorpay (Legacy/Coming soon)
+  passbookPhoto    String? // Manual verification upload
   kycStatus        KycStatus @default(PENDING)
 
   seats         Seat[]
@@ -69,9 +82,14 @@ model Library {
   standaloneLockers StandaloneLocker[]
   bookings      Booking[]
   queries       Query[]
+  relays        Relay[]
+  checkinLogs   CheckinLog[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([librarianId])
+  @@index([kycStatus])
 }
 
 enum KycStatus {
@@ -101,6 +119,8 @@ model Seat {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([libraryId])
 }
 
 enum PlanType {
@@ -123,6 +143,8 @@ model Plan {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([libraryId])
 }
 
 model StandaloneLocker {
@@ -136,6 +158,8 @@ model StandaloneLocker {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([libraryId])
 }
 
 enum BookingStatus {
@@ -163,10 +187,22 @@ model Booking {
   startTime DateTime
   endTime   DateTime
   status    BookingStatus @default(PENDING_PAYMENT)
-  paymentRef String? // Razorpay order ID or "CASH"
+  paymentRef String? @unique // Razorpay order ID — unique to prevent replay
+
+  isPaused  Boolean @default(false)
+  pausedAt  DateTime?
+  totalPausedDays Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([libraryId, status])
+  @@index([libraryId, startTime])
+  @@index([libraryId, status, isPaused])
+  @@index([studentId])
+  @@index([seatId])
+  @@index([standaloneLockerId])
+  @@index([endTime])
 }
 
 enum QueryType {
@@ -187,4 +223,65 @@ model Query {
   library   Library  @relation(fields: [libraryId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@index([libraryId])
+  @@index([studentId])
+}
+
+model Relay {
+  id          String   @id @default(uuid())
+  libraryId   String
+  library     Library  @relation(fields: [libraryId], references: [id])
+  macAddress  String?  
+  nfcTagId    String   @unique 
+  status      String   @default("ONLINE")
+  lastSync    DateTime @default(now())
+
+  logs        CheckinLog[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([libraryId])
+}
+
+enum CheckinStatus {
+  CHECK_IN
+  CHECK_OUT
+}
+
+model CheckinLog {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     User     @relation("StudentCheckins", fields: [studentId], references: [id])
+  libraryId   String
+  library     Library  @relation(fields: [libraryId], references: [id])
+  relayId     String?
+  relay       Relay?   @relation(fields: [relayId], references: [id])
+  
+  status      CheckinStatus
+  timestamp   DateTime @default(now())
+  isOfflineSync Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+
+  @@index([libraryId, timestamp])
+  @@index([studentId, libraryId])
+}
+
+model PlatformFeedback {
+  id           String   @id @default(uuid())
+  targetType   String   // 'WEBSITE', 'LIBRARY', 'STUDENT'
+  libraryId    String?  // Optional, if target is library
+  
+  submitterId  String
+  submitter    User     @relation("SubmitterPlatformFeedback", fields: [submitterId], references: [id])
+  
+  studentName  String?  // Optional, if target is student
+  studentPhone String?  // Optional, if target is student
+  content      String
+  createdAt    DateTime @default(now())
+
+  @@index([targetType])
+  @@index([submitterId])
 }

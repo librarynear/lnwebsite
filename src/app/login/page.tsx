@@ -1,70 +1,314 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
-import { login } from '@/app/actions/auth-actions'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth'
+import { auth } from '@/lib/firebase/clientApp'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import Link from 'next/link'
-import { useFormStatus } from 'react-dom'
+import { Loader2 } from 'lucide-react'
+import { syncUserOnSignup, checkUserExists, getPostLoginRedirect } from '@/app/actions/auth-actions'
+import toast from 'react-hot-toast'
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Signing in..." : "Sign In"}
-    </Button>
-  )
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+    grecaptcha: any;
+  }
 }
 
 export default function LoginPage() {
-  const [state, formAction] = useActionState(login, null)
+  const router = useRouter()
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [otp, setOtp] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<'PHONE' | 'OTP' | 'NAME'>('PHONE')
+  const [confirmationResult, setConfirmationResult] = useState<any>(null)
+  
+  // Resend OTP state
+  const [resendTimer, setResendTimer] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+      }
+      
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved
+        },
+      });
+    }
+
+    return () => {
+      if (window.recaptchaVerifier) {
+        try {
+          window.recaptchaVerifier.clear();
+        } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+    };
+  }, []);
+
+  // Handle countdown for resend OTP
+  useEffect(() => {
+    if (resendTimer > 0) {
+      timerRef.current = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+  }, [resendTimer]);
+
+  // Auto-submit OTP
+  useEffect(() => {
+    if (step === 'OTP' && otp.length === 6 && !loading) {
+      handleVerifyOtp(new Event('submit') as unknown as React.FormEvent);
+    }
+  }, [otp, step, loading]);
+
+  const getFormattedPhone = () => {
+    let formatted = phone.trim();
+    if (!formatted.startsWith('+91')) {
+      formatted = '+91' + formatted;
+    }
+    return formatted;
+  }
+
+  async function handleSendOtp(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    setLoading(true)
+
+    try {
+      const formattedPhone = getFormattedPhone()
+      const appVerifier = window.recaptchaVerifier;
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier)
+      setConfirmationResult(confirmation)
+      setStep('OTP')
+      setResendTimer(60) // Start 60s cooldown
+      toast.success('OTP sent successfully!')
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || "Failed to send OTP. Please try again.")
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.render().then((widgetId: any) => {
+          window.grecaptcha.reset(widgetId);
+        });
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const submittingOtpRef = useRef(false)
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault()
+    if (otp.length !== 6 || submittingOtpRef.current) return;
+    
+    submittingOtpRef.current = true;
+    setLoading(true)
+    const formattedPhone = getFormattedPhone()
+
+    try {
+      const result = await confirmationResult.confirm(otp)
+      const user = result.user
+
+      // Check if user already exists
+      const dbCheck = await checkUserExists(formattedPhone);
+
+      if (dbCheck.exists) {
+        // User exists, log them in directly (syncUserOnSignup preserves existing name)
+        await completeLogin(user, formattedPhone, '')
+      } else {
+        // New user, ask for name
+        setStep('NAME')
+        setLoading(false)
+      }
+    } catch (err: any) {
+      console.error(err)
+      toast.error("Invalid OTP code.")
+      setLoading(false)
+      submittingOtpRef.current = false;
+    }
+  }
+
+  async function handleSaveName(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+    setLoading(true)
+    
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error("Authentication lost. Please try again.");
+      
+      await updateProfile(currentUser, { displayName: name });
+      const formattedPhone = getFormattedPhone();
+      
+      await completeLogin(currentUser, formattedPhone, name);
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || "Failed to save profile.")
+      setLoading(false)
+    }
+  }
+
+  async function completeLogin(firebaseUser: any, phone: string, userName: string) {
+    try {
+      await syncUserOnSignup(firebaseUser.uid, phone, userName)
+
+      const idToken = await firebaseUser.getIdToken()
+      const res = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      })
+
+      if (res.ok) {
+        toast.success("Successfully logged in!")
+        const urlParams = new URLSearchParams(window.location.search)
+        const returnUrl = urlParams.get('returnUrl')
+        if (returnUrl) {
+          window.location.href = returnUrl
+        } else {
+          const dest = await getPostLoginRedirect()
+          window.location.href = dest
+        }
+      } else {
+        toast.error("Verified, but failed to create secure session")
+        setLoading(false)
+      }
+    } catch (e: any) {
+      console.error(e)
+      toast.error("Failed to complete login.")
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md bg-card border border-border rounded-xl p-8 shadow-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-heading font-bold text-primary mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to your account</p>
+          <h1 className="text-3xl font-heading font-bold text-primary mb-2">Welcome</h1>
+          <p className="text-muted-foreground">Sign in or create an account</p>
         </div>
 
-        <form action={formAction} className="space-y-6">
-          {state?.error && (
-            <div className="p-3 bg-red-100 text-red-700 text-sm rounded-lg border border-red-200">
-              {state.error}
+        <div id="recaptcha-container" className="mb-4 flex justify-center"></div>
+
+        {step === 'PHONE' && (
+          <form onSubmit={handleSendOtp} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <div className="flex">
+                <div className="flex items-center justify-center bg-muted text-muted-foreground border border-border border-r-0 rounded-l-md px-3 font-medium">
+                  +91
+                </div>
+                <Input 
+                  id="phone" 
+                  type="tel" 
+                  value={phone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 10) setPhone(val);
+                  }}
+                  placeholder="9999999999" 
+                  className="rounded-l-none"
+                  required 
+                  autoFocus
+                />
+              </div>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              name="email" 
-              type="email" 
-              placeholder="you@example.com" 
-              required 
-            />
-          </div>
+            <Button type="submit" className="w-full h-11" disabled={loading || phone.length !== 10}>
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+              {loading ? "Sending..." : "Send OTP"}
+            </Button>
+          </form>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input 
-              id="password" 
-              name="password" 
-              type="password" 
-              required 
-            />
-          </div>
+        {step === 'OTP' && (
+          <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <div className="space-y-2 text-center">
+              <Label htmlFor="otp">Enter the 6-digit code sent to +91 {phone}</Label>
+              <Input 
+                id="otp" 
+                type="text" 
+                value={otp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 6) setOtp(val);
+                }}
+                placeholder="000000" 
+                className="text-center tracking-widest text-2xl h-14"
+                maxLength={6}
+                required 
+                autoFocus
+              />
+            </div>
 
-          <SubmitButton />
-        </form>
+            <Button type="submit" className="w-full h-11" disabled={loading || otp.length !== 6}>
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+              {loading ? "Verifying..." : "Verify OTP"}
+            </Button>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
-          <Link href="/signup" className="text-primary font-medium hover:underline">
-            Register here
-          </Link>
-        </div>
+            <div className="flex flex-col space-y-3 text-center pt-2">
+              <button 
+                type="button" 
+                onClick={() => resendTimer === 0 ? handleSendOtp() : undefined}
+                disabled={resendTimer > 0 || loading}
+                className={`text-sm ${resendTimer > 0 ? 'text-muted-foreground cursor-not-allowed' : 'text-primary hover:underline font-medium'}`}
+              >
+                {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={() => {
+                  setStep('PHONE');
+                  setOtp('');
+                  setResendTimer(0);
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Change phone number
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 'NAME' && (
+          <form onSubmit={handleSaveName} className="space-y-6">
+            <div className="space-y-2 text-center">
+              <Label htmlFor="name" className="text-lg">What should we call you?</Label>
+              <p className="text-sm text-muted-foreground pb-2">Looks like you're new here!</p>
+              <Input 
+                id="name" 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name" 
+                className="text-center h-12 text-lg"
+                required 
+                autoFocus
+              />
+            </div>
+
+            <Button type="submit" className="w-full h-11" disabled={loading || !name.trim()}>
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+              {loading ? "Saving..." : "Continue"}
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   )

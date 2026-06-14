@@ -3,15 +3,17 @@
 import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { getSession } from "./auth-actions"
+import { redis } from "@/lib/redis"
+import { parseSafeUrl } from "@/lib/validation"
 
 export async function updateLibrarySettings(formData: FormData) {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN') throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
   
   const id = formData.get("id") as string;
   
   const library = await prisma.library.findUnique({ where: { id } });
-  if (!library || library.librarianId !== session.userId) {
+  if (!library || (library.librarianId !== session.userId && session.role !== 'ADMIN')) {
     throw new Error("Unauthorized: You don't own this library.");
   }
   
@@ -29,7 +31,7 @@ export async function updateLibrarySettings(formData: FormData) {
   const metroStation = formData.get("metroStation") as string;
   const metroDistanceStr = formData.get("metroDistance") as string;
   const metroDistance = metroDistanceStr ? parseFloat(metroDistanceStr) : null;
-  const googleMapsUrl = formData.get("googleMapsUrl") as string;
+  const googleMapsUrl = parseSafeUrl(formData.get("googleMapsUrl"), "Google Maps URL");
   
   const openingTime = formData.get("openingTime") as string;
   const closingTime = formData.get("closingTime") as string;
@@ -40,7 +42,23 @@ export async function updateLibrarySettings(formData: FormData) {
   const seatsAvailable = seatsAvailableStr ? parseInt(seatsAvailableStr) : null;
   
   const photosStr = formData.get("photos") as string;
-  const photos = photosStr ? JSON.parse(photosStr) : [];
+  let photos: string[] = [];
+  if (photosStr) {
+    try {
+      const parsed = JSON.parse(photosStr);
+      // Only keep safe http(s) image URLs.
+      if (Array.isArray(parsed)) {
+        photos = parsed
+          .filter((p) => typeof p === 'string')
+          .map((p) => {
+            try { return parseSafeUrl(p, "Photo URL"); } catch { return null; }
+          })
+          .filter((p): p is string => Boolean(p));
+      }
+    } catch {
+      throw new Error("Invalid photos payload");
+    }
+  }
   
   // Extract all checked facilities
   const facilities: string[] = [];
@@ -81,7 +99,25 @@ export async function updateLibrarySettings(formData: FormData) {
     }
   });
 
+  await redis.del(`library:${id}`);
   revalidatePath("/dashboard/settings");
   revalidatePath("/libraries"); 
   revalidatePath(`/library/${id}`); 
+}
+
+export async function uploadPassbook(libraryId: string, passbookPhotoUrl: string) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? { id: libraryId } : { id: libraryId, librarianId: session.userId } });
+  if (!library) {
+    throw new Error("Unauthorized: You don't have permission to modify this library.");
+  }
+
+  await prisma.library.update({
+    where: { id: libraryId },
+    data: { passbookPhoto: passbookPhotoUrl, kycStatus: "PENDING" }
+  });
+
+  revalidatePath("/dashboard/settings");
 }

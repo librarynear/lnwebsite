@@ -1,20 +1,28 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { MobileNav } from "./MobileNav";
 import { logout, getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Globe } from "lucide-react";
 
 export default async function LibrarianLayout({ children }: { children: ReactNode }) {
   const session = await getSession();
-  const library = session ? await prisma.library.findFirst({ where: { librarianId: session.userId } }) : null;
+  // Defence in depth: gate the whole dashboard surface to staff. Individual
+  // pages also guard, but the layout ensures no page can accidentally leak.
+  if (!session) redirect("/login");
+  if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
+
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex-col shadow-lg border-r border-sidebar-border hidden md:flex">
         <div className="p-6">
-          <Link href="/dashboard" className="text-2xl font-heading font-bold text-sidebar-primary">
-            Library Dashboard
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+            <span className="text-xl font-heading font-bold text-sidebar-primary">FocusDesk</span>
           </Link>
         </div>
         
@@ -57,9 +65,10 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden max-h-screen">
         {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground">
-          <Link href="/dashboard" className="text-xl font-heading font-bold text-sidebar-primary">
-            Library Dashboard
+        <header className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+            <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusDesk</span>
           </Link>
           <MobileNav />
         </header>

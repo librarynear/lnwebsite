@@ -163,8 +163,7 @@ export default function SeatsManagerPage() {
                     onChange={(e) => updateSelectedSeat('type', e.target.value)}
                     className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                   >
-                    <option value="NORMAL">Normal (Available)</option>
-                    <option value="RESERVED">Reserved (Admin Only)</option>
+                    <option value="NORMAL">Reservable</option>
                     <option value="NON_RESERVABLE">Non-Reservable (Wall/Path)</option>
                     <option value="EMPTY">Empty Space (Hidden)</option>
                   </select>

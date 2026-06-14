@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { getSession } from "./auth-actions"
 import { redirect } from "next/navigation"
+import { parseSafeUrl } from "@/lib/validation"
 
 export async function completeOnboarding(formData: FormData) {
   const session = await getSession();
@@ -13,33 +14,30 @@ export async function completeOnboarding(formData: FormData) {
   const name = formData.get("name") as string;
   const managerName = formData.get("managerName") as string;
   const managerPhone = formData.get("managerPhone") as string;
-  const facilitiesStr = formData.get("facilities") as string;
-  
   const address = formData.get("address") as string;
   const metroStation = formData.get("metroStation") as string;
-  const googleMapsUrl = formData.get("googleMapsUrl") as string;
+  const googleMapsUrl = parseSafeUrl(formData.get("googleMapsUrl"), "Google Maps URL");
   const seatsAvailableStr = formData.get("seatsAvailable") as string;
   
   if (!name || !address) {
     throw new Error("Library Name and Address are required");
   }
 
-  const facilities = facilitiesStr ? facilitiesStr.split(",").map(f => f.trim()).filter(f => f.length > 0) : [];
-  const seatsAvailable = seatsAvailableStr ? parseInt(seatsAvailableStr) : null;
+  const facilities: string[] = [];
+  formData.forEach((value, key) => {
+    if (key.startsWith("facility_")) {
+      facilities.push(key.replace("facility_", ""));
+    }
+  });
+  const seatsAvailable = seatsAvailableStr ? (parseInt(seatsAvailableStr) || null) : null;
 
   // Check if they already have a library
-  const existing = await prisma.library.findFirst({ where: { librarianId: session.userId } });
+  const existing = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (existing) {
     redirect("/dashboard");
   }
 
-  // Generate some random photos for MVP
-  const defaultPhotos = [
-    "https://images.unsplash.com/photo-1568667256549-094345857637?w=1200&q=80",
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80"
-  ];
-
-  await prisma.library.create({
+  const library = await prisma.library.create({
     data: {
       librarianId: session.userId,
       name,
@@ -50,17 +48,17 @@ export async function completeOnboarding(formData: FormData) {
       metroStation,
       googleMapsUrl,
       seatsAvailable,
-      photos: defaultPhotos,
+      // Start with no photos; the feed shows a graceful fallback until the
+      // librarian uploads real images (avoids every new library sharing the
+      // same stock photo).
+      photos: [],
       city: "Demo City", // Default since it wasn't in onboarding MVP form
       locality: "Demo Locality",
     }
   });
 
-  // Upgrade the user to a LIBRARIAN
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: { role: 'LIBRARIAN' }
-  });
+  // Role promotion to LIBRARIAN happens via admin approval in approveLibrary action
+  // Do NOT self-promote here
 
-  redirect("/dashboard");
+  return { success: true, libraryId: library.id };
 }

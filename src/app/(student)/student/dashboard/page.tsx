@@ -1,38 +1,45 @@
 import { Calendar, Clock, MapPin, User as UserIcon, BookOpen, Key } from "lucide-react";
+import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import PauseResumeButton from "./PauseResumeButton";
+import BookingSuccessToast from "./BookingSuccessToast";
 
 export default async function StudentDashboardPage() {
+  // Consumer page: any logged-in user can view their own bookings, including
+  // librarians/admins browsing the site as a regular user.
   const session = await getSession();
-  if (!session || session.role !== 'STUDENT') redirect("/login");
-
-  const student = await prisma.user.findUnique({
-    where: { id: session.userId },
-  });
-
-  if (!student) redirect("/login");
+  if (!session) redirect("/login");
 
   const now = new Date();
 
-  // Fetch all bookings for this student, including full relational data
-  const allBookings = await prisma.booking.findMany({
-    where: { studentId: student.id },
-    include: {
-      library: true,
-      plan: true,
-      seat: true,
-      standaloneLocker: true
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [student, allBookings] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+    }),
+    prisma.booking.findMany({
+      where: { studentId: session.userId },
+      include: {
+        library: true,
+        plan: true,
+        seat: true,
+        standaloneLocker: true
+      },
+      take: 50,
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
+
+  if (!student) redirect("/login");
 
   const activeBookings = allBookings.filter(b => b.endTime > now);
   const pastBookings = allBookings.filter(b => b.endTime <= now);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <Suspense><BookingSuccessToast /></Suspense>
       <h1 className="text-4xl font-heading font-bold text-foreground mb-8">My Dashboard</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -64,10 +71,6 @@ export default async function StudentDashboardPage() {
               <hr className="border-border" />
               
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email</span>
-                  <span className="font-medium text-foreground">{student.email}</span>
-                </div>
                 {student.phone && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Phone</span>
@@ -105,11 +108,17 @@ export default async function StudentDashboardPage() {
                           <span className={`text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${booking.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                             {booking.status}
                           </span>
-                          <span className="text-sm text-muted-foreground font-medium">{booking.plan.name}</span>
+                          <span className="text-sm text-muted-foreground font-medium">{booking.plan.name} • ₹{booking.plan.price}</span>
                         </div>
-                        <Link href={`/library/${booking.libraryId}`} className="text-xl font-bold text-foreground hover:underline inline-block">
-                          {booking.library.name}
-                        </Link>
+                        <div className="flex items-center gap-4">
+                          <Link href={`/library/${booking.libraryId}`} className="text-xl font-bold text-foreground hover:underline inline-block">
+                            {booking.library.name}
+                          </Link>
+                          <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} pausedAt={booking.pausedAt} />
+                          <Link href={`/library/${booking.libraryId}`} className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
+                            Extend Plan
+                          </Link>
+                        </div>
                         <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
                           <MapPin className="w-4 h-4" /> {booking.library.locality}, {booking.library.city}
                         </div>
@@ -144,7 +153,7 @@ export default async function StudentDashboardPage() {
                     <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
                       <div className="flex items-center gap-2 text-foreground">
                         <Calendar className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Valid until {booking.endTime.toLocaleDateString()}</span>
+                        <span className="font-medium">Valid from {booking.startTime.toLocaleDateString()} to {booking.endTime.toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center gap-2 text-foreground">
                         <Clock className="w-4 h-4 text-primary" />
@@ -178,7 +187,7 @@ export default async function StudentDashboardPage() {
                           <Calendar className="w-3.5 h-3.5" /> Expired {booking.endTime.toLocaleDateString()}
                         </span>
                         <span className="text-muted-foreground flex items-center gap-1">
-                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"}
+                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{booking.plan.price}
                         </span>
                       </div>
                     </div>

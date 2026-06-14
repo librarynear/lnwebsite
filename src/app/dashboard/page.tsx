@@ -6,36 +6,43 @@ import { redirect } from "next/navigation";
 
 export default async function LibrarianDashboardPage() {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN') redirect("/");
+  if (!session || session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
 
-  const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (!library) redirect("/onboarding");
 
-  const studentCount = (await prisma.booking.findMany({
-    where: { libraryId: library.id, status: 'CONFIRMED' },
-    distinct: ['studentId']
-  })).length;
+  const [
+    studentGroup,
+    totalSeatsCount,
+    bookedSeats,
+    pendingQueries,
+    recentBookings
+  ] = await Promise.all([
+    prisma.booking.groupBy({
+      by: ['studentId'],
+      where: { libraryId: library.id, status: 'CONFIRMED' }
+    }),
+    prisma.seat.count({ where: { libraryId: library.id } }),
+    prisma.booking.count({ 
+      where: { 
+        libraryId: library.id, 
+        status: 'CONFIRMED',
+        startTime: { lte: new Date() },
+        endTime: { gte: new Date() }
+      } 
+    }),
+    prisma.query.count({ where: { libraryId: library.id } }),
+    prisma.booking.findMany({
+      where: { libraryId: library.id },
+      include: { student: true, plan: true, seat: true },
+      orderBy: { createdAt: 'desc' },
+      take: 3
+    })
+  ]);
 
-  const totalSeats = await prisma.seat.count({ where: { libraryId: library.id } }) || library.seatsAvailable || 1;
-  const bookedSeats = await prisma.booking.count({ 
-    where: { 
-      libraryId: library.id, 
-      status: 'CONFIRMED',
-      startTime: { lte: new Date() },
-      endTime: { gte: new Date() }
-    } 
-  });
-  
+  const studentCount = studentGroup.length;
+  const totalSeats = totalSeatsCount || library.seatsAvailable || 1;
   const occupancyPercentage = Math.round((bookedSeats / totalSeats) * 100);
-  const pendingQueries = await prisma.query.count({ where: { libraryId: library.id } });
-
-  // Fetch recent bookings
-  const recentBookings = await prisma.booking.findMany({
-    where: { libraryId: library.id },
-    include: { student: true, plan: true, seat: true },
-    orderBy: { createdAt: 'desc' },
-    take: 3
-  });
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">

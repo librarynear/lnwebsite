@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { Save, Loader2, Library, MapPin, Phone, Building, Clock, Navigation, Image as ImageIcon, Trash2 } from "lucide-react"
+import { Save, Loader2, Library, MapPin, Phone, Building, Clock, Navigation, Image as ImageIcon, Trash2, CreditCard } from "lucide-react"
 import { updateLibrarySettings } from "@/app/actions/library-actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,7 @@ export function SettingsClient({ library }: { library: any }) {
   const [isSaving, setIsSaving] = useState(false)
   const [photos, setPhotos] = useState<string[]>(library.photos || []);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isKycLoading, setIsKycLoading] = useState(false);
   const [phone, setPhone] = useState(library.managerPhone || "");
   const [whatsapp, setWhatsapp] = useState(library.whatsapp || "");
   const [sameAsPhone, setSameAsPhone] = useState(library.whatsapp === library.managerPhone && !!library.managerPhone);
@@ -47,6 +48,8 @@ export function SettingsClient({ library }: { library: any }) {
     }
   }
 
+  const [uploadingPassbook, setUploadingPassbook] = useState(false);
+
   const onUploadStart = () => setUploadingImage(true);
   const onUploadSuccess = (res: any) => {
     setPhotos(prev => [...prev, res.url].slice(0, 3));
@@ -61,6 +64,21 @@ export function SettingsClient({ library }: { library: any }) {
   const removePhoto = (index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   }
+
+  const handlePassbookUploadSuccess = async (res: any) => {
+    setUploadingPassbook(false);
+    setIsKycLoading(true);
+    try {
+      const { uploadPassbook } = await import('@/app/actions/library-actions');
+      await uploadPassbook(library.id, res.url);
+      alert("Passbook uploaded successfully. Your library is now pending review.");
+      // The page will revalidate automatically
+    } catch (e: any) {
+      alert(e.message || "Failed to update KYC status.");
+    } finally {
+      setIsKycLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-10">
@@ -246,6 +264,55 @@ export function SettingsClient({ library }: { library: any }) {
               </div>
             </ImageKitProvider>
           )}
+        </div>
+
+        {/* Payments & KYC */}
+        <div className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+          <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary" /> Verification & KYC
+          </h2>
+          <p className="text-sm text-muted-foreground mb-6">Upload your passbook to verify your library.</p>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-foreground">KYC Status</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Status: <span className="font-semibold px-2 py-1 bg-muted rounded-md text-foreground">{library.kycStatus}</span>
+              </p>
+            </div>
+            
+            {library.kycStatus !== 'APPROVED' && (
+              <div className="relative">
+                <ImageKitProvider 
+                  publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY} 
+                  urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT} 
+                  authenticator={authenticator}
+                >
+                  <button 
+                    type="button"
+                    disabled={isKycLoading || uploadingPassbook} 
+                    className="bg-[#02042B] hover:bg-[#02042B]/90 text-white font-bold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap overflow-hidden relative"
+                  >
+                    <IKUpload
+                      fileName="passbook_kyc"
+                      tags={["kyc"]}
+                      onUploadStart={() => setUploadingPassbook(true)}
+                      onError={(err) => { setUploadingPassbook(false); alert("Upload failed"); }}
+                      onSuccess={handlePassbookUploadSuccess}
+                      accept="image/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    {(isKycLoading || uploadingPassbook) ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                    {uploadingPassbook ? "Uploading..." : library.passbookPhoto ? "Update Passbook" : "Upload Passbook"}
+                  </button>
+                </ImageKitProvider>
+              </div>
+            )}
+          </div>
+          
+          <p className="text-xs text-muted-foreground mt-4 italic">
+            Note: Automated Razorpay KYC verification is coming soon!
+          </p>
         </div>
 
         <div className="flex justify-end sticky bottom-4">

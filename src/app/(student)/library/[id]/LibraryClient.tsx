@@ -5,6 +5,8 @@ import { MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock
 import Link from "next/link"
 import Script from "next/script"
 import { useRouter } from "next/navigation"
+import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 declare global {
   interface Window {
@@ -12,7 +14,7 @@ declare global {
   }
 }
 
-export function LibraryClient({ library, occupiedSeatIds, studentId }: { library: any, occupiedSeatIds: string[], studentId: string }) {
+export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlanEndDate, studentPhone, studentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
   const router = useRouter();
   const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
@@ -20,10 +22,49 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
   
   const [selectedStandaloneLockerId, setSelectedStandaloneLockerId] = useState<string>("");
   
+  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION">("ONLINE");
+  
+  // Feedback State
+  const [feedbackType, setFeedbackType] = useState<"FEEDBACK" | "COMPLAINT" | null>(null);
+  const [feedbackContent, setFeedbackContent] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  const handleFeedbackSubmit = async () => {
+    if (!studentId) {
+      router.push(`/login?returnUrl=/library/${library.id}`);
+      return;
+    }
+    if (!feedbackContent.trim()) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      const res = await fetch('/api/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          libraryId: library.id,
+          type: feedbackType,
+          content: feedbackContent
+        })
+      });
+      if (!res.ok) throw new Error("Failed to submit");
+      alert("Submitted successfully!");
+      setFeedbackType(null);
+      setFeedbackContent("");
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
   const [isProcessing, setIsProcessing] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Derive recommended plans based on the selected plan's duration
+  const recommendedPlans = selectedPlan 
+    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id)
+    : [];
 
   useEffect(() => {
     try {
@@ -56,16 +97,24 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
         savedLibraries = savedLibraries.filter((l: any) => l.id !== library.id);
         setIsSaved(false);
       } else {
+        const minPrice = library.plans && library.plans.length > 0 
+          ? Math.min(...library.plans.map((p: any) => p.price)) 
+          : 0;
+
         savedLibraries.push({
           id: library.id,
           name: library.name,
-          locality: library.locality,
+          locality: library.locality || library.address.split(',')[0],
           city: library.city,
+          metroStation: library.metroStation,
+          metroDistance: library.metroDistance,
+          minPrice: minPrice,
           imageUrl: library.photos?.[0] || null
         });
         setIsSaved(true);
       }
       localStorage.setItem('savedLibraries', JSON.stringify(savedLibraries));
+      window.dispatchEvent(new Event("savedLibrariesUpdated"));
     } catch (e) {
       console.error('Error saving:', e);
     }
@@ -99,9 +148,22 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
 
   const totalAmount = planPrice + lockerCost;
 
+  let startDate = new Date();
+  if (currentPlanEndDate) {
+    startDate = new Date(currentPlanEndDate);
+  }
+  let endDate = new Date(startDate);
+  if (selectedPlan) {
+    endDate.setDate(endDate.getDate() + selectedPlan.validityDays);
+  }
+
   const handleCheckout = async () => {
-    if (!selectedPlan || !studentId) {
-      alert("Please select a plan, and ensure you are 'logged in' as a student.");
+    if (!studentId) {
+      router.push(`/login?returnUrl=/library/${library.id}`);
+      return;
+    }
+    if (!selectedPlan) {
+      alert("Please select a plan.");
       return;
     }
     
@@ -111,14 +173,55 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
     }
 
     setIsProcessing(true);
+
+    if (paymentMode === "RECEPTION") {
+      try {
+        const res = await fetch('/api/checkout/reception', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId,
+            libraryId: library.id,
+            seatId: isFlexible ? null : selectedSeat.id,
+            planId: selectedPlan.id,
+            hasLocker: seatHasMandatoryLocker,
+            standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setShowSuccessModal(true);
+        } else {
+          alert(data.error || "Failed to initiate booking");
+        }
+      } catch (e) {
+        alert("An error occurred during booking");
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     try {
       const orderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
-        body: JSON.stringify({ amount: totalAmount })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          planId: selectedPlan.id,
+          seatId: isFlexible ? null : selectedSeat.id,
+          hasLocker: seatHasMandatoryLocker,
+          standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
+        })
       });
       const orderData = await orderRes.json();
 
       if (!orderData.id) throw new Error("Failed to create order");
+
+      // Use callback_url instead of handler so the flow survives UPI
+      // intent redirects (which destroy the in-page JS context). Razorpay
+      // POSTs the payment details to this URL after a successful payment,
+      // and the server creates the booking + redirects to the dashboard.
+      const callbackUrl = `${window.location.origin}/api/razorpay/callback`;
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -127,49 +230,43 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
         name: library.name,
         description: isFlexible ? `Booking Flexible Plan - ${selectedPlan.name}` : `Booking Seat ${selectedSeat.name} - ${selectedPlan.name}`,
         order_id: orderData.id,
-        handler: async function (response: any) {
-          try {
-            const verifyRes = await fetch('/api/razorpay/verify', {
-              method: 'POST',
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                studentId,
-                libraryId: library.id,
-                seatId: isFlexible ? null : selectedSeat.id,
-                planId: selectedPlan.id,
-                amount: totalAmount,
-                hasLocker: seatHasMandatoryLocker, // only true if physical seat has it
-                standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              router.push("/checkout/success");
-            } else {
-              router.push("/checkout/failed");
-            }
-          } catch (e) {
-            router.push("/checkout/failed");
-          } finally {
-            setIsProcessing(false);
-          }
-        },
+        callback_url: callbackUrl,
+        redirect: true,
         prefill: {
-          name: "Test Student",
-          email: "student@example.com",
-          contact: "9999999999"
+          name: "Student",
+          email: studentEmail || "guest@focusdesk.in",
+          contact: studentPhone ? (studentPhone.startsWith('+') ? studentPhone : `+91${studentPhone.replace(/\D/g, '').slice(-10)}`) : "+919876543210",
+          method: "upi"
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay via UPI",
+                instruments: [{ method: "upi" }]
+              }
+            },
+            sequence: ["block.upi"],
+            preferences: { show_default_blocks: true }
+          }
         },
         theme: {
           color: "#7C2C2E"
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessing(false);
+            import('react-hot-toast').then(({ default: toast }) => {
+              toast.error("Payment cancelled");
+            });
+          }
         }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response: any){
         setIsProcessing(false);
-        router.push("/checkout/failed");
+        alert("Payment failed. Please try again.");
       });
       rzp.open();
 
@@ -209,6 +306,25 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
     <div className="min-h-screen bg-background pb-32">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border shadow-2xl rounded-3xl p-8 max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-10 h-10" />
+            </div>
+            <h2 className="text-3xl font-heading font-black text-foreground">Booking Confirmed!</h2>
+            <p className="text-muted-foreground">Your seat has been successfully reserved. You can view all details in your dashboard.</p>
+            <button 
+              onClick={() => router.push('/student/dashboard')}
+              className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity mt-4"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8">
         <div className="text-sm font-medium text-muted-foreground mb-4">
@@ -238,121 +354,17 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
         </div>
       </div>
 
-      {/* Lightbox Modal */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          {/* Lightbox Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/40">
-            <div>
-              <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-0.5">Photo Tour</div>
-              <div className="text-lg font-bold font-heading text-foreground">{library.name}</div>
-            </div>
-            <button 
-              onClick={() => setLightboxOpen(false)}
-              className="p-2 rounded-full border border-border text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          
-          {/* Lightbox Content */}
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left side (Main image) */}
-            <div className="flex-1 relative flex items-center justify-center p-4 lg:p-12 bg-muted/10">
-              <button 
-                onClick={() => setLightboxIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1))}
-                className="absolute left-4 lg:left-8 z-10 bg-background border border-border text-foreground p-2 lg:p-3 rounded-full hover:bg-muted transition-colors shadow-sm"
-              >
-                <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
+      {/* Top Full Width Photos */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
+        <LibraryPhotoGallery images={photos} libraryName={library.name} />
+      </div>
 
-              <img 
-                src={photos[lightboxIndex]} 
-                alt="Zoomed Library" 
-                className="max-h-full max-w-full rounded-2xl object-contain select-none shadow-sm"
-              />
-
-              <button 
-                onClick={() => setLightboxIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0))}
-                className="absolute right-4 lg:right-8 z-10 bg-background border border-border text-foreground p-2 lg:p-3 rounded-full hover:bg-muted transition-colors shadow-sm"
-              >
-                <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" />
-              </button>
-
-              <div className="absolute bottom-6 lg:bottom-12 bg-background/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-foreground shadow-sm">
-                {lightboxIndex + 1} / {photos.length}
-              </div>
-            </div>
-
-            {/* Right side (Thumbnails sidebar) */}
-            <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border/40 bg-card/30 p-6 overflow-y-auto">
-              <h3 className="font-bold text-sm text-foreground mb-4">All photos</h3>
-              <div className="grid grid-cols-4 lg:grid-cols-2 gap-3">
-                {photos.map((photo: string, idx: number) => (
-                  <div 
-                    key={idx}
-                    onClick={() => setLightboxIndex(idx)}
-                    className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all ${idx === lightboxIndex ? 'ring-2 ring-foreground ring-offset-2' : 'hover:opacity-80'}`}
-                  >
-                    <img src={photo} className="w-full h-full object-cover" alt={`Thumbnail ${idx + 1}`} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-12">
-          
-          {/* Gallery Moved Here */}
-          <div className="relative group">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 aspect-[4/3] md:aspect-[16/9] rounded-2xl overflow-hidden bg-muted/10">
-              {/* Main large photo (left side) */}
-              <div 
-                className={`relative cursor-pointer hover:opacity-90 transition-opacity ${photos.length >= 2 ? 'md:col-span-2' : 'col-span-1 md:col-span-4'}`}
-                onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
-              >
-                <img src={photos[0]} className="w-full h-full object-cover" alt="Library Main" />
-              </div>
-
-              {/* Smaller stacked photos (right side) */}
-              {photos.length >= 2 && (
-                <div className="hidden md:grid col-span-2 grid-rows-2 gap-2 h-full">
-                  <div 
-                    className="relative cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => { setLightboxIndex(1); setLightboxOpen(true); }}
-                  >
-                    <img src={photos[1]} className="w-full h-full object-cover" alt="Library secondary" />
-                  </div>
-                  {photos.length >= 3 ? (
-                    <div 
-                      className="relative cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => { setLightboxIndex(2); setLightboxOpen(true); }}
-                    >
-                      <img src={photos[2]} className="w-full h-full object-cover" alt="Library tertiary" />
-                    </div>
-                  ) : (
-                    <div className="relative bg-muted flex items-center justify-center">
-                      <span className="text-muted-foreground text-sm font-medium">No more photos</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
-              className="absolute bottom-4 right-4 bg-background text-foreground px-4 py-2 rounded-lg font-bold text-sm shadow-md border border-border flex items-center gap-2 hover:bg-muted transition-colors z-10"
-            >
-              <Grid className="w-4 h-4" /> Show all photos
-            </button>
-          </div>
-
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 flex flex-col lg:grid lg:grid-cols-3 gap-y-12 lg:gap-x-12 relative">
+        
+        {/* Left Column 1: About */}
+        <div className="order-1 lg:col-span-2 lg:col-start-1 lg:row-start-1 space-y-12">
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold font-heading">About</h2>
+            <h2 className="text-2xl font-bold font-heading tracking-tight">About</h2>
             <div className="flex flex-wrap gap-4 text-sm font-medium text-muted-foreground bg-muted/30 p-4 rounded-xl border border-border">
               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-primary" /> {library.openingTime || "08:00"} - {library.closingTime || "22:00"}</span>
               {library.managerPhone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-primary" /> {library.managerPhone}</span>}
@@ -364,139 +376,12 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
               </p>
             )}
           </section>
-
-          <hr className="border-border" />
-
-          {/* Facilities */}
-          <section>
-            <h2 className="text-2xl font-bold font-heading mb-6">What this place offers</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-8">
-              {library.facilities.map((fac: string) => (
-                <div key={fac} className="flex items-center gap-3 text-foreground font-medium text-sm">
-                  <Check className="w-5 h-5 text-primary shrink-0" /> {fac}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <hr className="border-border" />
-
-          {/* Seat Selection */}
-          <section>
-            <h2 className="text-2xl font-bold font-heading mb-6">Select your seat</h2>
-            
-            {!selectedPlan ? (
-              <div className="bg-muted/30 border border-border rounded-3xl p-8 text-center text-muted-foreground">
-                Please select a plan first to see available seats.
-              </div>
-            ) : isFlexible ? (
-              <div className="bg-primary/5 border border-primary/20 rounded-3xl p-8 text-center text-foreground font-medium flex flex-col items-center gap-2">
-                <Check className="w-8 h-8 text-primary" />
-                Flexible Plans do not require a specific seat assignment.
-                <p className="text-sm text-muted-foreground font-normal">You can skip seat selection and proceed to checkout!</p>
-              </div>
-            ) : (
-              <div className="bg-muted/30 border border-border rounded-3xl p-6 overflow-auto">
-                <div className="w-max mx-auto flex flex-col gap-3">
-                  {Array.from({ length: maxY + 1 }).map((_, y) => (
-                    <div key={y} className="flex gap-3">
-                      {Array.from({ length: maxX + 1 }).map((_, x) => {
-                        const seat = library.seats.find((s:any) => s.gridX === x && s.gridY === y);
-                        if (!seat) return <div key={x} className="w-12 h-12"></div>;
-
-                        const isOccupied = occupiedSeatIds.includes(seat.id);
-                        const isSelected = selectedSeat?.id === seat.id;
-                        
-                        let seatClass = "bg-background border-border hover:border-primary cursor-pointer text-foreground";
-                        
-                        // Rule: Students with a Fixed (Reserved) plan can ONLY pick seats explicitly marked as 'RESERVED'.
-                        // They cannot pick 'NORMAL' or 'NON_RESERVABLE' seats.
-                        const isDisabled = isOccupied || seat.type !== 'RESERVED';
-
-                        if (isDisabled) {
-                          seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed";
-                        } else if (isSelected) {
-                          seatClass = "bg-primary border-primary text-primary-foreground ring-4 ring-primary/20";
-                        }
-
-                        return (
-                          <div 
-                            key={seat.id} 
-                            onClick={() => {
-                              if (!isDisabled) {
-                                setSelectedSeat(seat);
-                                // If they pick a seat with a mandatory locker, clear the standalone locker selection
-                                if (seat.hasLocker) {
-                                  setSelectedStandaloneLockerId("");
-                                }
-                              }
-                            }}
-                            className={`relative w-12 h-12 rounded-xl border-2 flex items-center justify-center font-bold text-sm transition-all shadow-sm ${seatClass}`}
-                          >
-                            {seat.name}
-                            {seat.hasLocker && (
-                              <div className="absolute -top-2 -right-2 bg-foreground text-background p-0.5 rounded-full shadow-sm">
-                                <Lock className="w-3 h-3" />
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ))}
-                  <div className="mt-6 mx-auto w-full text-center py-2 bg-border/50 rounded-lg text-muted-foreground text-xs tracking-widest uppercase font-bold border border-border shadow-sm">
-                    Front Desk / Entrance
-                  </div>
-                  
-                  <div className="mt-4 flex gap-4 justify-center text-xs font-medium text-muted-foreground">
-                     <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-background"></div> Available</span>
-                     <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-primary ring-2 ring-primary/20"></div> Selected</span>
-                     <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-muted"></div> Occupied</span>
-                     <span className="flex items-center gap-1"><Lock className="w-3 h-3 text-foreground" /> Has Locker</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-
-          <hr className="border-border" />
-
-          {/* Map Location */}
-          <section>
-            <h2 className="text-2xl font-bold font-heading mb-6">Location</h2>
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-              <iframe 
-                src={mapEmbedUrl} 
-                width="100%" 
-                height="350" 
-                style={{ border: 0 }} 
-                allowFullScreen={false} 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-              <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h3 className="font-bold text-foreground text-sm">{library.address}</h3>
-                  <p className="text-muted-foreground text-xs mt-1">{library.locality}, {library.city}</p>
-                </div>
-                <a 
-                  href={library.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(library.address)}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm shrink-0 flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                >
-                  <Navigation className="w-4 h-4" /> Get Directions
-                </a>
-              </div>
-            </div>
-          </section>
-
         </div>
 
-        {/* Sticky Booking Widget */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
-            <h3 className="text-2xl font-black font-heading text-foreground">
+        {/* Right Column: Sticky Booking Widget */}
+        <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2" id="booking-widget">
+          <div className="lg:sticky lg:top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
+            <h3 className="text-2xl font-black font-heading tracking-tight text-foreground">
               {selectedPlan ? (
                 <span>₹{totalAmount.toFixed(0)}</span>
               ) : (
@@ -504,7 +389,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
               )}
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-3" id="plans-section">
               <label className="text-sm font-bold text-foreground flex items-center justify-between">
                 <span>1. Choose a Plan</span>
               </label>
@@ -538,10 +423,19 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
                       onClick={() => {
                         setSelectedPlan(plan);
                         if (plan.type === "FLEXIBLE") {
-                          setSelectedSeat(null); // Clear seat if switching to flexible
+                          setSelectedSeat(null);
+                          setTimeout(() => {
+                            const widget = document.getElementById('payment-section');
+                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                          }, 100);
+                        } else {
+                          setTimeout(() => {
+                            const widget = document.getElementById('seat-section');
+                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                          }, 100);
                         }
                       }}
-                      className={`p-4 border-2 rounded-2xl cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-border/80'}`}
+                      className={`p-4 border-2 rounded-2xl cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-border/80'}`}
                     >
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-bold text-foreground">{plan.name}</span>
@@ -560,16 +454,137 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
                   <div className="text-sm text-muted-foreground text-center py-4">No plans found.</div>
                 )}
               </div>
+              
+              {/* Recommendations */}
+              {selectedPlan && recommendedPlans.length > 0 && (
+                <div className="pt-4 border-t border-border mt-4">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 block">
+                    Recommended Upgrades ({selectedPlan.durationHours ? `${selectedPlan.durationHours} hr` : 'Full Day'})
+                  </label>
+                  <div className="space-y-2">
+                    {recommendedPlans.map((plan: any) => {
+                      const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
+                      return (
+                        <div 
+                          key={plan.id} 
+                          onClick={() => {
+                            setSelectedPlan(plan);
+                            if (plan.type === "FLEXIBLE") {
+                              setSelectedSeat(null);
+                              setTimeout(() => {
+                                const widget = document.getElementById('payment-section');
+                                if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                              }, 100);
+                            } else {
+                              setTimeout(() => {
+                                const widget = document.getElementById('seat-section');
+                                if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                              }, 100);
+                            }
+                          }}
+                          className={`p-4 border-2 rounded-2xl cursor-pointer transition-all border-border hover:border-primary/50 bg-muted/20 hover:bg-primary/5`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-foreground">{plan.name}</span>
+                            <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">{plan.validityDays} Days • {plan.durationHours ? `${plan.durationHours} hr access` : 'Full Day access'}</div>
+                          {plan.discount && plan.discount > 0 && (
+                            <div className="mt-2 text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded w-max">
+                              {plan.discount}% OFF
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-3 pt-4 border-t border-border">
-              <label className="text-sm font-bold text-foreground flex justify-between items-center">
-                <span>2. Selected Seat</span>
-                <span className="text-primary font-black bg-primary/10 px-2 py-1 rounded">
-                  {isFlexible ? "FLEXIBLE" : (selectedSeat ? selectedSeat.name : "None")}
-                </span>
-              </label>
-            </div>
+            {/* Seat Selection Inline */}
+            {selectedPlan && !isFlexible && (
+              <>
+                <div className="space-y-3 pt-4 border-t border-border" id="seat-section">
+                  <label className="text-sm font-bold text-foreground flex justify-between items-center">
+                    <span>2. Select a Seat</span>
+                  </label>
+                </div>
+                <div className="mt-2">
+                  <div className="bg-muted/30 border border-border rounded-2xl p-0 overflow-hidden relative">
+                  <div className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground px-2 py-1 rounded-full border border-border font-bold flex items-center gap-1">
+                    <Grid className="w-3 h-3" /> Pinch to Zoom
+                  </div>
+                  <TransformWrapper
+                    initialScale={1}
+                    minScale={0.5}
+                    maxScale={3}
+                    centerOnInit={true}
+                    wheel={{ step: 0.1 }}
+                  >
+                    <TransformComponent wrapperClass="!w-full !h-[300px] cursor-grab active:cursor-grabbing">
+                      <div className="w-full h-full p-8 flex items-center justify-center">
+                        <div className="w-max mx-auto flex flex-col gap-3 transition-transform duration-500 ease-out">
+                          {Array.from({ length: maxY + 1 }).map((_, y) => (
+                            <div key={y} className="flex gap-3">
+                              {Array.from({ length: maxX + 1 }).map((_, x) => {
+                                const seat = library.seats.find((s:any) => s.gridX === x && s.gridY === y);
+                                if (!seat) return <div key={x} className="w-10 h-10"></div>;
+
+                                const isOccupied = occupiedSeatIds.includes(seat.id);
+                                const isSelected = selectedSeat?.id === seat.id;
+                                
+                                let seatClass = "bg-background border-border hover:border-primary cursor-pointer text-foreground shadow-[2px_4px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_8px_0px_0px_rgba(0,0,0,0.1)] hover:-translate-y-2";
+                                
+                                const isDisabled = isOccupied || seat.type === 'NON_RESERVABLE';
+
+                                if (isDisabled) {
+                                  seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed shadow-none";
+                                } else if (isSelected) {
+                                  seatClass = "bg-primary border-primary text-primary-foreground shadow-[2px_8px_0px_0px_rgba(0,0,0,0.2)] -translate-y-2";
+                                }
+
+                                return (
+                                  <div 
+                                    key={seat.id} 
+                                    onClick={() => {
+                                      if (!isDisabled) {
+                                        setSelectedSeat(seat);
+                                        if (seat.hasLocker) {
+                                          setSelectedStandaloneLockerId("");
+                                        }
+                                        setTimeout(() => {
+                                          const widget = document.getElementById('payment-section');
+                                          if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                                        }, 100);
+                                      }
+                                    }}
+                                    className={`relative w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 ${seatClass}`}
+                                  >
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      {seat.name}
+                                    </div>
+                                    {seat.hasLocker && (
+                                      <div className="absolute -top-3 -right-2 bg-foreground text-background p-0.5 rounded-full shadow-lg z-10">
+                                        <Lock className="w-2.5 h-2.5" />
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ))}
+                          <div className="mt-4 mx-auto w-full text-center py-1.5 bg-border/50 rounded-md text-muted-foreground text-[10px] tracking-widest uppercase font-bold border border-border">
+                            Front Desk
+                          </div>
+                        </div>
+                      </div>
+                    </TransformComponent>
+                  </TransformWrapper>
+                </div>
+              </div>
+              </>
+            )}
 
             {/* Locker Add-on UI */}
             {selectedPlan && (seatHasMandatoryLocker || library.standaloneLockers?.length > 0) && (
@@ -579,7 +594,6 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
                     <Lock className={`w-4 h-4 ${seatHasMandatoryLocker ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
                   <div className="flex-1 space-y-2">
-                    
                     {seatHasMandatoryLocker ? (
                       <>
                         <div className="flex justify-between items-center">
@@ -587,19 +601,15 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
                           <span className="font-bold text-sm">+₹{lockerCost.toFixed(0)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          This seat has a locker attached. The fee has been prorated and automatically added to your total.
+                          Included with this seat.
                         </p>
                       </>
                     ) : (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-sm text-foreground">Optional Standalone Locker</span>
+                          <span className="font-bold text-sm text-foreground">Optional Locker</span>
                           {selectedStandaloneLockerId && <span className="font-bold text-sm text-primary">+₹{lockerCost.toFixed(0)}</span>}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Secure your belongings by renting one of our standalone lockers.
-                        </p>
-                        
                         <select 
                           value={selectedStandaloneLockerId}
                           onChange={(e) => setSelectedStandaloneLockerId(e.target.value)}
@@ -619,19 +629,221 @@ export function LibraryClient({ library, occupiedSeatIds, studentId }: { library
               </div>
             )}
 
+            {/* Payment Method Toggle */}
+            <div className="space-y-3 pt-4 border-t border-border" id="payment-section">
+              <label className="text-sm font-bold text-foreground">3. Payment Method</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPaymentMode("ONLINE")}
+                  className={`flex-1 py-3 px-2 rounded-xl text-xs font-bold transition-all border-2 ${paymentMode === "ONLINE" ? 'bg-primary/10 border-primary text-primary' : 'bg-background border-border text-muted-foreground hover:border-border/80'}`}
+                >
+                  Pay Online
+                </button>
+                <button
+                  onClick={() => setPaymentMode("RECEPTION")}
+                  className={`flex-1 py-3 px-2 rounded-xl text-xs font-bold transition-all border-2 ${paymentMode === "RECEPTION" ? 'bg-primary/10 border-primary text-primary' : 'bg-background border-border text-muted-foreground hover:border-border/80'}`}
+                >
+                  Pay at Reception
+                </button>
+              </div>
+            </div>
+
+            {selectedPlan && (
+              <div className="flex justify-between items-center text-sm font-medium mt-4 bg-muted/30 p-4 rounded-xl border border-border">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">Valid From</span>
+                  <span className="text-foreground">{startDate.toLocaleDateString()}</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">Valid Till</span>
+                  <span className="text-foreground">{endDate.toLocaleDateString()}</span>
+                </div>
+              </div>
+            )}
+
             <button 
               onClick={handleCheckout}
               disabled={!selectedPlan || (!isFlexible && !selectedSeat) || isProcessing}
               className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg mt-4"
             >
               {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {isProcessing ? "Processing..." : `Pay ₹${totalAmount.toFixed(0)}`}
+              {isProcessing ? "Processing..." : (paymentMode === "ONLINE" ? `Pay ₹${totalAmount.toFixed(0)}` : `Book for ₹${totalAmount.toFixed(0)}`)}
             </button>
             
-            <p className="text-center text-xs text-muted-foreground">You won't be charged yet. Secure payments by Razorpay.</p>
+            <p className="text-center text-xs text-muted-foreground">
+              {paymentMode === "ONLINE" ? "Secure payments by Razorpay." : "Your booking will be confirmed after payment at reception."}
+            </p>
           </div>
         </div>
+
+        {/* Left Column 2: Facilities & Map */}
+        <div className="order-3 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2 space-y-12">
+          <hr className="border-border hidden lg:block" />
+
+          {/* Facilities */}
+          <section>
+            <h2 className="text-2xl font-bold font-heading tracking-tight mb-6">What this place offers</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-8">
+              {library.facilities.map((fac: string) => (
+                <div key={fac} className="flex items-center gap-3 text-foreground font-medium text-sm">
+                  <Check className="w-5 h-5 text-primary shrink-0" /> {fac}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <hr className="border-border" />
+
+          {/* Map Location */}
+          <section>
+            <h2 className="text-2xl font-bold font-heading tracking-tight mb-6">Location</h2>
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+              <iframe 
+                src={mapEmbedUrl} 
+                width="100%" 
+                height="350" 
+                style={{ border: 0 }} 
+                allowFullScreen={false} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">{library.address}</h3>
+                  <p className="text-muted-foreground text-xs mt-1">{library.locality}, {library.city}</p>
+                </div>
+                <a 
+                  href={library.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(library.address)}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm shrink-0 flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                >
+                  <Navigation className="w-4 h-4" /> Get Directions
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-8 border-t border-border pt-8">
+            <h2 className="text-2xl font-black text-foreground mb-4 font-heading flex items-center gap-2">
+              Feedback & Support
+            </h2>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => {
+                  if(!studentId) {
+                    router.push(`/login?returnUrl=/library/${library.id}`);
+                    return;
+                  }
+                  setFeedbackType("FEEDBACK");
+                }}
+                className="flex-1 bg-muted/50 hover:bg-muted text-foreground py-4 rounded-xl font-bold text-sm border border-border transition-colors"
+              >
+                💡 Give Suggestion
+              </button>
+              <button 
+                onClick={() => {
+                  if(!studentId) {
+                    router.push(`/login?returnUrl=/library/${library.id}`);
+                    return;
+                  }
+                  setFeedbackType("COMPLAINT");
+                }}
+                className="flex-1 bg-destructive/10 hover:bg-destructive/20 text-destructive py-4 rounded-xl font-bold text-sm border border-destructive/20 transition-colors"
+              >
+                ⚠️ File Complaint
+              </button>
+            </div>
+          </section>
+
+        </div>
       </div>
+
+      {feedbackType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-background w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-xl font-bold mb-4 text-foreground">
+              {feedbackType === "FEEDBACK" ? "Give Suggestion" : "File Complaint"}
+            </h3>
+            <textarea 
+              value={feedbackContent}
+              onChange={(e) => setFeedbackContent(e.target.value)}
+              placeholder={`Write your ${feedbackType.toLowerCase()} here...`}
+              className="w-full h-32 p-3 border border-border rounded-lg bg-input/50 focus:outline-none focus:ring-2 focus:ring-primary mb-4 resize-none text-foreground"
+            ></textarea>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => { setFeedbackType(null); setFeedbackContent(""); }}
+                className="px-4 py-2 font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleFeedbackSubmit}
+                disabled={isSubmittingFeedback || !feedbackContent.trim()}
+                className="px-4 py-2 font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isSubmittingFeedback ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 z-40 flex justify-between items-center shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.1)]">
+        <div>
+          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Starting from</div>
+          <div className="text-lg font-black text-foreground">
+            ₹{library.plans?.length > 0 ? Math.min(...library.plans.map((p: any) => p.price)) : 0} 
+            <span className="text-sm font-medium text-muted-foreground font-sans"> / month</span>
+          </div>
+        </div>
+        {!selectedPlan ? (
+          <button 
+            onClick={() => {
+              const widget = document.getElementById('plans-section');
+              if (widget) {
+                const yOffset = -100; 
+                const y = widget.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({top: y, behavior: 'smooth'});
+              } else {
+                window.scrollTo({top: 0, behavior: 'smooth'});
+              }
+            }} 
+            className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg"
+          >
+            Select Plan
+          </button>
+        ) : (!isFlexible && !selectedSeat) ? (
+          <button 
+            onClick={() => {
+              const widget = document.getElementById('seat-section');
+              if (widget) {
+                const yOffset = -100; 
+                const y = widget.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                window.scrollTo({top: y, behavior: 'smooth'});
+              }
+              import('react-hot-toast').then(({ default: toast }) => {
+                toast("Please select a seat first", { icon: "💺" });
+              });
+            }} 
+            className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg"
+          >
+            Select Seat
+          </button>
+        ) : (
+          <button 
+            onClick={handleCheckout}
+            disabled={isProcessing}
+            className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg flex items-center gap-2 disabled:opacity-50"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {isProcessing ? "Processing..." : "Pay Now"}
+          </button>
+        )}
+      </div>
+
     </div>
   )
 }

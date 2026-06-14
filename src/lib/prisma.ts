@@ -7,16 +7,18 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-const connectionString = `${process.env.DIRECT_URL || process.env.DATABASE_URL}`
+const connectionString = `${process.env.DATABASE_URL || process.env.DIRECT_URL}`
 
-const pool = globalForPrisma.pool ?? new Pool({ connectionString })
+const pool = globalForPrisma.pool ?? new Pool({ 
+  connectionString,
+  max: 3, // Keep max connections low per serverless instance
+  idleTimeoutMillis: 10000 
+})
 const adapter = new PrismaPg(pool)
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter })
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
-  globalForPrisma.pool = pool
-}
+globalForPrisma.prisma = prisma
+globalForPrisma.pool = pool
 
 export default prisma

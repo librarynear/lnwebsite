@@ -2,8 +2,12 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { approveLibrary, rejectLibrary } from "@/app/actions/admin-actions";
 import { Check, X, Edit, Eye, MapPin } from "lucide-react";
+import { getSession } from "@/app/actions/auth-actions";
+import { redirect } from "next/navigation";
 
 export default async function AdminDashboardPage() {
+  const session = await getSession();
+  if (!session || session.role !== 'ADMIN') redirect("/");
   const pendingLibraries = await prisma.library.findMany({
     where: { kycStatus: "PENDING" },
     orderBy: { createdAt: "asc" }
@@ -49,8 +53,8 @@ export default async function AdminDashboardPage() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/admin/edit/${lib.id}`} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/80 transition-colors flex items-center gap-2">
-                    <Edit className="w-4 h-4" /> Edit
+                  <Link href={`/admin/view/${lib.id}`} className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/80 transition-colors flex items-center gap-2">
+                    <Eye className="w-4 h-4" /> View Profile
                   </Link>
                   <form action={async () => { "use server"; await rejectLibrary(lib.id); }}>
                     <button type="submit" className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg font-medium hover:bg-destructive/20 transition-colors flex items-center gap-2">
@@ -94,8 +98,8 @@ export default async function AdminDashboardPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <Link href={`/admin/edit/${lib.id}`} className="text-primary hover:underline font-medium flex items-center gap-1">
-                      <Edit className="w-4 h-4" /> Edit
+                    <Link href={`/admin/view/${lib.id}`} className="text-primary hover:underline font-medium flex items-center gap-1">
+                      <Eye className="w-4 h-4" /> View Profile
                     </Link>
                   </td>
                 </tr>

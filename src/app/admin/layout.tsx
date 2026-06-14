@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import Image from "next/image";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/actions/auth-actions";
 
@@ -15,8 +16,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Admin Check / Auto-Upgrade
   if (session.role !== "ADMIN") {
     const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(",").map(e => e.trim().toLowerCase()) : [];
+    const adminPhones = process.env.ADMIN_PHONES ? process.env.ADMIN_PHONES.split(",").map(p => p.trim()) : [];
     
-    if (adminEmails.includes(session.email.toLowerCase())) {
+    if (
+      (session.email && adminEmails.includes(session.email.toLowerCase())) ||
+      (session.phone && adminPhones.includes(session.phone))
+    ) {
       // Auto-upgrade to ADMIN
       await prisma.user.update({
         where: { id: session.userId },
@@ -33,8 +38,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Admin Navbar */}
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-xl font-heading font-bold text-primary">
-            Admin Portal
+          <Link href="/admin" className="flex items-center gap-2 group">
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+            <span className="text-xl font-heading font-bold text-primary">Admin Control</span>
           </Link>
           <span className="text-xs px-2 py-1 bg-destructive/10 text-destructive rounded-full font-bold uppercase tracking-wide">
             Superuser

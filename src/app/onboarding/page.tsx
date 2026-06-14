@@ -1,28 +1,68 @@
 'use client'
 import { useState } from "react";
-import { CheckCircle2, ChevronRight, Building2, MapPin, CreditCard, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle2, ChevronRight, Building2, MapPin, CreditCard, Loader2, Image as ImageIcon, Check } from "lucide-react";
 import { completeOnboarding } from "@/app/actions/onboarding-actions";
+import { ImageKitProvider, IKUpload } from "imagekitio-next";
+
+const authenticator = async () => {
+  try {
+    const response = await fetch("/api/imagekit/auth");
+    if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+    const data = await response.json();
+    return { signature: data.signature, expire: data.expire, token: data.token };
+  } catch (error) {
+    throw new Error(`Authentication request failed: ${error}`);
+  }
+};
 
 export default function LibrarianOnboarding() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [libraryId, setLibraryId] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [passbookUrl, setPassbookUrl] = useState("");
 
   const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     setError("");
     try {
-      await completeOnboarding(formData);
+      const res = await completeOnboarding(formData);
+      if (res.success) {
+        setLibraryId(res.libraryId);
+        setStep(4); // Move to KYC step
+      }
     } catch (e: any) {
       setError(e.message || "Failed to complete onboarding");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyKYC = async () => {
+    if (!passbookUrl) {
+      setError("Please upload a passbook photo first");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const { uploadPassbook } = await import('@/app/actions/library-actions');
+      await uploadPassbook(libraryId, passbookUrl);
+      window.location.href = '/dashboard';
+    } catch (e: any) {
+      setError(e.message || "Failed to submit KYC. You can try again from settings.");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="h-16 border-b border-border bg-card flex items-center px-6">
-        <div className="text-xl font-heading font-bold text-primary">FocusDesk for Partners</div>
+      <header className="h-16 border-b border-border bg-card flex items-center px-6 gap-2 group">
+        <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+        <div className="text-xl font-heading font-bold text-primary hidden sm:block">FocusDesk for Partners</div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">
@@ -80,9 +120,20 @@ export default function LibrarianOnboarding() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Facilities (Comma separated)</label>
-                      <input name="facilities" type="text" placeholder="AC, High-speed WiFi, Lockers" className="w-full px-4 py-2 rounded-lg border border-border bg-input/50 focus:outline-none focus:ring-2 focus:ring-primary text-foreground" />
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-foreground">Facilities & Amenities</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {["AC", "Wi-Fi", "RO Water", "Washroom", "Power Backup", "CCTV", "Locker", "Parking", "Tea/Coffee", "Security Guard", "Charging Points", "Silent Zone"].map((facility) => (
+                          <label key={facility} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-input/20 hover:bg-muted/50 cursor-pointer transition-all has-[:checked]:bg-primary/5 has-[:checked]:border-primary">
+                            <input 
+                              type="checkbox" 
+                              name={`facility_${facility}`} 
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary" 
+                            />
+                            <span className="text-sm font-medium text-foreground select-none">{facility}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -141,37 +192,90 @@ export default function LibrarianOnboarding() {
               <div className={step === 3 ? 'block' : 'hidden'}>
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="mb-6 flex items-center gap-3">
-                    <CreditCard className="w-8 h-8 text-primary" />
+                    <CheckCircle2 className="w-8 h-8 text-primary" />
                     <div>
-                      <h2 className="text-2xl font-heading font-bold text-foreground">Payments & KYC</h2>
-                      <p className="text-muted-foreground">Setup your account to receive payouts securely.</p>
+                      <h2 className="text-2xl font-heading font-bold text-foreground">Review & Submit</h2>
+                      <p className="text-muted-foreground">Almost done! Submit your details to create your library.</p>
                     </div>
                   </div>
-
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center space-y-4">
-                    <h3 className="font-bold text-foreground text-lg">Partner with Razorpay Route</h3>
-                    <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                      We use Razorpay to securely collect your KYC documents and route payments directly to your bank account without us holding your funds.
-                    </p>
-                    
-                    <div className="bg-[#02042B] text-white font-bold px-6 py-3 rounded-xl opacity-50 cursor-not-allowed mt-2 flex items-center justify-center gap-2 w-full max-w-xs mx-auto">
-                      Setup Razorpay Account (Coming Soon)
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">For this MVP, you can skip this step and complete onboarding directly.</p>
-                  </div>
-
                   <div className="flex justify-between pt-4 border-t border-border mt-8">
                     <button type="button" onClick={() => setStep(2)} className="text-muted-foreground font-semibold px-6 py-2.5 rounded-lg hover:bg-muted transition-colors">
                       Back
                     </button>
-                    <button type="submit" disabled={loading} className="bg-success text-success-foreground font-semibold px-8 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50">
+                    <button type="submit" disabled={loading} className="bg-primary text-primary-foreground font-semibold px-8 py-2.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50">
                       {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-                      {loading ? "Completing..." : "Complete Onboarding"}
+                      {loading ? "Creating..." : "Create Library"}
                     </button>
                   </div>
                 </div>
               </div>
             </form>
+
+            <div className={step === 4 ? 'block' : 'hidden'}>
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                <div className="mb-6 flex items-center gap-3">
+                  <CreditCard className="w-8 h-8 text-success" />
+                  <div>
+                    <h2 className="text-2xl font-heading font-bold text-foreground">Payments & KYC</h2>
+                    <p className="text-muted-foreground">Library created successfully! Setup your account to receive payouts securely.</p>
+                  </div>
+                </div>
+
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center space-y-4">
+                  <h3 className="font-bold text-foreground text-lg">Upload Passbook / KYC Document</h3>
+                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                    Please upload a photo of your bank passbook or cancelled cheque to verify your library.
+                  </p>
+                  
+                  {!passbookUrl ? (
+                    <ImageKitProvider 
+                      publicKey={process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY} 
+                      urlEndpoint={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT} 
+                      authenticator={authenticator}
+                    >
+                      <div className="relative border-2 border-dashed border-border rounded-xl p-8 text-center hover:bg-muted/30 transition-colors max-w-xs mx-auto bg-card">
+                        <IKUpload
+                          fileName="passbook_kyc"
+                          tags={["kyc"]}
+                          onUploadStart={() => setUploadingImage(true)}
+                          onError={(err) => { setUploadingImage(false); setError("Upload failed"); }}
+                          onSuccess={(res) => { setUploadingImage(false); setPassbookUrl(res.url); }}
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="pointer-events-none flex flex-col items-center gap-2 text-muted-foreground">
+                          {uploadingImage ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-8 h-8" />}
+                          <span className="font-medium">{uploadingImage ? "Uploading..." : "Click or drag to upload Passbook"}</span>
+                        </div>
+                      </div>
+                    </ImageKitProvider>
+                  ) : (
+                    <div className="max-w-xs mx-auto border border-success/30 bg-success/10 p-4 rounded-xl flex items-center gap-3">
+                      <Check className="w-6 h-6 text-success shrink-0" />
+                      <div className="text-left">
+                        <p className="font-bold text-success text-sm">Passbook Uploaded</p>
+                        <p className="text-xs text-success/80 truncate">{passbookUrl.split('/').pop()}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <button onClick={handleVerifyKYC} disabled={loading || uploadingImage || !passbookUrl} className="bg-[#02042B] hover:bg-[#02042B]/90 text-white font-bold px-6 py-3 rounded-xl transition-colors mt-4 flex items-center justify-center gap-2 w-full max-w-xs mx-auto disabled:opacity-50">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                    Submit KYC Verification
+                  </button>
+
+                  <p className="text-xs text-muted-foreground mt-4 italic">
+                    Note: Automated Razorpay KYC verification is coming soon!
+                  </p>
+                </div>
+
+                <div className="flex justify-center pt-4 mt-4">
+                  <button type="button" onClick={() => window.location.href = '/dashboard'} className="text-muted-foreground text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-muted transition-colors">
+                    Skip for Now (Do it later in Settings)
+                  </button>
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>

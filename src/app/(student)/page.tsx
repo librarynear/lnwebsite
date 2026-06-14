@@ -2,132 +2,91 @@ import prisma from "@/lib/prisma"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getSession } from "@/app/actions/auth-actions"
-import { Star, Heart } from "lucide-react"
-import { ClientSearch } from "./ClientSearch"
+import { ArrowRight } from "lucide-react"
+import { InteractivePhoneMockup } from "@/components/InteractivePhoneMockup"
 
-export const dynamic = 'force-dynamic'
+import { HowItWorks } from "@/components/home/how-it-works"
+import { FeaturedCarousel } from "@/components/home/featured-carousel"
+import { BentoFeatures } from "@/components/home/bento-features"
+import { Testimonials } from "@/components/home/testimonials"
+import { PartnerCTA } from "@/components/home/partner-cta"
 
-export default async function LibrariesPage(props: any) {
+export const revalidate = 60
+
+export default async function HomePage() {
   const session = await getSession();
-  if (session?.role === 'LIBRARIAN') {
+  if (session?.role === 'LIBRARIAN' || session?.role === 'ADMIN') {
     redirect('/dashboard');
   }
 
-  const searchParams = await props.searchParams;
-  const query = searchParams?.query || "";
-  const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
-
-  let libraries = await prisma.library.findMany({
+  // Fetch top 3 libraries to showcase in the interactive mockup and carousel
+  const libraries = await prisma.library.findMany({
     where: {
       kycStatus: "APPROVED",
-      ...(query ? {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { locality: { contains: query, mode: 'insensitive' } },
-          { metroStation: { contains: query, mode: 'insensitive' } },
-          { city: { contains: query, mode: 'insensitive' } }
-        ]
-      } : {})
     },
     include: {
       plans: true,
-      seats: true,
+    },
+    take: 3,
+    orderBy: {
+      createdAt: 'desc'
     }
-  });
-
-  // Sort by distance if Near Me is active
-  libraries.sort((a, b) => {
-    if (isNearMe) {
-      const distA = a.metroDistance || 999;
-      const distB = b.metroDistance || 999;
-      return distA - distB;
-    }
-    return 0;
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Search Header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border/30 pt-6 pb-4 px-4 md:px-12 flex flex-col items-center">
-        <ClientSearch />
-      </div>
-
-      {/* Main Grid */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-8 md:px-12 py-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10">
-          {libraries.map((library, index) => {
-            const minPrice = library.plans.length > 0 
-              ? Math.min(...library.plans.map(p => p.price)) 
-              : 0;
-
-            const locality = library.locality || library.address.split(',')[0];
-
-            // Use uploaded photo if available, otherwise fallback
-            let imageUrl = library.photos && library.photos.length > 0 ? library.photos[0] : null;
-            if (!imageUrl) {
-              const demoImages = [
-                "https://images.unsplash.com/photo-1568667256549-094345857637?w=800&q=80",
-                "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
-                "https://images.unsplash.com/photo-1510531704581-5b28709e5a16?w=800&q=80",
-                "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80",
-                "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&q=80"
-              ];
-              imageUrl = demoImages[index % demoImages.length];
-            }
-
-            return (
-              <Link key={library.id} href={`/library/${library.id}`} className="group block">
-                <div className="flex flex-col gap-3">
-                  
-                  {/* Image Container */}
-                  <div className="aspect-square bg-muted rounded-2xl relative overflow-hidden shadow-sm">
-                    <img 
-                      src={imageUrl} 
-                      alt={library.name}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                    />
-                    
-                    {/* Heart Icon */}
-                    <button className="absolute top-3 right-3 text-white/80 hover:text-white hover:scale-110 transition-all drop-shadow-md">
-                      <Heart className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2} />
-                    </button>
-                  </div>
-                  
-                  {/* Text Content */}
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-start">
-                      <h2 className="text-sm sm:text-base font-bold text-foreground line-clamp-1 pr-2">{library.name}</h2>
-                      <div className="flex items-center gap-1 text-xs sm:text-sm text-foreground shrink-0 mt-0.5">
-                        <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-foreground" />
-                        <span>4.8</span>
-                      </div>
-                    </div>
-                    
-                    <p className="text-muted-foreground text-xs sm:text-sm line-clamp-1 mt-0.5">
-                      {locality}
-                    </p>
-                    
-                    {library.metroStation ? (
-                      <p className="text-muted-foreground text-xs sm:text-sm line-clamp-1 mt-0.5">
-                        {library.metroDistance ? `${library.metroDistance} km` : 'Near'} from {library.metroStation} metro
-                      </p>
-                    ) : (
-                      <p className="text-muted-foreground text-xs sm:text-sm line-clamp-1 mt-0.5">
-                        {library.city}
-                      </p>
-                    )}
-                    
-                    <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-foreground">
-                      <span className="font-bold">₹{minPrice}</span> onwards
-                    </div>
-                  </div>
-
-                </div>
+    <div className="flex flex-col bg-background overflow-hidden relative w-full">
+      
+      {/* 1. Hero Section */}
+      <section className="flex flex-col min-h-[calc(100vh-80px)] bg-[#eff3f9] relative">
+        <div className="container max-w-[1300px] mx-auto px-6 md:px-10 py-12 md:py-24 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16 flex-1">
+          
+          {/* Left Content */}
+          <div className="flex-1 flex flex-col justify-center items-start z-10">
+            <h1 className="text-5xl md:text-6xl lg:text-[76px] font-extrabold tracking-tight font-heading leading-[1.05] text-[#0f172a]">
+              Find Your Perfect <br />
+              <span className="text-[#3b82f6]">Study Space</span>
+            </h1>
+            
+            <p className="mt-8 text-lg md:text-xl text-slate-600 max-w-xl leading-relaxed">
+              Reserve quiet library spaces, choose your setup, and focus without interruptions.
+            </p>
+            
+            <div className="mt-12">
+              <Link 
+                href="/libraries" 
+                className="inline-flex items-center gap-2 bg-[#2563eb] text-white rounded-full px-8 py-4 font-bold text-lg hover:bg-[#1d4ed8] transition-all hover:scale-105 shadow-[0_10px_30px_-10px_rgba(37,99,235,0.5)]"
+              >
+                Explore Libraries
+                <ArrowRight className="w-5 h-5" />
               </Link>
-            )
-          })}
+            </div>
+          </div>
+
+          {/* Right Content - Interactive Phone Mockup */}
+          <div className="flex-1 w-full flex justify-center lg:justify-center items-center relative z-10 pt-10 lg:pt-0">
+            {/* Subtle background glow behind the phone */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[500px] bg-blue-400/20 blur-[100px] rounded-full pointer-events-none" />
+            
+            <InteractivePhoneMockup libraries={libraries} />
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* 2. How It Works */}
+      <HowItWorks />
+
+      {/* 3. Featured Libraries Carousel */}
+      <FeaturedCarousel libraries={libraries} />
+
+      {/* 4. Bento Box Features */}
+      <BentoFeatures />
+
+      {/* 5. Student Testimonials */}
+      <Testimonials />
+
+      {/* 6. Partner CTA */}
+      <PartnerCTA />
+
     </div>
   )
 }

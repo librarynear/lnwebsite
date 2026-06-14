@@ -60,37 +60,37 @@
   --card-foreground: #0F172A;
   --popover: #ffffff;
   --popover-foreground: #0F172A;
-  --primary: #7C2C2E;
+  --primary: #2781CA;
   --primary-foreground: #ffffff;
-  --secondary: #0F172A;
-  --secondary-foreground: #FCFBF9;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0F172A;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #7C2C2E;
-  --accent-foreground: #ffffff;
-  --destructive: #7C2C2E;
+  --accent: #EBF4FC;
+  --accent-foreground: #2781CA;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --success: #4A7C59;
+  --success: #22c55e;
   --success-foreground: #ffffff;
-  --warning: #D4A373;
+  --warning: #f59e0b;
   --warning-foreground: #ffffff;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #7C2C2E;
+  --ring: #2781CA;
   --chart-1: #0F172A;
-  --chart-2: #7C2C2E;
-  --chart-3: #4A7C59;
-  --chart-4: #D4A373;
-  --chart-5: #7C2C2E;
+  --chart-2: #2781CA;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #3b82f6;
   --radius: 0.75rem;
   --sidebar: #0F172A;
   --sidebar-foreground: #FCFBF9;
-  --sidebar-primary: #7C2C2E;
+  --sidebar-primary: #3b82f6;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1e293b;
   --sidebar-accent-foreground: #FCFBF9;
   --sidebar-border: #1e293b;
-  --sidebar-ring: #7C2C2E;
+  --sidebar-ring: #2781CA;
 }
 
 .dark {
@@ -100,15 +100,15 @@
   --card-foreground: #FCFBF9;
   --popover: #0F172A;
   --popover-foreground: #FCFBF9;
-  --primary: #7C2C2E;
+  --primary: #2781CA;
   --primary-foreground: #ffffff;
   --secondary: #FCFBF9;
   --secondary-foreground: #0F172A;
   --muted: #334155;
   --muted-foreground: #94a3b8;
-  --accent: #7C2C2E;
-  --accent-foreground: #ffffff;
-  --destructive: #7C2C2E;
+  --accent: #1e293b;
+  --accent-foreground: #2781CA;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --success: #4A7C59;
   --success-foreground: #ffffff;
@@ -158,4 +158,32 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
+}
+
+@keyframes liquid {
+  0% { background-position: 0% 0%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 50%; }
+  100% { background-position: 0% 0%; }
+}
+
+.animate-liquid {
+  background-size: 300% 300%;
+  animation: liquid 8s ease-in-out infinite;
+}
+
+/* Scroll direction behavior for sticky headers */
+body.scroll-down .navbar-sticky {
+  transform: translateY(-100%);
+}
+
+body.scroll-down .search-bar-sticky {
+  transform: translateY(-4rem); /* 64px (h-16) */
+}
+
+@media (min-width: 768px) {
+  body.scroll-down .search-bar-sticky {
+    transform: translateY(-5rem); /* 80px (h-20) */
+  }
 }

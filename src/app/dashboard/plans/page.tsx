@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 
 export default async function PlansManagerPage() {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN') redirect("/");
+  if (!session || session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
 
-  const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (!library) redirect("/onboarding");
 
   // Fetch plans from live Supabase DB
