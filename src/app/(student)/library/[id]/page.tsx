@@ -2,7 +2,8 @@ import prisma from "@/lib/prisma"
 import { notFound } from "next/navigation"
 import { LibraryClient } from "./LibraryClient"
 import { getSession } from "@/app/actions/auth-actions"
-import { redis } from "@/lib/redis"
+
+export const revalidate = 60; // Cache this page on Vercel's Edge CDN for 60 seconds
 
 export default async function LibraryDetailsPage(props: any) {
   const params = await props.params;
@@ -12,27 +13,16 @@ export default async function LibraryDetailsPage(props: any) {
     return notFound()
   }
 
-  // 1. Check Redis Cache
-  const cacheKey = `library:${id}`;
-  let library: any = await redis.get(cacheKey);
-
-  // 2. If not in cache, query Postgres and save to Redis
-  if (!library) {
-    library = await prisma.library.findUnique({
-      where: { id },
-      include: {
-        plans: true,
-        seats: true,
-        standaloneLockers: true
-      }
-    });
-
-    if (library) {
-      await redis.set(cacheKey, JSON.stringify(library), { ex: 60 * 60 * 24 }); // Cache for 24h, we will invalidate on update
+  // Use ISR (revalidate) instead of direct Upstash Redis calls to prevent quota exhaustion
+  // The Prisma client handles PgBouncer pooling.
+  const library = await prisma.library.findUnique({
+    where: { id },
+    include: {
+      plans: true,
+      seats: true,
+      standaloneLockers: true
     }
-  } else if (typeof library === 'string') {
-    library = JSON.parse(library);
-  }
+  });
 
   if (!library) {
     return notFound()

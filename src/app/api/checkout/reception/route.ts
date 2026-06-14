@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     if (session.role === 'LIBRARIAN') {
       const library = await prisma.library.findUnique({ where: { id: libraryId } });
-      if (!library || library.ownerId !== session.userId) {
+      if (!library || library.librarianId !== session.userId) {
         return NextResponse.json({ error: 'Forbidden: You do not own this library' }, { status: 403 });
       }
     }

@@ -9,10 +9,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized. Please login to submit feedback.' }, { status: 401 });
     }
 
-    const { targetType, libraryId, studentName, studentPhone, content } = await req.json();
+    const body = await req.json();
+    const { targetType, libraryId, content } = body;
+    let { studentName, studentPhone } = body;
 
     if (!targetType || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    
+    // Automatically attach identity for global website feedback per requirements
+    if (targetType === 'WEBSITE') {
+      const user = await prisma.user.findUnique({ where: { id: session.userId } });
+      if (user) {
+        studentName = user.name;
+        studentPhone = user.phone;
+      }
     }
 
     const feedback = await prisma.platformFeedback.create({

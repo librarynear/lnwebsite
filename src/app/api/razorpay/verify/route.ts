@@ -102,16 +102,25 @@ export async function POST(req: Request) {
       }
     }
 
-    const order = await razorpay.orders.fetch(razorpay_order_id);
-    if (order.status !== 'paid') {
-      return NextResponse.json({ error: 'Order not paid' }, { status: 400 });
-    }
-    const paidAmountPaise = order.amount_paid || order.amount;
     const expectedAmountPaise = Math.round(expectedAmount * 100);
 
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    const paidAmountPaise = Number(payment.amount);
+
     // Exact comparison with 1 paisa tolerance to prevent money leaks
-    if (Math.abs(Number(paidAmountPaise) - expectedAmountPaise) > 1) {
+    if (Math.abs(paidAmountPaise - expectedAmountPaise) > 1) {
       return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 });
+    }
+
+    if (payment.status === 'authorized') {
+      try {
+        await razorpay.payments.capture(razorpay_payment_id, paidAmountPaise, "INR");
+      } catch (err) {
+        console.error("Capture failed:", err);
+        return NextResponse.json({ error: 'Failed to capture payment' }, { status: 500 });
+      }
+    } else if (payment.status !== 'captured') {
+      return NextResponse.json({ error: 'Payment invalid or failed' }, { status: 400 });
     }
 
     // 10. Atomic booking creation with serializable transaction to prevent race conditions

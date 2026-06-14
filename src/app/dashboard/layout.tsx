@@ -42,11 +42,7 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
           <Link href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Queries
           </Link>
-          {library && (
-            <Link href={`/library/${library.id}`} target="_blank" className="flex items-center justify-between px-4 py-2.5 rounded-lg font-medium text-primary hover:bg-primary/10 transition-colors mt-4 border border-primary/20">
-              View Public Page <ExternalLink className="w-4 h-4" />
-            </Link>
-          )}
+          {/* Removed View Public Page / Browse as user link per request */}
         </nav>
 
         <div className="p-4 border-t border-sidebar-border mt-auto">

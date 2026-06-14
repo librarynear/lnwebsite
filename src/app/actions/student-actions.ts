@@ -154,12 +154,28 @@ export async function addStudentWithBooking(formData: FormData) {
     });
   } catch (e: any) {
     if (e?.code === 'P2002') {
-      // If a user with this phone exists, and authId is provided, we should ideally update them or fail.
-      // But since we are creating a new student record for the library, if they exist we can just link the booking.
-      // For now, let's just return the error so the librarian knows they already exist.
-      return { error: "A student with this email or phone already exists" };
+      // Find the existing student by phone or email
+      if (phone) {
+        student = await prisma.user.findUnique({ where: { phone } });
+      }
+      if (!student && email) {
+        student = await prisma.user.findUnique({ where: { email } });
+      }
+      
+      if (!student) return { error: "A student with this email or phone already exists" };
+      
+      student = await prisma.user.update({
+        where: { id: student.id },
+        data: {
+          name,
+          dob: dobStr ? new Date(dobStr) : student.dob,
+          gender: gender || student.gender,
+          address: address || student.address
+        }
+      });
+    } else {
+      throw e;
     }
-    throw e;
   }
 
   // Create booking

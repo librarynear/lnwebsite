@@ -94,14 +94,24 @@ export async function POST(req: Request) {
       }
     }
 
-    const order = await razorpay.orders.fetch(razorpay_order_id as string);
-    if (order.status !== 'paid') {
-      return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
-    }
-    const paidPaise = Number(order.amount_paid || order.amount);
     const expectedPaise = Math.round(expectedAmount * 100);
+
+    const payment = await razorpay.payments.fetch(razorpay_payment_id as string);
+    const paidPaise = Number(payment.amount);
+
     if (Math.abs(paidPaise - expectedPaise) > 1) {
       return NextResponse.redirect(`${appUrl}/?payment=mismatch`, { status: 303 });
+    }
+
+    if (payment.status === 'authorized') {
+      try {
+        await razorpay.payments.capture(razorpay_payment_id as string, paidPaise, "INR");
+      } catch (err) {
+        console.error("Payment capture failed in callback:", err);
+        return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
+      }
+    } else if (payment.status !== 'captured') {
+      return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
     }
 
     // 6. Atomic booking creation (same logic as verify route)

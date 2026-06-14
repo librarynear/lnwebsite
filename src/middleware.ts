@@ -59,7 +59,9 @@ export async function middleware(request: NextRequest) {
   // Protect dashboard and onboarding routes
   if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/onboarding') || request.nextUrl.pathname.startsWith('/admin')) {
     if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('returnUrl', request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
