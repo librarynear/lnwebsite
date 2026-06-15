@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   try {
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL ? 'https://www.focusdesk.in' : `${protocol}://${host}`);
 
     // 1. Auth check
     const session = await getSession();
