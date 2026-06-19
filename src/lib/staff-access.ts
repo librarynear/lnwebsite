@@ -61,7 +61,7 @@ export async function requireApprovedStaff(allowedRoles: StaffRole[]) {
   const context = await getCurrentStaffContext();
 
   if (!context.user) {
-    redirect("/profile");
+    redirect("/staff-access");
   }
 
   if (context.bootstrapAdminAllowed && allowedRoles.includes("admin")) {
@@ -73,7 +73,7 @@ export async function requireApprovedStaff(allowedRoles: StaffRole[]) {
   }
 
   if (!context.staffUser?.is_approved || !allowedRoles.includes(context.staffUser.role as StaffRole)) {
-    redirect("/profile");
+    redirect("/staff-access");
   }
 
   return {
@@ -81,4 +81,42 @@ export async function requireApprovedStaff(allowedRoles: StaffRole[]) {
     effectiveRole: context.staffUser.role as StaffRole,
     isApproved: true,
   };
+}
+
+/**
+ * Ensure the current staff user is allowed to mutate a specific library.
+ * Admins may touch any library; sales users are restricted to libraries whose
+ * locality_id is in their sales_locality_assignments. Prevents IDOR where a
+ * sales account calls a server action with an arbitrary library UUID.
+ */
+export async function requireLibraryMutationAccess(libraryId: string) {
+  const staff = await requireApprovedStaff(["admin", "sales"]);
+
+  if (staff.effectiveRole === "admin") {
+    return staff;
+  }
+
+  const { data: library } = await supabaseServer
+    .from("library_branches")
+    .select("locality_id")
+    .eq("id", libraryId)
+    .maybeSingle();
+
+  const localityId = (library as { locality_id: string | null } | null)?.locality_id ?? null;
+  if (!localityId) {
+    redirect("/sales/libraries");
+  }
+
+  const { data: assignment } = await supabaseServer
+    .from("sales_locality_assignments")
+    .select("id")
+    .eq("user_id", staff.user!.id)
+    .eq("locality_id", localityId)
+    .maybeSingle();
+
+  if (!assignment) {
+    redirect("/sales/libraries");
+  }
+
+  return staff;
 }

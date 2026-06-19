@@ -17,10 +17,23 @@ function parseCoordinatePair(value: string) {
   return { latitude, longitude };
 }
 
+/** Reasonable upper bound for a pasted map link. */
+const MAX_MAP_LINK_LENGTH = 4000;
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // Malformed percent-encoding — fall back to the raw string.
+    return value;
+  }
+}
+
 export function extractCoordinatesFromMapLink(mapLink: string | null | undefined) {
   if (!mapLink) return null;
+  if (mapLink.length > MAX_MAP_LINK_LENGTH) return null;
 
-  const decodedLink = decodeURIComponent(mapLink);
+  const decodedLink = safeDecodeURIComponent(mapLink);
 
   const atPattern = decodedLink.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
   if (atPattern) {

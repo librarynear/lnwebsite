@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+/** Cap on how many saved libraries a single user can persist. */
+const MAX_SAVED_LIBRARIES = 200;
+
 function normalizeIds(ids: string[]) {
-  return [...new Set(ids.filter(Boolean))];
+  return [...new Set((Array.isArray(ids) ? ids : []).filter(
+    (id) => typeof id === "string" && id.length > 0 && id.length <= 100,
+  ))].slice(0, MAX_SAVED_LIBRARIES);
 }
 
 export async function signOutUser() {

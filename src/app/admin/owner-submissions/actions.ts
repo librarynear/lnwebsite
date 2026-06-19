@@ -12,6 +12,7 @@ import type { Json } from "@/types/supabase";
 import { refreshLibraryProfileCompletenessScore } from "@/lib/library-profile-score-server";
 import { buildLibraryFeePlanInsertRows, normalizePlanDrafts } from "@/lib/library-plans";
 import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
+import { requireApprovedStaff } from "@/lib/staff-access";
 
 type SubmissionPayload = {
   id: string;
@@ -96,6 +97,7 @@ async function linkSubmissionToExistingLibrary(submissionId: string) {
 }
 
 export async function approveOwnerSubmission(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const id = formData.get("id") as string;
   if (!id) {
     redirect("/admin/owner-submissions");
@@ -279,6 +281,7 @@ export async function approveOwnerSubmission(formData: FormData): Promise<void> 
 }
 
 export async function requestChangesOwnerSubmission(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const id = formData.get("id") as string;
   const notes = (formData.get("notes") as string) ?? "";
   if (!id) {
@@ -307,6 +310,7 @@ export async function requestChangesOwnerSubmission(formData: FormData): Promise
 }
 
 export async function rejectOwnerSubmission(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const id = formData.get("id") as string;
   const notes = (formData.get("notes") as string) ?? "";
   if (!id) {

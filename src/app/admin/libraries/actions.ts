@@ -8,7 +8,7 @@ import {
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
 import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
-import { requireApprovedStaff } from "@/lib/staff-access";
+import { requireApprovedStaff, requireLibraryMutationAccess } from "@/lib/staff-access";
 import {
   buildLibraryFeePlanInsertRows,
   parsePlanDraftsJson,
@@ -29,7 +29,7 @@ function getTrimmedString(formData: FormData, key: string) {
 }
 
 export async function updateLibraryBranch(id: string, formData: FormData) {
-  await requireApprovedStaff(["sales", "admin"]);
+  await requireLibraryMutationAccess(id);
 
   const { data: existingLibrary, error: existingLibraryError } = await supabaseServer
     .from("library_branches")
@@ -87,7 +87,9 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
     !phoneNumber ||
     !Number.isInteger(totalSeats) ||
     totalSeats < 1 ||
-    amenityValues.length === 0
+    totalSeats > 100000 ||
+    amenityValues.length === 0 ||
+    amenityValues.length > 30
   ) {
     return { success: false, error: "Please fill all compulsory fields." };
   }
@@ -137,11 +139,15 @@ export async function updateLibraryBranch(id: string, formData: FormData) {
   const nearestMetro = overrideNearestMetro
     ? getTrimmedString(formData, "nearest_metro") || null
     : computedMetro?.nearest_metro ?? null;
-  const nearestMetroDistanceKm = overrideNearestMetro
+  const rawNearestMetroDistanceKm = overrideNearestMetro
     ? (formData.get("nearest_metro_distance_km")
         ? Number.parseFloat(String(formData.get("nearest_metro_distance_km")))
         : null)
     : computedMetro?.nearest_metro_distance_km ?? null;
+  const nearestMetroDistanceKm =
+    rawNearestMetroDistanceKm !== null && Number.isFinite(rawNearestMetroDistanceKm)
+      ? Math.min(Math.max(rawNearestMetroDistanceKm, 0), 500)
+      : null;
   const nearestMetroLine = overrideNearestMetro
     ? null
     : computedMetro?.nearest_metro_line ?? null;

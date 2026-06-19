@@ -6,8 +6,10 @@ import {
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
 import { getCurrentActorUserId, logLibraryActivity } from "@/lib/library-activity";
+import { requireApprovedStaff } from "@/lib/staff-access";
 
 export async function setLibraryVerificationStatus(id: string, newStatus: "verified" | "unverified") {
+  await requireApprovedStaff(["admin"]);
   const actorUserId = await getCurrentActorUserId();
   
   const { error } = await supabaseServer

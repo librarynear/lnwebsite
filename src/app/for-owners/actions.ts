@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { upsertProfileFromUser } from "@/lib/auth/profile";
 import {
@@ -24,7 +25,8 @@ import {
 } from "@/lib/owner-form-validation";
 import { logLibraryActivity } from "@/lib/library-activity";
 import { resolveGoogleMapsCoordinates } from "@/lib/server/google-maps-resolver";
-import { cleanupImageKitFiles } from "@/lib/server/imagekit";
+import { cleanupImageKitFiles, isOwnerSubmissionImageUrl } from "@/lib/server/imagekit";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const MAX_OWNER_PHOTOS = 3;
 
@@ -105,6 +107,13 @@ async function loadExistingOwnerSubmission(userId: string) {
 }
 
 export async function submitOwnerLibrary(formData: FormData) {
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  const rateCheck = checkRateLimit(ip, RATE_LIMITS.submitOwnerLibrary);
+  if (!rateCheck.success) {
+    redirect("/for-owners?error=rate_limited");
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -172,7 +181,23 @@ export async function submitOwnerLibrary(formData: FormData) {
     !rawPhone ||
     !Number.isInteger(totalSeats) ||
     totalSeats < 1 ||
+    totalSeats > 100000 ||
     amenityValues.length === 0
+  ) {
+    ownerErrorRedirect("missing_required_fields");
+  }
+
+  if (
+    displayName.length > 200 ||
+    locality.length > 120 ||
+    city.length > 120 ||
+    (district?.length ?? 0) > 120 ||
+    state.length > 120 ||
+    fullAddress.length > 500 ||
+    rawMapLink.length > 2000 ||
+    (description?.length ?? 0) > 2000 ||
+    amenityValues.length > 30 ||
+    amenityValues.some((value) => value.length > 80)
   ) {
     ownerErrorRedirect("missing_required_fields");
   }
@@ -237,6 +262,11 @@ export async function submitOwnerLibrary(formData: FormData) {
   const nearestMetro = await findNearestMetro(latitude, longitude);
   const imageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
+  if (!imageUrls.every((url) => isOwnerSubmissionImageUrl(url, user.id))) {
+    await cleanupImageKitFiles(uploadedImageFileIds);
+    ownerErrorRedirect("invalid_image");
+  }
+
   const payload = {
     user_id: user.id,
     display_name: displayName,
@@ -293,6 +323,12 @@ export async function submitOwnerLibrary(formData: FormData) {
 }
 
 export async function updateOwnerSubmissionPlans(formData: FormData) {
+  const ip = getClientIp(await headers());
+  const rateCheck = checkRateLimit(ip, RATE_LIMITS.ownerPlansUpdate);
+  if (!rateCheck.success) {
+    redirect("/for-owners?plans_error=1");
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

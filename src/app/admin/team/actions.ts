@@ -4,14 +4,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase-server";
 import { getCurrentActorUserId } from "@/lib/library-activity";
+import { requireApprovedStaff } from "@/lib/staff-access";
+
+const VALID_STAFF_ROLES = ["admin", "sales"] as const;
+
+function isValidStaffRole(role: string): role is (typeof VALID_STAFF_ROLES)[number] {
+  return (VALID_STAFF_ROLES as readonly string[]).includes(role);
+}
 
 export async function saveStaffAccess(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const userId = formData.get("user_id") as string;
   const role = formData.get("role") as string;
   const isApproved = formData.get("is_approved") === "true";
   const actorUserId = await getCurrentActorUserId();
 
-  if (!userId || !role) {
+  if (!userId || !role || !isValidStaffRole(role)) {
     redirect("/admin/team");
   }
 
@@ -33,12 +41,13 @@ export async function saveStaffAccess(formData: FormData): Promise<void> {
 }
 
 export async function addStaffByEmail(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const email = ((formData.get("email") as string) ?? "").trim().toLowerCase();
   const role = ((formData.get("role") as string) ?? "sales").trim();
   const isApproved = formData.get("is_approved") === "true";
   const actorUserId = await getCurrentActorUserId();
 
-  if (!email || !role) {
+  if (!email || email.length > 320 || !role || !isValidStaffRole(role)) {
     redirect("/admin/team");
   }
 
@@ -70,6 +79,7 @@ export async function addStaffByEmail(formData: FormData): Promise<void> {
 }
 
 export async function assignLocality(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const userId = formData.get("user_id") as string;
   const localityId = formData.get("locality_id") as string;
   const actorUserId = await getCurrentActorUserId();
@@ -106,6 +116,7 @@ export async function assignLocality(formData: FormData): Promise<void> {
 }
 
 export async function removeLocalityAssignment(formData: FormData): Promise<void> {
+  await requireApprovedStaff(["admin"]);
   const assignmentId = formData.get("assignment_id") as string;
   const userId = formData.get("user_id") as string;
 

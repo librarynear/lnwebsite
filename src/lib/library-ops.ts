@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseServer } from "@/lib/supabase-server";
 import { calculateLibraryProfileCompleteness } from "@/lib/library-profile-score";
+import { sanitizeSearchTerm } from "@/lib/postgrest";
 import type { Tables } from "@/types/supabase";
 
 type FeePlan = Tables<"library_fee_plans">;
@@ -51,7 +52,8 @@ export async function getLibraryOpsPage({
     .eq("is_active", true);
 
   if (q) {
-    query = query.or(`display_name.ilike.%${q}%,locality.ilike.%${q}%,phone_number.ilike.%${q}%`);
+    const safeQ = sanitizeSearchTerm(q);
+    query = query.or(`display_name.ilike.%${safeQ}%,locality.ilike.%${safeQ}%,phone_number.ilike.%${safeQ}%`);
   }
 
   if (city) {

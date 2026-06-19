@@ -1,4 +1,4 @@
-import { countWords, normalizePlanDrafts } from "@/lib/library-plans";
+import { countWords, normalizePlanDrafts, MAX_FEE_PLANS_JSON_BYTES } from "@/lib/library-plans";
 
 export type OwnerValidationErrorCode =
   | "duplicate_submission"
@@ -12,7 +12,8 @@ export type OwnerValidationErrorCode =
   | "invalid_plan_description"
   | "too_many_images"
   | "too_few_images"
-  | "invalid_image";
+  | "invalid_image"
+  | "rate_limited";
 
 export function normalizeIndianPhone(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -52,6 +53,10 @@ export function hasValidTimeRange(openingTime: string | null, closingTime: strin
 export function hasValidPlanDescriptions(rawPlansJson: string) {
   if (!rawPlansJson.trim()) {
     return true;
+  }
+
+  if (rawPlansJson.length > MAX_FEE_PLANS_JSON_BYTES) {
+    return false;
   }
 
   try {

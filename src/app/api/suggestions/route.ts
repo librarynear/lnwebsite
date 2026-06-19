@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 import { logPerf, measureAsync, toServerTiming } from "@/lib/perf";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { escapePostgrestFilter } from "@/lib/postgrest";
+import { isValidLatitude, isValidLongitude } from "@/lib/owner-form-validation";
 
 export const runtime = "edge";
 export const revalidate = 0;
@@ -42,11 +45,20 @@ function isMissingSuggestionFastPath(errorMessage: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-  const city = req.nextUrl.searchParams.get("city")?.trim().toLowerCase() ?? "";
+  const ip = getClientIp(req.headers);
+  const rateCheck = checkRateLimit(ip, RATE_LIMITS.suggestions);
+  if (!rateCheck.success) {
+    return NextResponse.json(
+      { suggestions: [], error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
+  const q = req.nextUrl.searchParams.get("q")?.trim().slice(0, 200) ?? "";
+  const city = req.nextUrl.searchParams.get("city")?.trim().toLowerCase().slice(0, 50) ?? "";
   const lat = Number(req.nextUrl.searchParams.get("lat"));
   const lng = Number(req.nextUrl.searchParams.get("lng"));
-  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+  const hasCoordinates = isValidLatitude(lat) && isValidLongitude(lng);
 
   if (!hasCoordinates && q.length < 2) {
     return NextResponse.json({ suggestions: [], mode: "text" });
@@ -157,7 +169,7 @@ export async function GET(req: NextRequest) {
           .from("library_branches")
           .select("slug, city, display_name, locality, verification_status, profile_completeness_score")
           .eq("is_active", true)
-          .or(`display_name.ilike.%${q}%,locality.ilike.%${q}%`)
+          .or(`display_name.ilike.%${escapePostgrestFilter(q)}%,locality.ilike.%${escapePostgrestFilter(q)}%`)
           .limit(20);
 
         if (city) {

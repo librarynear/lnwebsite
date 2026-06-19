@@ -7,8 +7,14 @@ import {
 } from "@/lib/library-card-data";
 import { logPerf, measureAsync } from "@/lib/perf";
 
-export async function getSavedLibraries(ids: string[]) {
-  if (!ids || ids.length === 0) return [];
+const MAX_SAVED_LIBRARIES = 200;
+
+export async function getSavedLibraries(rawIds: string[]) {
+  const ids = [...new Set((Array.isArray(rawIds) ? rawIds : []).filter(
+    (id) => typeof id === "string" && id.length > 0 && id.length <= 100,
+  ))].slice(0, MAX_SAVED_LIBRARIES);
+
+  if (ids.length === 0) return [];
 
   const queryMeasurement = await measureAsync("savedLibrariesQuery", () =>
     runLibraryCardQuery((selectClause) =>

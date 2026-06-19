@@ -6,7 +6,17 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const requestedNext = searchParams.get("next") ?? "/profile";
-  const next = requestedNext.startsWith("/") ? requestedNext : "/profile";
+
+  const SAFE_PATH_PREFIXES = ["/profile", "/saved", "/for-owners", "/"];
+  function isSafeRedirect(path: string): boolean {
+    if (!path.startsWith("/")) return false;
+    if (path.startsWith("//") || path.startsWith("/\\")) return false;
+    if (path.includes("..")) return false;
+    if (path.startsWith("/admin") || path.startsWith("/staff-access")) return false;
+    return SAFE_PATH_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + "/") || path.startsWith(prefix + "?"));
+  }
+
+  const next = isSafeRedirect(requestedNext) ? requestedNext : "/profile";
 
   if (!code) {
     return NextResponse.redirect(new URL(next, origin));

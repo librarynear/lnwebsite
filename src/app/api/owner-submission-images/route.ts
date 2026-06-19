@@ -1,10 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { deleteImageKitFile, uploadImageKitFile } from "@/lib/server/imagekit";
+import { deleteImageKitFile, getImageKitFileDetails, uploadImageKitFile } from "@/lib/server/imagekit";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 const MAX_OWNER_PHOTO_BYTES = 5 * 1024 * 1024;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const ip = getClientIp(request.headers);
+  const rateCheck = checkRateLimit(ip, RATE_LIMITS.ownerImageUpload);
+  if (!rateCheck.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,7 +41,7 @@ export async function POST(request: Request) {
   try {
     const uploaded = await uploadImageKitFile({
       file,
-      fileName: file.name.replace(/[^\w.-]+/g, "-") || "owner_submission.jpg",
+      fileName: file.name.replace(/[^\w.-]+/g, "-").replace(/\.{2,}/g, ".") || "owner_submission.jpg",
       folder: `/owner-submissions/${user.id}/`,
     });
 
@@ -42,7 +52,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -59,6 +69,11 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    const fileDetails = await getImageKitFileDetails(fileId);
+    if (!fileDetails?.filePath || !fileDetails.filePath.includes(`/owner-submissions/${user.id}/`)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await deleteImageKitFile(fileId);
     return NextResponse.json({ success: true });
   } catch (error) {

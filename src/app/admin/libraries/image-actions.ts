@@ -7,40 +7,23 @@ import {
   getLibraryCacheTarget,
   revalidateLibraryContent,
 } from "@/lib/revalidate-library-content";
+import { requireApprovedStaff, requireLibraryMutationAccess } from "@/lib/staff-access";
+import { uploadImageKitFile } from "@/lib/server/imagekit";
 
 type LibraryImage = Tables<"library_images">;
 
 export async function uploadLibraryImage(libraryId: string, formData: FormData) {
-  const file = formData.get("file") as File;
-  if (!file) return { success: false, error: "No file provided" };
+  await requireLibraryMutationAccess(libraryId);
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { success: false, error: "No file provided" };
 
   try {
-    // 1. Upload to ImageKit via REST API
-    const imagekitFormData = new FormData();
-    imagekitFormData.append("file", file);
-    imagekitFormData.append("fileName", file.name || "admin_upload.jpg");
-    imagekitFormData.append("folder", `/libraries/${libraryId}/`);
-
-    // Basic auth: Private key as username, empty password
-    const authHeader = "Basic " + Buffer.from(process.env.IMAGEKIT_PRIVATE_KEY! + ":").toString("base64");
-
-    const uploadResponse = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-      },
-      body: imagekitFormData,
+    const { url } = await uploadImageKitFile({
+      file,
+      fileName: (file.name || "admin_upload.jpg").replace(/[^\w.-]+/g, "-").replace(/\.{2,}/g, "."),
+      folder: `/libraries/${libraryId}/`,
     });
 
-    if (!uploadResponse.ok) {
-      const errData = await uploadResponse.json();
-      console.error("ImageKit upload error:", errData);
-      return { success: false, error: "Failed to upload to ImageKit" };
-    }
-
-    const { url } = await uploadResponse.json();
-
-    // 2. Insert into Supabase
     const { data: insertedImage, error: dbError } = await supabaseServer
       .from("library_images")
       .insert({
@@ -69,6 +52,8 @@ export async function uploadLibraryImage(libraryId: string, formData: FormData) 
 }
 
 export async function deleteLibraryImage(imageId: string) {
+  await requireApprovedStaff(["admin", "sales"]);
+
   const { data: imageRecord, error: fetchError } = await supabaseServer
     .from("library_images")
     .select("library_branch_id")
@@ -78,6 +63,12 @@ export async function deleteLibraryImage(imageId: string) {
   if (fetchError) {
     return { success: false, error: fetchError.message };
   }
+
+  if (!imageRecord?.library_branch_id) {
+    return { success: false, error: "Image not found." };
+  }
+
+  await requireLibraryMutationAccess(imageRecord.library_branch_id);
 
   const { error } = await supabaseServer.from("library_images").delete().eq("id", imageId);
   

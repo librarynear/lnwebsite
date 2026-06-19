@@ -116,10 +116,15 @@ export function normalizePlanDraft(input: Partial<LibraryPlanDraft> | null | und
   };
 }
 
+/** Hard caps to prevent CPU/memory abuse from oversized fee-plan payloads. */
+export const MAX_FEE_PLANS_JSON_BYTES = 64 * 1024;
+export const MAX_FEE_PLANS = 50;
+
 export function normalizePlanDrafts(input: unknown) {
   if (!Array.isArray(input)) return [];
 
   return input
+    .slice(0, MAX_FEE_PLANS)
     .map((item) => normalizePlanDraft(item as Partial<LibraryPlanDraft>))
     .filter((plan) => plan.base_price > 0);
 }
@@ -135,6 +140,7 @@ export function buildPlanName(plan: LibraryPlanDraft) {
 
 export function parsePlanDraftsJson(rawValue: string | null | undefined) {
   if (!rawValue) return [];
+  if (rawValue.length > MAX_FEE_PLANS_JSON_BYTES) return [];
 
   try {
     const parsed = JSON.parse(rawValue) as unknown;

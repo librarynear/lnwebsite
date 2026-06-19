@@ -1,7 +1,9 @@
 import { BarChart3, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
+import { requireApprovedStaff } from "@/lib/staff-access";
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage() {
+  await requireApprovedStaff(["admin"]);
   const dashboardUrl = process.env.NEXT_PUBLIC_POSTHOG_DASHBOARD_URL;
 
   return (

@@ -36,6 +36,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing upload data" }, { status: 400 });
   }
 
+  if (staffUser.role === "sales") {
+    const { data: library } = await supabaseServer
+      .from("library_branches")
+      .select("locality_id")
+      .eq("id", libraryId)
+      .maybeSingle();
+    const localityId = (library as { locality_id: string | null } | null)?.locality_id ?? null;
+
+    const { data: assignment } = localityId
+      ? await supabaseServer
+          .from("sales_locality_assignments")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("locality_id", localityId)
+          .maybeSingle()
+      : { data: null };
+
+    if (!assignment) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   try {
     const uploaded = await uploadImageKitFile({
       file,

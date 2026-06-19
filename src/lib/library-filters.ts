@@ -25,7 +25,13 @@ export function parseAmenitiesParam(value?: string | null) {
 
   return value
     .split(",")
-    .map((item) => decodeURIComponent(item).trim())
+    .map((item) => {
+      try {
+        return decodeURIComponent(item).trim();
+      } catch {
+        return item.trim();
+      }
+    })
     .filter(Boolean);
 }
 
