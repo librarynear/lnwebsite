@@ -18,13 +18,15 @@ export async function generateMetadata(props: any): Promise<Metadata> {
   const params = await props.params;
   const city = capitalize(decodeURIComponent(params.city));
   const locality = capitalize(decodeURIComponent(params.locality));
+  const canonical = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in'}/${params.city}/libraries/${params.locality}`;
   return {
     title: `Best Study Libraries in ${locality}, ${city} | FocusDesk`,
     description: `Find and book premium study libraries and reading rooms in ${locality}, ${city} starting at ₹500/mo. Compare seats, amenities & ratings.`,
+    alternates: { canonical },
     openGraph: {
       title: `Best Study Libraries in ${locality}, ${city} | FocusDesk`,
       description: `Find and book premium study libraries and reading rooms in ${locality}, ${city} starting at ₹500/mo.`,
-      url: `https://www.focusdesk.in/${params.city}/libraries/${params.locality}`,
+      url: canonical,
     }
   }
 }
@@ -83,8 +85,27 @@ export default async function LocalityLibrariesPage(props: any) {
     return 0;
   });
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in';
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": `Study Libraries in ${displayLocality}, ${displayCity}`,
+    "itemListElement": libraries.slice(0, 25).map((lib: any, i: number) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "url": `${appUrl}/library/${lib.id}`,
+      "name": lib.name,
+    })),
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
+      {libraries.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+        />
+      )}
       <HomeSearchShell />
 
       <section className="container mx-auto px-6 md:px-10 py-10 pb-20">

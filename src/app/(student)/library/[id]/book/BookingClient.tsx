@@ -3,8 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CreditCard, Wallet, Lock, Loader2 } from "lucide-react";
-import LiveSeatMap from "@/components/LiveSeatMap";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+
+const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full rounded-xl bg-muted animate-pulse">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
+});
 
 export function BookingClient({ 
   library, 

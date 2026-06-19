@@ -6,9 +6,20 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
 import { InquiryForm } from "./InquiryForm";
-import LiveSeatMap from "@/components/LiveSeatMap"
-import { toast } from "react-hot-toast"
+import dynamic from "next/dynamic"
+import { auth } from "@/lib/firebase/clientApp"
 
+// Seat map pulls in react-zoom-pan-pinch; load it only when the section renders
+// so it stays out of the initial library-page bundle.
+const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 w-full rounded-xl bg-muted animate-pulse">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
+})
+import { toast } from "react-hot-toast"
 export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlanEndDate, studentPhone, studentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
   const router = useRouter();
   const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
@@ -155,10 +166,15 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
 
   const handleCheckout = async () => {
     if (checkoutLockRef.current) return;
-    if (!studentId) {
-      router.push(`/login?returnUrl=/library/${library.id}`);
+    
+    const user = auth.currentUser;
+    if (!studentId && !user) {
+      const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
+      const retUrl = isEmbed ? `/library/${library.id}?embed=true` : `/library/${library.id}`;
+      router.push(`/login?returnUrl=${encodeURIComponent(retUrl)}`);
       return;
     }
+    const idToken = user ? await user.getIdToken() : undefined;
     if (!selectedPlan) {
       toast.error("Please select a plan.");
       return;
@@ -183,7 +199,8 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
             seatId: isFlexible ? null : selectedSeat.id,
             planId: selectedPlan.id,
             hasLocker: seatHasMandatoryLocker,
-            standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
+            standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
+            idToken
           })
         });
         const data = await res.json();
@@ -210,7 +227,8 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
           planId: selectedPlan.id,
           seatId: isFlexible ? null : selectedSeat.id,
           hasLocker: seatHasMandatoryLocker,
-          standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
+          standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
+          idToken
         })
       });
       const data = await orderRes.json();

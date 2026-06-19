@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, IBM_Plex_Serif } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import NextTopLoader from 'nextjs-toploader';
+import { WebVitals } from "@/components/web-vitals";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -61,6 +62,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <NextTopLoader color="hsl(var(--primary))" showSpinner={false} />
+        <WebVitals />
         {children}
         <Toaster position="top-center" />
       </body>

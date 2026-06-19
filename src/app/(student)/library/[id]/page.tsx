@@ -1,9 +1,67 @@
 import prisma from "@/lib/prisma"
 import { notFound } from "next/navigation"
+import { cache } from "react"
+import type { Metadata } from "next"
 import { LibraryClient } from "./LibraryClient"
 import { getSession } from "@/app/actions/auth-actions"
 
 export const revalidate = 60; // Cache this page on Vercel's Edge CDN for 60 seconds
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in';
+
+// Deduped per-request fetch so generateMetadata and the page share one query.
+const getLibraryForMeta = cache(async (id: string) =>
+  prisma.library.findUnique({
+    where: { id },
+    select: { name: true, address: true, locality: true, city: true, photos: true, plans: { select: { price: true } } },
+  })
+);
+
+// Pre-render the approved library pages at build time for instant first paint + SEO.
+export async function generateStaticParams() {
+  try {
+    const libraries = await prisma.library.findMany({
+      where: { kycStatus: "APPROVED" },
+      select: { id: true },
+      take: 1000,
+    });
+    return libraries.map((lib) => ({ id: lib.id }));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateMetadata(props: any): Promise<Metadata> {
+  const params = await props.params;
+  const id = params?.id;
+  if (!id) return {};
+
+  const library = await getLibraryForMeta(id);
+  if (!library) {
+    return { title: "Library not found" };
+  }
+
+  const area = library.locality || library.city || "your area";
+  const minPrice = library.plans.length > 0 ? Math.min(...library.plans.map((p) => p.price)) : 500;
+  const title = `${library.name} — Study Library in ${area}`;
+  const description = `Book a seat at ${library.name}, a premium study library in ${area}${library.city ? `, ${library.city}` : ''}. Plans from ₹${minPrice}/mo with verified amenities. Reserve on FocusDesk.`;
+  const canonical = `${APP_URL}/library/${id}`;
+  const image = library.photos.length > 0 ? library.photos[0] : "https://ik.imagekit.io/focusdesk/logo.png";
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      images: [{ url: image, width: 1200, height: 630, alt: `${library.name} study library` }],
+      type: "website",
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
+}
 
 export default async function LibraryDetailsPage(props: any) {
   const params = await props.params;
@@ -98,12 +156,7 @@ export default async function LibraryDetailsPage(props: any) {
     },
     "priceRange": `₹${minPrice} - ₹${maxPrice}`,
     "telephone": library.managerPhone || "",
-    "url": `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in'}/library/${library.id}`,
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "reviewCount": "24"
-    },
+    "url": `${APP_URL}/library/${library.id}`,
     "openingHoursSpecification": [
       {
         "@type": "OpeningHoursSpecification",

@@ -17,8 +17,6 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@radix-ui/react-visually-hidden": "^1.2.4",
-    "@splinetool/react-spline": "^4.1.0",
-    "@splinetool/runtime": "^1.12.97",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.108.0",
     "@upstash/ratelimit": "^2.0.8",
