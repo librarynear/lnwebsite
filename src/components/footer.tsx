@@ -61,6 +61,7 @@ export function Footer() {
               <h3 className="font-bold text-black mb-5 text-[15px]">Menu</h3>
               <ul className="space-y-4">
                 <li><Link href="/about" className="text-[13px] text-muted-foreground hover:text-primary transition-colors">About</Link></li>
+                <li><Link href="/blog" className="text-[13px] text-muted-foreground hover:text-primary transition-colors">Blog</Link></li>
                 <li><Link href="/profile" className="text-[13px] text-muted-foreground hover:text-primary transition-colors">Profile</Link></li>
                 <li><Link href="/for-owners" className="text-[13px] text-muted-foreground hover:text-primary transition-colors">List Your Library</Link></li>
                 <li><Link href="/saved" className="text-[13px] text-muted-foreground hover:text-primary transition-colors">Favourites</Link></li>
