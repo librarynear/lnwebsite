@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
-import { MapPin } from "lucide-react";
+import { MapPin, Search, BookOpen, CheckCircle } from "lucide-react";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { supabaseServer } from "@/lib/supabase-server";
@@ -12,6 +12,7 @@ import { IntentLink } from "@/components/intent-link";
 import { LibraryGridSkeleton } from "@/components/library-listing-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSiteUrl } from "@/lib/site-url";
+import { sanitizeSearchTerm } from "@/lib/postgrest";
 
 export const revalidate = 120;
 
@@ -49,7 +50,10 @@ async function getLibraries(locality?: string, q?: string): Promise<LibraryCardD
       .limit(20);
 
     if (locality) query = query.eq("locality", locality);
-    if (q) query = query.or(`name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%,display_name.ilike.%${q}%`);
+    if (q) {
+      const safeQ = sanitizeSearchTerm(q);
+      query = query.or(`name.ilike.%${safeQ}%,locality.ilike.%${safeQ}%,nearest_metro.ilike.%${safeQ}%,display_name.ilike.%${safeQ}%`);
+    }
 
     return query;
   });
@@ -138,16 +142,16 @@ export async function generateMetadata({ searchParams }: HomeProps): Promise<Met
   }
 
   return {
-    title: "LibraryNear - Find the Best Libraries Near You",
+    title: "LibraryNear - Find the Best Study Libraries Near You in Delhi",
     description:
-      "Discover and compare study libraries, reading rooms, and private coaching halls in Delhi. Explore localities, fees, amenities, and nearby metro access.",
+      "Discover and compare study libraries and reading rooms in Delhi. Explore localities, fees, amenities, and nearby metro access on LibraryNear.",
     alternates: {
       canonical: siteUrl,
     },
   };
 }
 
-async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
+async function HomeContent({ locality, q }: { locality?: string; q?: string; }) {
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
     measureAsync("libraries", () => getHomeLibraries(locality, q)),
     measureAsync("topLocalities", () => getHomeTopLocalities()),
@@ -160,8 +164,101 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
     `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`,
   );
 
+  const siteUrl = getSiteUrl();
+
+  const homeFaqs = [
+    {
+      q: "How do I find the best study library near me in Delhi?",
+      a: "Use LibraryNear to search by locality or metro station. Compare fees, amenities, timings, and verified status to shortlist the right library for your study routine.",
+    },
+    {
+      q: "Is LibraryNear free for students?",
+      a: "Yes. Browsing, comparing, and shortlisting libraries on LibraryNear is completely free for students. You only pay the library directly when you choose a plan.",
+    },
+    {
+      q: "What amenities can I compare on LibraryNear?",
+      a: "You can compare Wi-Fi, AC, power backup, locker facilities, drinking water, CCTV, quiet zones, and more across all listed libraries.",
+    },
+    {
+      q: "How do library owners list on LibraryNear?",
+      a: "Library owners can sign up, submit their library details, photos, and fee plans. Each listing is reviewed before going live to maintain quality for students.",
+    },
+  ];
+
+  const homeJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "LibraryNear",
+      url: siteUrl,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/delhi/libraries?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "LibraryNear",
+      url: siteUrl,
+      logo: `${siteUrl}/logo.png`,
+      contactPoint: {
+        "@type": "ContactPoint",
+        telephone: "+91-8796190507",
+        contactType: "customer service",
+        email: "librarynear.com@gmail.com",
+      },
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "DTU IIF AB-4, Shahbad",
+        addressLocality: "Rohini",
+        addressRegion: "Delhi",
+        postalCode: "110042",
+        addressCountry: "IN",
+      },
+      sameAs: [
+        "https://youtube.com/@librarynear",
+        "https://x.com/Librarynear_com",
+        "https://www.instagram.com/librarynear.com1/",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: homeFaqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.a,
+        },
+      })),
+    },
+  ];
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
+
+      {/* HERO — H1 with primary keyword */}
+      {!locality && !q && (
+        <section className="border-b border-border/50 bg-white">
+          <div className="container mx-auto px-6 py-10 md:px-10 md:py-14">
+            <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-4xl">
+              Find the Best Study Libraries Near You in Delhi
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+              Compare verified study libraries by locality, metro station, amenities, and monthly fees.
+              Shortlist your ideal study space in minutes.
+            </p>
+          </div>
+        </section>
+      )}
+
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
           <IntentLink
@@ -225,7 +322,7 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
                   {lib.coverImageUrl ? (
                     <Image
                       src={lib.coverImageUrl}
-                      alt={`${lib.display_name} thumbnail`}
+                      alt={`${lib.display_name} — study library in ${lib.locality || "Delhi"}`}
                       fill
                       priority={index === 0}
                       fetchPriority={index === 0 ? "high" : "auto"}
@@ -266,6 +363,80 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string }) {
           </div>
         )}
       </section>
+
+      {/* RICH CONTENT — How It Works + FAQ (only on default homepage, not filtered views) */}
+      {!locality && !q && (
+        <>
+          {/* How It Works */}
+          <section className="border-t border-border/40 bg-slate-50/40">
+            <div className="container mx-auto px-6 py-12 md:px-10">
+              <h2 className="text-2xl font-bold text-black mb-8">How LibraryNear works</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  {
+                    icon: Search,
+                    title: "Search by locality or metro",
+                    body: "Enter your preferred area or nearest metro station to discover study libraries within easy commuting distance.",
+                  },
+                  {
+                    icon: BookOpen,
+                    title: "Compare fees, amenities & timings",
+                    body: "View detailed profiles with photos, monthly plans, seating, Wi-Fi, AC, power backup, and operating hours side by side.",
+                  },
+                  {
+                    icon: CheckCircle,
+                    title: "Shortlist & connect",
+                    body: "Save libraries to your favourites, send enquiries directly, and choose the study space that fits your routine and budget.",
+                  },
+                ].map(({ icon: Icon, title, body }) => (
+                  <div key={title} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-base font-bold text-black">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Browse by locality */}
+          {topLocalities.length > 0 && (
+            <section className="border-t border-border/40 bg-white">
+              <div className="container mx-auto px-6 py-12 md:px-10">
+                <h2 className="text-2xl font-bold text-black mb-6">Browse libraries by locality in Delhi</h2>
+                <div className="flex flex-wrap gap-3">
+                  {topLocalities.slice(0, 15).map((loc) => (
+                    <IntentLink
+                      key={loc}
+                      href={`/delhi/locality/${loc.toLowerCase().replace(/\s+/g, "-")}`}
+                      className="rounded-full border border-primary/25 bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:border-primary hover:text-primary"
+                    >
+                      Libraries in {loc}
+                    </IntentLink>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* FAQ */}
+          <section className="border-t border-border/40 bg-slate-50/40">
+            <div className="container mx-auto px-6 py-12 md:px-10">
+              <h2 className="text-2xl font-bold text-black mb-8">Frequently asked questions</h2>
+              <div className="grid gap-6 md:grid-cols-2">
+                {homeFaqs.map((faq) => (
+                  <div key={faq.q} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+                    <h3 className="text-base font-bold text-black">{faq.q}</h3>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
     </>
   );
 }

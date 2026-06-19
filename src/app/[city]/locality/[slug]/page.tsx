@@ -221,7 +221,7 @@ export default async function LocalityPage({ params }: PageProps) {
                 {lib.coverImageUrl ? (
                   <Image
                     src={lib.coverImageUrl}
-                    alt={`${lib.display_name} thumbnail`}
+                    alt={`${lib.display_name} — study library in ${locality}, ${cityLabel}`}
                     fill
                     priority={index < 4}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"

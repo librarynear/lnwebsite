@@ -17,6 +17,8 @@ import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
 import { LibraryGridSkeleton, FiltersSkeleton } from "@/components/library-listing-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { sanitizeSearchTerm, boundSearchTerm } from "@/lib/postgrest";
+import { isValidLatitude, isValidLongitude } from "@/lib/owner-form-validation";
 
 function LibrariesPageSkeleton() {
   return (
@@ -251,12 +253,13 @@ async function searchLibraries(
       return { results, usedRpc: true, mode: "search" };
     }
 
+    const safeQ = sanitizeSearchTerm(q);
     const fallback = await runLibraryCardQuery((selectClause) => {
       let fallbackQuery = supabaseServer
         .from("library_branches")
         .select(selectClause)
         .ilike("city", city)
-        .or(`display_name.ilike.%${q}%,name.ilike.%${q}%,locality.ilike.%${q}%,nearest_metro.ilike.%${q}%`)
+        .or(`display_name.ilike.%${safeQ}%,name.ilike.%${safeQ}%,locality.ilike.%${safeQ}%,nearest_metro.ilike.%${safeQ}%`)
         .eq("is_active", true)
         .limit(60);
 
@@ -459,7 +462,7 @@ function LibraryCard({
         {lib.coverImageUrl ? (
           <Image
             src={lib.coverImageUrl}
-            alt={`${lib.display_name} thumbnail`}
+            alt={`${lib.display_name} — study library in ${lib.locality || city}`}
             fill
             priority={priority}
             fetchPriority={priority ? "high" : "auto"}
@@ -719,8 +722,8 @@ async function LibrariesContent({
                 q={q}
                 verifiedOnly={verifiedOnly}
                 nearbyMode={nearbyMode}
-                lat={lat?.toString()}
-                lng={lng?.toString()}
+                lat={latitude?.toString()}
+                lng={longitude?.toString()}
                 totalCount={libraries.length}
               />
             </Suspense>
@@ -802,11 +805,14 @@ async function LibrariesContent({
 
 export default async function LibrariesPage({ params, searchParams }: PageProps) {
   const { city } = await params;
-  const { q, locality, sort, verified, nearby, lat, lng } = await searchParams;
+  const { q: rawQ, locality, sort, verified, nearby, lat, lng } = await searchParams;
+  const q = rawQ ? boundSearchTerm(rawQ) : rawQ;
   const verifiedOnly = verified === "1";
   const nearbyMode = nearby === "1";
-  const latitude = lat ? Number(lat) : undefined;
-  const longitude = lng ? Number(lng) : undefined;
+  const parsedLat = lat ? Number(lat) : undefined;
+  const parsedLng = lng ? Number(lng) : undefined;
+  const latitude = isValidLatitude(parsedLat ?? null) ? parsedLat : undefined;
+  const longitude = isValidLongitude(parsedLng ?? null) ? parsedLng : undefined;
 
   return (
     <div className="flex flex-col min-h-screen bg-white">

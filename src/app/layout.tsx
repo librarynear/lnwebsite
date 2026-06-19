@@ -30,9 +30,18 @@ export const metadata: Metadata = {
     description:
       "Discover and compare study libraries near you. Filter by locality, metro, amenities, and fees.",
     url: siteUrl,
+    images: [
+      {
+        url: `${siteUrl}/og-default.png`,
+        width: 1200,
+        height: 630,
+        alt: "LibraryNear — Find Study Libraries Near You",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
+    images: [`${siteUrl}/og-default.png`],
   },
   verification: {
     google: "rJBJvfoFMWlJWCWWco0hcovhQEBs0gBmuzibnPiGHCo",

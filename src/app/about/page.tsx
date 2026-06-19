@@ -2,8 +2,16 @@ import Link from "next/link";
 import { Building2, MapPinned, ShieldCheck } from "lucide-react";
 
 export const metadata = {
-  title: "About",
-  description: "Learn what LibraryNear is building for students and library owners.",
+  title: "About LibraryNear — Study Library Discovery Platform",
+  description:
+    "LibraryNear helps students discover, compare, and shortlist study libraries and reading rooms in Delhi. Learn how we connect students with verified library spaces near metro stations.",
+  openGraph: {
+    type: "website",
+    title: "About LibraryNear — Study Library Discovery Platform",
+    description:
+      "LibraryNear helps students discover, compare, and shortlist study libraries and reading rooms in Delhi.",
+    siteName: "LibraryNear",
+  },
 };
 
 export default function AboutPage() {
