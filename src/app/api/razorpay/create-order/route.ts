@@ -19,14 +19,33 @@ function getAppUrl(req: NextRequest): string {
   return `${proto}://${host}`;
 }
 
+import { adminAuth } from '@/lib/firebase/firebaseAdmin';
+
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json();
+    const { planId, seatId, hasLocker, standaloneLockerId, idToken } = body;
+
+    let session = await getSession();
+    let authUserId = session?.userId;
+    let authUser: any = session || null;
+
+    if (!session && idToken && adminAuth) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(idToken);
+        const user = await prisma.user.findUnique({ where: { authId: decoded.uid } });
+        if (user) {
+          authUserId = user.id;
+          authUser = user;
+        }
+      } catch (e) {
+        console.error("Iframe token verification failed", e);
+      }
     }
 
-    const { planId, seatId, hasLocker, standaloneLockerId } = await req.json();
+    if (!authUserId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (typeof planId !== 'string' || !planId) {
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
@@ -114,12 +133,12 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = getAppUrl(req);
-    const refId = `ref_${session.userId.substring(0, 8)}_${Date.now()}`;
+    const refId = `ref_${authUserId.substring(0, 8)}_${Date.now()}`;
 
     const customerInfo: Record<string, string> = {};
-    customerInfo.name = (session as any).name || "Student";
-    if (session.phone) customerInfo.contact = session.phone.startsWith('+') ? session.phone : `+91${session.phone}`;
-    if (session.email) customerInfo.email = session.email;
+    customerInfo.name = authUser.name || "Student";
+    if (authUser.phone) customerInfo.contact = authUser.phone.startsWith('+') ? authUser.phone : `+91${authUser.phone}`;
+    if (authUser.email) customerInfo.email = authUser.email;
 
     const callbackUrl = `${appUrl}/api/razorpay/callback`;
 
@@ -140,14 +159,14 @@ export async function POST(req: NextRequest) {
       notes: {
         planId,
         seatId: seatId || '',
-        studentId: session.userId,
+        studentId: authUserId,
         libraryId,
       },
       expire_by: Math.floor(Date.now() / 1000) + 1800,
     } as any);
 
     const intent = JSON.stringify({
-      studentId: session.userId,
+      studentId: authUserId,
       libraryId,
       planId,
       seatId: seatId || null,

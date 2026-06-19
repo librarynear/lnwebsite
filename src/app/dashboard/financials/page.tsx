@@ -47,6 +47,19 @@ export default async function FinancialsPage({
     orderBy: { createdAt: 'desc' }
   });
 
+  const cancelledBookings = await prisma.booking.findMany({
+    where: { 
+      libraryId: library.id,
+      status: 'CANCELLED',
+      ...(dateFilter ? { createdAt: dateFilter } : {})
+    },
+    include: {
+      plan: true,
+      student: true
+    },
+    orderBy: { updatedAt: 'desc' }
+  });
+
   // Fetch expenses
   const expensesList = await prisma.expense.findMany({
     where: { 
@@ -73,6 +86,20 @@ export default async function FinancialsPage({
     }
   });
 
+  let totalLostRevenue = 0;
+  cancelledBookings.forEach(b => {
+    let price = b.plan.price;
+    if (b.plan.discount) {
+      price = price - (price * b.plan.discount / 100);
+    }
+    totalLostRevenue += price;
+  });
+
+  const suspiciousRevocations = cancelledBookings.filter(b => {
+    const diffInHours = (new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime()) / (1000 * 60 * 60);
+    return diffInHours > 24;
+  });
+
   const totalExpenses = expensesList.reduce((acc, curr) => acc + curr.amount, 0);
   const netProfit = totalGrossRevenue - totalExpenses;
 
@@ -85,7 +112,7 @@ export default async function FinancialsPage({
 
       <DateRangeFilter />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-primary/10 rounded-xl text-primary">
@@ -99,9 +126,23 @@ export default async function FinancialsPage({
           <div className="text-xs font-medium text-muted-foreground">From all confirmed bookings</div>
         </div>
 
-        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-destructive/30 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-destructive/5 rounded-bl-full -z-10"></div>
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-destructive/10 rounded-xl text-destructive">
+              <TrendingDown className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground text-destructive">Lost / Revoked</p>
+              <h3 className="text-2xl font-bold text-foreground">₹{totalLostRevenue.toLocaleString()}</h3>
+            </div>
+          </div>
+          <div className="text-xs font-medium text-muted-foreground">Revenue lost from cancelled plans</div>
+        </div>
+
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-warning/10 rounded-xl text-warning">
               <TrendingDown className="w-6 h-6" />
             </div>
             <div>
@@ -171,6 +212,43 @@ export default async function FinancialsPage({
           </div>
         </div>
       </div>
+
+      {session.role === 'ADMIN' && suspiciousRevocations.length > 0 && (
+        <div className="bg-destructive/5 p-6 rounded-2xl border border-destructive/20 shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="text-xl font-bold font-heading text-destructive flex items-center gap-2">
+              <TrendingDown className="w-5 h-5" /> Suspicious Revocations
+            </h2>
+            <span className="bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-full font-bold">Requires Audit</span>
+          </div>
+          <p className="text-sm text-destructive/80 mb-6 font-medium">These plans were revoked more than 24 hours after they were purchased. This could indicate a librarian collected cash for a long-term plan, then manually cancelled it later to pocket the difference.</p>
+          
+          <div className="space-y-4">
+            {suspiciousRevocations.map(b => {
+              const diffInDays = Math.floor((new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+              const hoursDiff = Math.floor((new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime()) / (1000 * 60 * 60)) % 24;
+              let price = b.plan?.price || 0;
+              if (b.plan?.discount) price -= (price * b.plan.discount / 100);
+              
+              return (
+                <div key={b.id} className="bg-background rounded-xl p-4 border border-destructive/20 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                  <div>
+                    <div className="font-bold text-foreground">{b.student?.name} <span className="text-muted-foreground font-mono text-xs ml-2">{b.student?.uniqueId}</span></div>
+                    <div className="text-sm text-muted-foreground mt-1">Plan: <span className="font-semibold text-foreground">{b.plan?.name}</span> (₹{price})</div>
+                    <div className="text-sm text-muted-foreground mt-1">Reason: <span className="italic">"{b.revokedReason || 'No reason provided'}"</span></div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-bold text-destructive bg-destructive/10 px-3 py-1 rounded-full text-xs">
+                      Revoked {diffInDays > 0 ? `${diffInDays} days ` : ''}{hoursDiff} hours late
+                    </span>
+                    <span className="text-xs text-muted-foreground">{b.updatedAt.toLocaleDateString()}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col">
         <h2 className="text-xl font-bold font-heading mb-6">Transaction History</h2>

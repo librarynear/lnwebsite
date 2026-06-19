@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      sameSite: 'lax',
+      sameSite: 'none',
     });
 
     return response;
@@ -63,7 +63,7 @@ export async function DELETE() {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    sameSite: 'lax',
+    sameSite: 'none',
   });
 
   return response;

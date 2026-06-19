@@ -161,10 +161,39 @@ export async function GET(req: NextRequest) {
     }
     await redis.del(`library:${libraryId}`);
 
-    return NextResponse.redirect(
-      `${appUrl}/student/dashboard?booking=success&library=${libraryId}`,
-      { status: 303 },
-    );
+    const dashboardUrl = `${appUrl}/student/dashboard?booking=success&library=${libraryId}`;
+    return new NextResponse(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Payment Successful</title>
+          <meta http-equiv="refresh" content="2;url=${dashboardUrl}">
+          <script>
+            setTimeout(() => {
+              try {
+                if (window.top !== window.self) {
+                  window.top.location.href = "${dashboardUrl}";
+                } else {
+                  window.location.href = "${dashboardUrl}";
+                }
+              } catch (e) {
+                window.location.href = "${dashboardUrl}";
+              }
+            }, 500);
+          </script>
+        </head>
+        <body style="font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f9fafb; margin: 0;">
+          <div style="text-align: center; padding: 2.5rem; background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); max-width: 400px; width: 90%;">
+            <svg style="width: 64px; height: 64px; color: #10b981; margin: 0 auto 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem; margin-top: 0;">Payment Successful!</h1>
+            <p style="color: #6b7280; margin-bottom: 2rem; line-height: 1.5;">Your seat has been reserved. You are being redirected to your bookings page...</p>
+            <a href="${dashboardUrl}" target="_top" style="display: inline-block; background-color: #f97316; color: white; padding: 0.875rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1rem; width: 100%; box-sizing: border-box; transition: opacity 0.2s;">Go to My Bookings</a>
+          </div>
+        </body>
+      </html>
+    `, {
+      headers: { 'Content-Type': 'text/html' }
+    });
   } catch (error: any) {
     console.error('Razorpay callback error:', error);
 

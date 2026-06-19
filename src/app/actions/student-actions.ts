@@ -170,47 +170,61 @@ export async function addStudentWithBooking(formData: FormData) {
   });
   if (!library) throw new Error("No library found.");
 
-  const uniqueId = await generateUniqueId();
+  // Create user (handle unique-constraint collisions gracefully)
+  let student = null;
+  
+  if (authId) {
+    student = await prisma.user.findUnique({ where: { authId } });
+  }
 
-  // Create user (handle unique-constraint collisions on email/phone gracefully)
-  let student;
-  try {
-    student = await prisma.user.create({
+  // Normalize phone to remove spaces for search fallback
+  const normalizedPhone = phone ? phone.replace(/\s+/g, '') : null;
+  
+  if (!student && phone) {
+    student = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { phone },
+          { phone: normalizedPhone },
+          { phone: { endsWith: normalizedPhone ? normalizedPhone.slice(-10) : 'XXXXXXXXXX' } }
+        ]
+      } 
+    });
+  }
+  if (!student && email) {
+    student = await prisma.user.findUnique({ where: { email } });
+  }
+
+  if (student) {
+    student = await prisma.user.update({
+      where: { id: student.id },
       data: {
-        authId: authId || null,
-        role: Role.STUDENT,
         name,
-        email: email || null,
-        phone: phone || null,
-        uniqueId,
-        dob: dobStr ? new Date(dobStr) : null,
-        gender: gender || null,
-        address: address || null
+        dob: dobStr ? new Date(dobStr) : student.dob,
+        gender: gender || student.gender,
+        address: address || student.address
       }
     });
-  } catch (e: any) {
-    if (e?.code === 'P2002') {
-      // Find the existing student by phone or email
-      if (phone) {
-        student = await prisma.user.findUnique({ where: { phone } });
-      }
-      if (!student && email) {
-        student = await prisma.user.findUnique({ where: { email } });
-      }
-      
-      if (!student) return { error: "A student with this email or phone already exists" };
-      
-      student = await prisma.user.update({
-        where: { id: student.id },
+  } else {
+    try {
+      student = await prisma.user.create({
         data: {
+          authId: authId || null,
+          role: Role.STUDENT,
           name,
-          dob: dobStr ? new Date(dobStr) : student.dob,
-          gender: gender || student.gender,
-          address: address || student.address
+          email: email || null,
+          phone: phone || null,
+          uniqueId: await generateUniqueId(),
+          dob: dobStr ? new Date(dobStr) : null,
+          gender: gender || null,
+          address: address || null
         }
       });
-    } else {
-      throw e;
+    } catch (e: any) {
+      if (e.code === 'P2002') {
+        return { error: "A student with this phone, email, or auth credentials already exists in the system but couldn't be matched." };
+      }
+      return { error: "Failed to create student record." };
     }
   }
 
@@ -228,7 +242,7 @@ export async function addStudentWithBooking(formData: FormData) {
         if (plan && plan.type === 'FLEXIBLE') {
           // No seat for flexible plans
           seat = null;
-        } else if (seatId) {
+        } else if (seatId && seatId !== "NONE") {
           seat = await tx.seat.findUnique({ where: { id: seatId, libraryId: library.id } });
           if (!seat) throw new Error("Invalid seat");
 
@@ -263,7 +277,7 @@ export async function addStudentWithBooking(formData: FormData) {
       });
     } catch (e: any) {
       if (e.message === 'SEAT_TAKEN') return { error: "Seat is already booked for this duration" };
-      throw e;
+      return { error: e.message || "Failed to create booking" };
     }
   }
 

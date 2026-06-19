@@ -3,24 +3,46 @@ import prisma from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { getSession } from "@/app/actions/auth-actions";
 import { endOfDayIST } from "@/lib/date-utils";
+import { adminAuth } from "@/lib/firebase/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const body = await req.json();
+    let { studentId, libraryId, seatId, planId, hasLocker, standaloneLockerId, idToken } = body;
+
+    let session = await getSession();
+    let authUserId = session?.userId;
+    let authRole = session?.role;
+
+    if (!session && idToken && adminAuth) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(idToken);
+        const user = await prisma.user.findUnique({ where: { authId: decoded.uid } });
+        if (user) {
+          authUserId = user.id;
+          authRole = user.role;
+        }
+      } catch (e) {
+        console.error("Iframe token verification failed", e);
+      }
+    }
+
+    if (!authUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const body = await req.json();
-    const { studentId, libraryId, seatId, planId, hasLocker, standaloneLockerId } = body;
+
+    if (!studentId && authRole === 'STUDENT') {
+      studentId = authUserId;
+    }
 
     // Validate required fields
     if (!studentId || !libraryId || !planId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (session.role === 'LIBRARIAN') {
+    if (authRole === 'LIBRARIAN') {
       const library = await prisma.library.findUnique({ where: { id: libraryId } });
-      if (!library || library.librarianId !== session.userId) {
+      if (!library || library.librarianId !== authUserId) {
         return NextResponse.json({ error: 'Forbidden: You do not own this library' }, { status: 403 });
       }
     }
@@ -51,7 +73,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const isLibrarianOrAdmin = session.role === 'LIBRARIAN' || session.role === 'ADMIN';
+    const isLibrarianOrAdmin = authRole === 'LIBRARIAN' || authRole === 'ADMIN';
 
     // Atomic transaction to prevent race conditions on seat/locker booking
     const booking = await prisma.$transaction(async (tx) => {
