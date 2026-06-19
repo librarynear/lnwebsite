@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from "react"
-import { Search, UserPlus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag } from "lucide-react"
-import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent } from "@/app/actions/student-actions"
-import { pauseBooking, resumeBooking } from "@/app/actions/booking-actions"
+import { useState, useEffect } from "react"
+import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X } from "lucide-react"
+import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
+import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
 import { initializeApp, getApps } from "firebase/app"
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { firebaseConfig } from "@/lib/firebase/clientApp"
@@ -14,7 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,22 +30,60 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bookings: any[], plans: any[], logs?: any[], relays?: any[] }) {
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [] }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
+  const [revokeBookingId, setRevokeBookingId] = useState<string | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [viewReason, setViewReason] = useState("");
+
   const [paymentApprovalId, setPaymentApprovalId] = useState<string | null>(null)
+  const [approvalLoading, setApprovalLoading] = useState(false)
   const [profileStudent, setProfileStudent] = useState<any | null>(null)
+  const [addingStudent, setAddingStudent] = useState(false)
+  
+  // Seat Change Modal
+  const [seatChangeBookingId, setSeatChangeBookingId] = useState<string | null>(null)
+  const [selectedNewSeatId, setSelectedNewSeatId] = useState<string | null>(null)
+
+  // Renew Plan Modal
+  const [renewModalBookingId, setRenewModalBookingId] = useState<string | null>(null);
+  const [renewPlanMode, setRenewPlanMode] = useState<'SAME' | 'CHANGE'>('SAME');
+  const [renewSelectedPlanId, setRenewSelectedPlanId] = useState<string | null>(null);
+  const [renewSelectedSeatId, setRenewSelectedSeatId] = useState<string | null>(null);
+  const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
+
+  // Tabs & Sorting
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE' | 'REVOKED'>('ACTIVE')
+  const [sortMethod, setSortMethod] = useState<'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'>('LATEST')
+  const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
   // OTP Verification States
   const [step, setStep] = useState<1 | 2>(1)
-  const [phone, setPhone] = useState("")
+  const [phone, setPhone] = useState("+91 ")
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 20
   const [otp, setOtp] = useState("")
   const [otpLoading, setOtpLoading] = useState(false)
   const [verificationObj, setVerificationObj] = useState<any>(null)
   const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
 
   const handleSendOTP = async () => {
     try {
@@ -88,26 +127,88 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
       toast.error("Please verify the student's phone number first.");
       return;
     }
-    await addStudentWithBooking(formData)
-    setIsOpen(false)
-    // Reset states
-    setPhone(""); setOtp(""); setStep(1); setVerifiedAuthId(null);
+    if (addingStudent) return;
+    setAddingStudent(true);
+    try {
+      const result = await addStudentWithBooking(formData)
+      if (result && 'error' in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Student enrolled successfully");
+      setIsOpen(false)
+      setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to enroll student");
+    } finally {
+      setAddingStudent(false);
+    }
   }
 
-  const filteredBookingsRaw = bookings.filter(b => 
-    b.student.name.toLowerCase().includes(search.toLowerCase()) ||
-    (b.student.uniqueId && b.student.uniqueId.toLowerCase().includes(search.toLowerCase())) ||
-    (b.student.phone && b.student.phone.includes(search))
-  )
+  async function handleSeatChange() {
+    if (!seatChangeBookingId) return;
+    setLoadingId(seatChangeBookingId);
+    try {
+      await updateBookingSeat(seatChangeBookingId, selectedNewSeatId === "NONE" ? null : selectedNewSeatId);
+      toast.success("Seat updated successfully");
+      setSeatChangeBookingId(null);
+    } catch(e: any) {
+      toast.error(e.message || "Failed to update seat");
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   const now = new Date();
-  const filteredBookings = [...filteredBookingsRaw].sort((a, b) => {
-    const aExpired = new Date(a.endTime) < now;
-    const bExpired = new Date(b.endTime) < now;
-    if (aExpired && !bExpired) return 1;
-    if (!aExpired && bExpired) return -1;
-    return new Date(b.endTime).getTime() - new Date(a.endTime).getTime();
+  now.setHours(0,0,0,0);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, search, sortMethod, filterPlanId]);
+
+  const searchedBookings = bookings.filter(b => 
+    (b.student.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (b.student.uniqueId && b.student.uniqueId.toLowerCase().includes(search.toLowerCase())) ||
+    (b.student.phone && b.student.phone.includes(search))
+  );
+
+  const activeBookings = searchedBookings.filter(b => {
+    const end = new Date(b.endTime);
+    end.setHours(0,0,0,0);
+    return b.status === 'CONFIRMED' && end >= now;
   });
+  const inactiveBookings = searchedBookings.filter(b => {
+    const end = new Date(b.endTime);
+    end.setHours(0,0,0,0);
+    return b.status !== 'CANCELLED' && end < now;
+  });
+  const revokedBookings = searchedBookings.filter(b => b.status === 'CANCELLED');
+
+  const getFilteredBookings = () => {
+    let list = [];
+    if (activeTab === 'ACTIVE') list = activeBookings;
+    else if (activeTab === 'INACTIVE') list = inactiveBookings;
+    else list = revokedBookings;
+
+    if (filterPlanId) {
+      list = list.filter(b => b.planId === filterPlanId);
+    }
+
+    return [...list].sort((a, b) => {
+      if (sortMethod === 'ALPHABETICAL') return (a.student.name || '').localeCompare(b.student.name || '');
+      if (sortMethod === 'LATEST') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortMethod === 'EXPIRY') return new Date(a.endTime).getTime() - new Date(b.endTime).getTime();
+      if (sortMethod === 'DURATION') {
+        const aDur = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
+        const bDur = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
+        return bDur - aDur;
+      }
+      return 0;
+    });
+  }
+
+  const displayedBookings = getFilteredBookings();
 
   return (
     <>
@@ -121,21 +222,22 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
           <DialogTrigger className="bg-primary text-primary-foreground font-semibold px-4 py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm cursor-pointer">
             <UserPlus className="w-4 h-4" /> Add Student
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Enroll New Student</DialogTitle>
             </DialogHeader>
             <form action={handleAdd} className="space-y-6 pt-4">
               <input type="hidden" name="authId" value={verifiedAuthId || ''} />
               <div id="recaptcha-container"></div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Legal Name *</Label>
                   <Input id="name" name="name" placeholder="As per ID proof" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input id="email" name="email" type="email" placeholder="john@example.com" required />
+                  <Label htmlFor="email">Email Address (Optional)</Label>
+                  <Input id="email" name="email" type="email" placeholder="john@example.com" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number (OTP Verified) *</Label>
@@ -191,18 +293,39 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
               <hr className="border-border" />
 
               <div className="space-y-2">
-                <Label htmlFor="planId">Assign Initial Plan *</Label>
-                <Select name="planId" required>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a plan to start" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plans.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name} (₹{p.price})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Assign Initial Plan *</Label>
+                <input type="hidden" name="planId" value={selectedPlanId || ""} required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
+                  {plans.map(p => (
+                    <div 
+                      key={p.id} 
+                      onClick={() => setSelectedPlanId(p.id)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    >
+                      <div className="font-bold text-foreground text-sm">{p.name}</div>
+                      <div className="text-xl font-black mt-1">₹{p.price}</div>
+                      <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {plans.find(p => p.id === selectedPlanId)?.type === 'FIXED' && (
+                <div className="space-y-2">
+                  <Label htmlFor="seatId">Assign Seat (Optional)</Label>
+                  <Select name="seatId">
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="No seat specified (Random/Any)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">No Seat</SelectItem>
+                      {seats.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -224,189 +347,461 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
               </div>
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full" disabled={!verifiedAuthId}>Create Student & Assign Plan</Button>
+                <Button type="submit" className="w-full" disabled={!verifiedAuthId || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 md:p-6 border-b border-border flex flex-col md:flex-row gap-4 justify-between items-center bg-muted/20">
-          <div className="relative w-full md:w-96">
-            <input 
-              type="text" 
-              placeholder="Search by name, ID, or phone..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-input/50 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm text-foreground"
-            />
-            <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col mb-8">
+        <div className="p-4 md:p-6 border-b border-border flex flex-col gap-4 bg-muted/20">
+          
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="relative w-full md:w-96">
+              <input 
+                type="text" 
+                placeholder="Search by name, ID, or phone..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-input/50 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm text-foreground"
+              />
+              <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+            </div>
+
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <Sheet>
+                <SheetTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border h-10 px-4 py-2 gap-2 font-medium bg-background border-border hover:bg-muted text-foreground relative">
+                  <Filter className="w-4 h-4" /> Filter & Sort
+                  {(filterPlanId || sortMethod !== 'LATEST') && (
+                    <span className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2" />
+                  )}
+                </SheetTrigger>
+                <SheetContent className="overflow-y-auto sm:max-w-md p-0">
+                  <div className="p-6 border-b border-border bg-muted/20">
+                    <SheetHeader>
+                      <SheetTitle className="text-xl font-heading font-bold flex items-center gap-2">
+                        <Filter className="w-5 h-5 text-primary" /> Filter & Sort Students
+                      </SheetTitle>
+                    </SheetHeader>
+                  </div>
+                  
+                  <div className="p-6 space-y-8">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex justify-between items-center">
+                        Sort By
+                        {sortMethod !== 'LATEST' && (
+                          <button onClick={() => setSortMethod('LATEST')} className="text-[10px] text-primary hover:underline lowercase normal-case">Reset</button>
+                        )}
+                      </h4>
+                      <Select value={sortMethod} onValueChange={(val: any) => setSortMethod(val)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Sort By" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LATEST">Latest Added</SelectItem>
+                          <SelectItem value="ALPHABETICAL">Alphabetical (A-Z)</SelectItem>
+                          <SelectItem value="EXPIRY">Expiring Soonest</SelectItem>
+                          <SelectItem value="DURATION">Plan Duration</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex justify-between items-center">
+                        Filter By Plan
+                        {filterPlanId && (
+                          <button onClick={() => setFilterPlanId(null)} className="text-[10px] text-primary hover:underline lowercase normal-case">Clear Filter</button>
+                        )}
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div 
+                          onClick={() => setFilterPlanId(null)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all ${filterPlanId === null ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                        >
+                          <div className="font-bold text-sm">All Plans</div>
+                        </div>
+                        {plans.map(p => (
+                          <div 
+                            key={p.id} 
+                            onClick={() => setFilterPlanId(p.id)}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${filterPlanId === p.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="font-bold text-foreground text-sm">{p.name}</div>
+                            <div className="text-xs text-muted-foreground mt-1">₹{p.price} • {p.validityDays} Days</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
+
+          <div className="flex space-x-1 border-b border-border/50">
+            <button
+              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('ACTIVE')}
+            >
+              Active ({activeBookings.length})
+            </button>
+            <button
+              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'INACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('INACTIVE')}
+            >
+              Inactive/Expired ({inactiveBookings.length})
+            </button>
+            <button
+              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'REVOKED' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('REVOKED')}
+            >
+              Revoked ({revokedBookings.length})
+            </button>
+          </div>
+
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border">
+                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground w-16">S.No.</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">ID</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Student</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Current Plan</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Status</th>
+                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Status / Seat</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredBookings.length > 0 ? (
-                filteredBookings.map(booking => (
-                  <tr key={booking.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-4">
-                      {booking.student.uniqueId ? (
-                        <span className="font-mono text-sm font-bold bg-muted px-2 py-1 rounded border border-border/50">{booking.student.uniqueId}</span>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-xs h-7 px-2"
-                          disabled={loadingId === booking.student.id}
-                          onClick={async () => {
-                            setLoadingId(booking.student.id);
-                            await assignUniqueIdToStudent(booking.student.id);
-                            setLoadingId(null);
-                          }}
-                        >
-                          {loadingId === booking.student.id ? "Generating..." : "Generate ID"}
-                        </Button>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-foreground">{booking.student.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{booking.student.email}</div>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-bold text-foreground">
-                        {booking.plan?.name} • ₹{booking.plan?.price}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(booking.startTime).toLocaleDateString()} - {new Date(booking.endTime).toLocaleDateString()}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {Math.ceil((new Date(booking.endTime).getTime() - new Date().getTime()) / (1000 * 3600 * 24))} days left
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {(() => {
-                        const isExpired = new Date(booking.endTime) < now;
-                        if (isExpired) {
-                          return (
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">
-                              PLAN EXPIRED
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${booking.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                            {booking.status}
+              {displayedBookings.length > 0 ? (
+                displayedBookings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((booking, index) => {
+                  const endOfDay = new Date(booking.endTime);
+                  endOfDay.setHours(0,0,0,0);
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                  const isExpired = endOfDay < today;
+                  
+                  let rowClass = "hover:bg-muted/30 transition-colors";
+                  let statusBadge = null;
+
+                  if (activeTab === 'ACTIVE') {
+                    if (daysLeft <= 3 && daysLeft >= 0) {
+                      rowClass += " bg-destructive/5 hover:bg-destructive/10 border-l-4 border-l-destructive";
+                    } else if (daysLeft <= 7 && daysLeft > 3) {
+                      rowClass += " bg-warning/5 hover:bg-warning/10 border-l-4 border-l-warning";
+                    } else {
+                      rowClass += " border-l-4 border-l-transparent";
+                    }
+                  }
+
+                  if (isExpired) {
+                    statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">EXPIRED</span>;
+                  } else if (booking.status === 'CANCELLED') {
+                    statusBadge = (
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">REVOKED</span>
+                        {booking.revokedReason && (
+                          <span 
+                            className="text-[10px] text-muted-foreground max-w-[120px] truncate cursor-pointer hover:underline" 
+                            onClick={() => {
+                              setViewReason(booking.revokedReason);
+                              setReasonModalOpen(true);
+                            }}
+                          >
+                            Reason: {booking.revokedReason}
                           </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger disabled={loadingId === booking.id} className="flex items-center gap-2 px-3 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-foreground font-medium text-sm focus:outline-none disabled:opacity-50">
-                          {loadingId === booking.id ? "Loading..." : "Manage"} <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 p-2">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="mb-2" />
-                            
-                            {booking.status === 'PENDING_PAYMENT' && (
-                              <DropdownMenuItem 
-                                onClick={() => setPaymentApprovalId(booking.id)}
-                                className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
-                              >
-                                Approve Payment
-                              </DropdownMenuItem>
-                            )}
-                            
-                            <DropdownMenuItem 
-                              onClick={() => setProfileStudent(booking.student)}
-                              className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
-                            >
-                              View Profile
-                            </DropdownMenuItem>
-                            
-                            {booking.status === 'CONFIRMED' && (
-                              booking.isPaused ? (
+                        )}
+                      </div>
+                    );
+                  } else if (booking.status === 'CONFIRMED') {
+                    if (booking.isPaused) {
+                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">PAUSED</span>;
+                    } else {
+                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-success/10 text-success">ACTIVE</span>;
+                    }
+                  } else {
+                    statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">{booking.status}</span>;
+                  }
+
+                  const assignedSeat = seats.find(s => s.id === booking.seatId);
+
+                  return (
+                    <tr key={booking.id} className={rowClass}>
+                      <td className="p-4 text-sm font-medium text-muted-foreground">
+                        {(currentPage - 1) * PAGE_SIZE + index + 1}
+                      </td>
+                      <td className="p-4">
+                        {booking.student.uniqueId ? (
+                          <span className="font-mono text-sm font-bold bg-background px-2 py-1 rounded border border-border">{booking.student.uniqueId}</span>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-7 px-2"
+                            disabled={loadingId === booking.student.id}
+                            onClick={async () => {
+                              setLoadingId(booking.student.id);
+                              await assignUniqueIdToStudent(booking.student.id);
+                              setLoadingId(null);
+                            }}
+                          >
+                            {loadingId === booking.student.id ? "Generating..." : "Generate ID"}
+                          </Button>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-foreground">{booking.student.name}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{booking.student.phone || booking.student.email}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-foreground">
+                          {booking.plan?.name}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-1 flex flex-col gap-0.5">
+                          <span>{new Date(booking.startTime).toLocaleDateString()} - {endOfDay.toLocaleDateString()}</span>
+                          {activeTab === 'ACTIVE' && !booking.isPaused && (
+                            <span className={daysLeft <= 3 ? 'text-destructive font-bold' : daysLeft <= 7 ? 'text-warning font-bold' : ''}>
+                              {daysLeft} days remaining
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-col items-start gap-2">
+                          {statusBadge}
+                          {assignedSeat ? (
+                            <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold">Seat: {assignedSeat.name}</div>
+                          ) : (
+                            <div className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded font-bold">No Seat Assigned</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger disabled={loadingId === booking.id} className="flex items-center gap-2 px-3 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-foreground font-medium text-sm focus:outline-none disabled:opacity-50">
+                            {loadingId === booking.id ? "Loading..." : "Manage"} <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 p-2">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="mb-2" />
+                              
+                              {booking.status === 'PENDING_PAYMENT' && (
                                 <DropdownMenuItem 
-                                  onClick={async () => {
-                                    setLoadingId(booking.id);
-                                    try {
-                                      const res = await resumeBooking(booking.id);
-                                      if (res.extendedDays > 0) {
-                                        alert(`Plan resumed! Student's plan was extended by ${res.extendedDays} days.`);
-                                      } else {
-                                        alert(`Plan resumed! Pause duration was < 7 days, so plan was not extended.`);
-                                      }
-                                    } catch (e: any) {
-                                      alert(e.message || "Failed to resume");
-                                    }
-                                    setLoadingId(null);
-                                  }}
+                                  onClick={() => setPaymentApprovalId(booking.id)}
                                   className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
                                 >
-                                  Resume Plan
+                                  Approve Payment
                                 </DropdownMenuItem>
-                              ) : (
+                              )}
+                              
+                              <DropdownMenuItem 
+                                onClick={() => setProfileStudent({ ...booking.student, booking })}
+                                className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
+                              >
+                                View Profile
+                              </DropdownMenuItem>
+
+                              {booking.status !== 'CANCELLED' && booking.plan?.type === 'FIXED' && (
                                 <DropdownMenuItem 
-                                  onClick={async () => {
-                                    if(confirm("Are you sure you want to pause this plan? It must remain paused for > 7 days to get a validity extension.")) {
+                                  onClick={() => {
+                                    setSeatChangeBookingId(booking.id);
+                                    setSelectedNewSeatId(booking.seatId || "NONE");
+                                  }}
+                                  className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
+                                >
+                                  Change Seat
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {booking.status === 'CONFIRMED' && (
+                                booking.isPaused ? (
+                                  <DropdownMenuItem 
+                                    onClick={async () => {
+                                      setLoadingId(booking.id);
+                                      try {
+                                        const res = await resumeBooking(booking.id);
+                                        if (res.extendedDays > 0) {
+                                          toast.success(`Plan resumed! Student's plan was extended by ${res.extendedDays} days.`);
+                                        } else {
+                                          toast.success(`Plan resumed! Pause duration was < 7 days, so plan was not extended.`);
+                                        }
+                                        window.location.reload();
+                                      } catch (e: any) {
+                                        toast.error(e.message || "Failed to resume");
+                                      }
+                                      setLoadingId(null);
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
+                                  >
+                                    Resume Plan
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem 
+                                    onClick={async () => {
                                       setLoadingId(booking.id);
                                       try {
                                         await pauseBooking(booking.id);
+                                        toast.success("Plan paused successfully");
+                                        window.location.reload();
                                       } catch (e: any) {
-                                        alert(e.message || "Failed to pause");
+                                        toast.error(e.message || "Failed to pause");
                                       }
                                       setLoadingId(null);
-                                    }
-                                  }}
-                                  className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-warning/10 text-warning"
-                                >
-                                  Pause Plan
-                                </DropdownMenuItem>
-                              )
-                            )}
-                          </DropdownMenuGroup>
-                          <DropdownMenuSeparator className="my-2" />
-                          <DropdownMenuItem 
-                            onClick={async () => {
-                              if (confirm("Are you sure you want to revoke this student's access? This will cancel their active plan immediately.")) {
-                                setLoadingId(booking.id);
-                                await revokeBooking(booking.id);
-                                setLoadingId(null);
-                              }
-                            }}
-                            className="text-destructive cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-destructive/10"
-                          >
-                            Revoke Access
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-warning/10 text-warning"
+                                  >
+                                    Pause Plan
+                                  </DropdownMenuItem>
+                                )
+                              )}
+
+                              {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1" />
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setRenewModalBookingId(booking.id);
+                                      setRenewSelectedPlanId(booking.planId);
+                                      setRenewSelectedSeatId(booking.seatId || "NONE");
+                                      setRenewPlanMode('SAME');
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted text-foreground"
+                                  >
+                                    Renew Plan
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                              {booking.status === 'CONFIRMED' && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1" />
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setRevokeBookingId(booking.id);
+                                      setRevokeReason("");
+                                      setRevokeModalOpen(true);
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-destructive/10 text-destructive"
+                                  >
+                                    <UserMinus className="w-4 h-4 mr-2" /> Revoke Access
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                              {booking.status === 'CANCELLED' && (
+                                <>
+                                  <DropdownMenuSeparator className="my-1" />
+                                  <DropdownMenuItem 
+                                    onClick={async () => {
+                                      setLoadingId(booking.id);
+                                      try {
+                                        await unrevokeBooking(booking.id);
+                                        toast.success("Student un-revoked successfully");
+                                        window.location.reload();
+                                      } catch (e: any) {
+                                        toast.error(e.message || "Failed to un-revoke");
+                                      }
+                                      setLoadingId(null);
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
+                                  >
+                                    Un-revoke Student
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    No active students found in Supabase database.
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    No students found.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {Math.ceil(displayedBookings.length / PAGE_SIZE) > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between bg-muted/10">
+            <div className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, displayedBookings.length)} of {displayedBookings.length}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1 px-2">
+                {Array.from({ length: Math.ceil(displayedBookings.length / PAGE_SIZE) }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
+                      currentPage === i + 1 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === Math.ceil(displayedBookings.length / PAGE_SIZE)}
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(displayedBookings.length / PAGE_SIZE), prev + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Seat Change Modal */}
+      <Dialog open={!!seatChangeBookingId} onOpenChange={(open) => !open && setSeatChangeBookingId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Assigned Seat</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Label>Select New Seat</Label>
+            <Select value={selectedNewSeatId || "NONE"} onValueChange={setSelectedNewSeatId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a seat" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">No Seat (Unassigned)</SelectItem>
+                {seats.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSeatChangeBookingId(null)}>Cancel</Button>
+            <Button onClick={handleSeatChange} disabled={loadingId === seatChangeBookingId}>
+              {loadingId === seatChangeBookingId ? "Updating..." : "Update Seat"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Approve Payment Modal */}
       <Dialog open={!!paymentApprovalId} onOpenChange={(open) => !open && setPaymentApprovalId(null)}>
@@ -420,26 +815,44 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
           <div className="flex flex-col gap-3">
             <Button 
               onClick={async () => {
-                if(paymentApprovalId) {
-                  await approveReceptionPayment(paymentApprovalId, "CASH");
-                  setPaymentApprovalId(null);
+                if(paymentApprovalId && !approvalLoading) {
+                  setApprovalLoading(true);
+                  try {
+                    await approveReceptionPayment(paymentApprovalId, "CASH");
+                    toast.success("Payment approved successfully");
+                    setPaymentApprovalId(null);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to approve payment");
+                  } finally {
+                    setApprovalLoading(false);
+                  }
                 }
               }} 
               className="w-full bg-primary"
+              disabled={approvalLoading}
             >
-              Paid via Cash
+              {approvalLoading ? "Approving..." : "Paid via Cash"}
             </Button>
             <Button 
               onClick={async () => {
-                if(paymentApprovalId) {
-                  await approveReceptionPayment(paymentApprovalId, "ONLINE");
-                  setPaymentApprovalId(null);
+                if(paymentApprovalId && !approvalLoading) {
+                  setApprovalLoading(true);
+                  try {
+                    await approveReceptionPayment(paymentApprovalId, "ONLINE");
+                    toast.success("Payment approved successfully");
+                    setPaymentApprovalId(null);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to approve payment");
+                  } finally {
+                    setApprovalLoading(false);
+                  }
                 }
               }} 
               variant="outline" 
               className="w-full"
+              disabled={approvalLoading}
             >
-              Paid via UPI/Card at Reception
+              {approvalLoading ? "Approving..." : "Paid via UPI/Card at Reception"}
             </Button>
           </div>
         </DialogContent>
@@ -477,7 +890,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground font-medium block mb-1">Email Address</span>
-                  <span className="font-bold text-foreground">{profileStudent.email}</span>
+                  <span className="font-bold text-foreground">{profileStudent.email || "N/A"}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-medium block mb-1">Phone Number</span>
@@ -494,18 +907,6 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
                 <div className="col-span-2">
                   <span className="text-muted-foreground font-medium block mb-1">Verified Address</span>
                   <span className="font-bold text-foreground">{profileStudent.address || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Locality</span>
-                  <span className="font-bold text-foreground">{profileStudent.locality || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Highest Qualification</span>
-                  <span className="font-bold text-foreground">{profileStudent.qualification || "N/A"}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground font-medium block mb-1">Organization / College</span>
-                  <span className="font-bold text-foreground">{profileStudent.organization || "N/A"}</span>
                 </div>
               </div>
 
@@ -553,10 +954,6 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
                             <Clock className="w-4 h-4 text-muted-foreground mr-2" />
                             <span className="font-medium text-muted-foreground mr-1">Access:</span> {b.plan.durationHours ? `${b.plan.durationHours} Hours / Day` : 'Full Day'}
                           </div>
-                          <div className="flex items-center text-sm text-foreground">
-                            <Tag className="w-4 h-4 text-muted-foreground mr-2" />
-                            <span className="font-medium text-muted-foreground mr-1">Discounts applied:</span> {b.plan.discount ? `${b.plan.discount}%` : 'None'}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -565,8 +962,39 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
               </div>
             </div>
           )}
-          <DialogFooter className="pt-4 mt-4 border-t border-border">
-            <Button onClick={() => setProfileStudent(null)} className="w-full" variant="outline">Close Profile</Button>
+          <DialogFooter className="pt-4 mt-4 border-t border-border flex sm:justify-between items-center w-full gap-2">
+            <div className="flex flex-wrap gap-2">
+              {profileStudent?.booking?.status !== 'CANCELLED' && profileStudent?.booking?.plan?.type === 'FIXED' && (
+                <Button 
+                  onClick={() => {
+                    setSeatChangeBookingId(profileStudent.booking.id);
+                    setSelectedNewSeatId(profileStudent.booking.seatId || "NONE");
+                    setProfileStudent(null);
+                  }}
+                  variant="outline"
+                  className="bg-muted text-foreground hover:bg-muted/80"
+                >
+                  Change Seat
+                </Button>
+              )}
+              {(profileStudent?.booking?.status === 'CONFIRMED' || profileStudent?.booking?.status === 'COMPLETED') && (
+                <>
+                  <Button 
+                    onClick={() => {
+                      setRenewModalBookingId(profileStudent.booking.id);
+                      setRenewSelectedPlanId(profileStudent.booking.planId);
+                      setRenewSelectedSeatId(profileStudent.booking.seatId || "NONE");
+                      setRenewPlanMode('SAME');
+                      setProfileStudent(null);
+                    }}
+                    variant="outline"
+                  >
+                    Renew Plan
+                  </Button>
+                </>
+              )}
+            </div>
+            <Button onClick={() => setProfileStudent(null)} variant="default">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -627,8 +1055,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
                         {log.isOfflineSync && <span className="block text-[10px] text-warning mt-0.5">Synced Offline</span>}
                       </td>
                       <td className="p-4">
-                        <p className="font-medium text-sm text-foreground">{log.student.name}</p>
-                        {log.student.uniqueId && <p className="text-xs font-mono text-muted-foreground">{log.student.uniqueId}</p>}
+                        <p className="font-medium text-sm text-foreground">{log.student?.name || 'Unknown'}</p>
+                        {log.student?.uniqueId && <p className="text-xs font-mono text-muted-foreground">{log.student.uniqueId}</p>}
                       </td>
                       <td className="p-4">
                         <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${
@@ -645,6 +1073,188 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [] }: { bo
           </div>
         </div>
       </div>
+
+      {/* Revoke Access Dialog */}
+      <Dialog open={revokeModalOpen} onOpenChange={setRevokeModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Revoke Student Access</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to revoke this student's access? Please provide a reason.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="reason" className="font-bold">Reason (Required)</Label>
+              <Textarea 
+                id="reason"
+                placeholder="e.g. Completed exams early, policy violation, etc."
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeModalOpen(false)}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                if (!revokeReason || revokeReason.trim() === "") {
+                  toast.error("A reason is mandatory to revoke access.");
+                  return;
+                }
+                setLoadingId(revokeBookingId);
+                setRevokeModalOpen(false);
+                try {
+                  await revokeBooking(revokeBookingId!, revokeReason.trim());
+                  toast.success("Access revoked");
+                  window.location.reload();
+                } catch (e: any) {
+                  toast.error(e.message || "Failed to revoke");
+                }
+                setLoadingId(null);
+              }}
+              disabled={!revokeReason || revokeReason.trim() === ""}
+            >
+              Revoke Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Reason Dialog */}
+      <Dialog open={reasonModalOpen} onOpenChange={setReasonModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Revoked Reason</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-foreground bg-muted p-4 rounded-lg border border-border">
+              {viewReason}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReasonModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Renew Plan Dialog */}
+      <Dialog open={!!renewModalBookingId} onOpenChange={(open) => {
+        if (!open) {
+          setRenewModalBookingId(null);
+          setRenewLoadingMethod(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Renew Plan</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex bg-muted p-1 rounded-lg">
+              <button 
+                onClick={() => setRenewPlanMode('SAME')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'SAME' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Renew Same Plan
+              </button>
+              <button 
+                onClick={() => setRenewPlanMode('CHANGE')}
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'CHANGE' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Choose Another Plan
+              </button>
+            </div>
+
+            {renewPlanMode === 'CHANGE' && (
+              <div className="space-y-2">
+                <Label>Select New Plan</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
+                  {plans.map(p => (
+                    <div 
+                      key={p.id} 
+                      onClick={() => setRenewSelectedPlanId(p.id)}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${renewSelectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                    >
+                      <div className="font-bold text-foreground text-sm">{p.name}</div>
+                      <div className="text-xl font-black mt-1">₹{p.price}</div>
+                      <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {plans.find(p => p.id === renewSelectedPlanId)?.type === 'FIXED' && (
+              <div className="space-y-2">
+                <Label>Assign Seat (Optional)</Label>
+                <Select value={renewSelectedSeatId || "NONE"} onValueChange={(val) => setRenewSelectedSeatId(val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="No seat specified" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">No Seat (Unassigned)</SelectItem>
+                    {seats.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-col gap-3 pt-2 border-t border-border mt-4">
+            <Button 
+              onClick={async () => {
+                if (!renewModalBookingId) return;
+                setRenewLoadingMethod('CASH');
+                try {
+                  await renewPlan(
+                    renewModalBookingId, 
+                    "CASH", 
+                    renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
+                    renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
+                  );
+                  toast.success("Plan renewed (Cash)");
+                  window.location.reload();
+                } catch (e: any) {
+                  toast.error(e.message || "Failed to renew");
+                } finally {
+                  setRenewLoadingMethod(null);
+                }
+              }} 
+              className="w-full bg-primary"
+              disabled={!!renewLoadingMethod}
+            >
+              {renewLoadingMethod === 'CASH' ? "Renewing..." : "Pay via Cash"}
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!renewModalBookingId) return;
+                setRenewLoadingMethod('ONLINE');
+                try {
+                  await renewPlan(
+                    renewModalBookingId, 
+                    "ONLINE", 
+                    renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
+                    renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
+                  );
+                  toast.success("Plan renewed (Online)");
+                  window.location.reload();
+                } catch (e: any) {
+                  toast.error(e.message || "Failed to renew");
+                } finally {
+                  setRenewLoadingMethod(null);
+                }
+              }} 
+              variant="outline" 
+              className="w-full"
+              disabled={!!renewLoadingMethod}
+            >
+              {renewLoadingMethod === 'ONLINE' ? "Renewing..." : "Pay via UPI/Card"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

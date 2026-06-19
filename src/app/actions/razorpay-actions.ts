@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { getSession } from "./auth-actions"
 import Razorpay from "razorpay"
+import { headers } from "next/headers"
 
 const razorpay = new Razorpay({
   key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
@@ -76,6 +77,14 @@ export async function getRazorpayOnboardingLink() {
   // so we'll use a direct fetch to the Razorpay API.
   const auth = Buffer.from(`${process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
   
+  // We do not have direct access to request headers inside a Server Action easily unless we import `headers()`.
+  const headersList = await headers();
+  const forwardedHost = headersList.get('x-forwarded-host');
+  const host = forwardedHost || headersList.get('host') || 'localhost:3000';
+  const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  const envAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = (envAppUrl && !envAppUrl.includes('localhost')) ? envAppUrl : `${protocol}://${host}`;
+  
   const response = await fetch(`https://api.razorpay.com/beta/accounts/${library.paymentAccountId}/onboarding_links`, {
     method: 'POST',
     headers: {
@@ -83,8 +92,8 @@ export async function getRazorpayOnboardingLink() {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?kyc=cancelled`,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?kyc=success`
+      cancel_url: `${appUrl}/dashboard/settings?kyc=cancelled`,
+      return_url: `${appUrl}/dashboard/settings?kyc=success`
     })
   });
 

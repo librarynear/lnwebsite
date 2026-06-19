@@ -31,18 +31,19 @@ export async function approveLibrary(libraryId: string) {
   const library = await prisma.library.findUnique({ where: { id: libraryId } });
   if (!library) throw new Error("Library not found");
 
-  await prisma.library.update({
-    where: { id: libraryId },
-    data: { kycStatus: "APPROVED" }
-  });
-
-  // Promote the library owner to LIBRARIAN role
-  if (library.librarianId) {
-    await prisma.user.update({
-      where: { id: library.librarianId },
-      data: { role: 'LIBRARIAN' }
+  await prisma.$transaction(async (tx) => {
+    await tx.library.update({
+      where: { id: libraryId },
+      data: { kycStatus: "APPROVED" },
     });
-  }
+
+    if (library.librarianId) {
+      await tx.user.update({
+        where: { id: library.librarianId },
+        data: { role: 'LIBRARIAN' },
+      });
+    }
+  });
   
   await clearLibraryCache(libraryId);
   revalidatePath('/admin');

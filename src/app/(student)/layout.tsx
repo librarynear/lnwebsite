@@ -9,6 +9,7 @@ import { UserNav } from "@/components/user-nav";
 import { Footer } from "@/components/footer";
 import prisma from "@/lib/prisma";
 import { Plus } from "lucide-react";
+import { EmbedStyles } from "@/components/EmbedStyles";
 
 export default async function StudentLayout({ children }: { children: ReactNode }) {
   const session = await getSession();
@@ -19,6 +20,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      <EmbedStyles />
       <ScrollDirection />
       {/* Top Navbar */}
       <header className="navbar-sticky sticky top-0 z-50 w-full border-b border-border bg-white transition-transform duration-300 ease-in-out">

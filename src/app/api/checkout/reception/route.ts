@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { getSession } from "@/app/actions/auth-actions";
+import { endOfDayIST } from "@/lib/date-utils";
 
 export async function POST(req: Request) {
   try {
@@ -9,10 +10,6 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const body = await req.json();
     const { studentId, libraryId, seatId, planId, hasLocker, standaloneLockerId } = body;
 
@@ -54,6 +51,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const isLibrarianOrAdmin = session.role === 'LIBRARIAN' || session.role === 'ADMIN';
+
     // Atomic transaction to prevent race conditions on seat/locker booking
     const booking = await prisma.$transaction(async (tx) => {
       // Check for an existing active booking (extension logic)
@@ -68,8 +67,7 @@ export async function POST(req: Request) {
       });
 
       const startTime = activeBooking ? new Date(activeBooking.endTime) : new Date();
-      const endTime = new Date(startTime);
-      endTime.setDate(endTime.getDate() + plan.validityDays);
+      const endTime = endOfDayIST(startTime, (plan?.validityDays || 30) - 1);
 
       // Prevent double booking of seat. For same-student extensions, the
       // current fixed-seat booking ends exactly when the future booking starts,
@@ -112,8 +110,10 @@ export async function POST(req: Request) {
           endTime,
           hasLocker: hasLocker || false,
           standaloneLockerId: standaloneLockerId || null,
-          status: "PENDING_PAYMENT",
-          paymentRef: `RECEPTION_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+          status: isLibrarianOrAdmin ? "CONFIRMED" : "PENDING_PAYMENT",
+          paymentRef: isLibrarianOrAdmin 
+            ? `RECEPTION_CASH_${Date.now()}` 
+            : `RECEPTION_PENDING_${Date.now()}`
         }
       });
     }, { isolationLevel: 'Serializable' });

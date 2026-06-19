@@ -47,6 +47,7 @@ export async function POST(req: Request) {
           'x-client-secret': cfClientSecret,
           ...(getCashfreeSignature(cfClientId) ? { 'x-cf-signature': getCashfreeSignature(cfClientId) as string } : {})
         },
+        signal: AbortSignal.timeout(15_000),
       }
     );
 
@@ -125,24 +126,33 @@ export async function POST(req: Request) {
       }
     }
 
+    // Reject if no real identity data was returned — never mark verified with placeholders
+    if (!aadhaarData.name || typeof aadhaarData.name !== 'string' || aadhaarData.name.trim().length < 2) {
+      return NextResponse.json(
+        { error: 'Verification succeeded but identity data is incomplete. Please try again.' },
+        { status: 422 }
+      );
+    }
+
     const mappedData = {
-      name: aadhaarData.name || 'Verified Student',
+      name: aadhaarData.name.trim(),
       dob: parsedDob,
       gender: aadhaarData.gender === 'M' ? 'MALE' : aadhaarData.gender === 'F' ? 'FEMALE' : 'OTHER',
-      address: addressStr,
+      address: addressStr !== 'Verified Address' ? addressStr : undefined,
       ...(profilePhotoUrl && { profilePhotoUrl }),
       digilockerVerified: true
     };
 
-    const updatedUser = await prisma.user.update({
+    // Consume the pending key FIRST so it's single-use even if the DB update fails.
+    // If the DB update fails, the user can re-initiate KYC (a new pending key is created).
+    await redis.del(pendingKey);
+
+    await prisma.user.update({
       where: { id: session.userId },
       data: mappedData
     });
 
-    // Single-use: consume the pending verification so it cannot be replayed.
-    await redis.del(pendingKey);
-
-    return NextResponse.json({ success: true, user: updatedUser });
+    return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error('Cashfree Verify Error:', error?.message || 'unknown error');

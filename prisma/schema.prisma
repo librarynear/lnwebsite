@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   STUDENT
   LIBRARIAN
+  RECEPTIONIST
   ADMIN
 }
 
@@ -35,6 +36,8 @@ model User {
   
   // Relationships
   libraries Library[]  @relation("LibrarianLibraries")
+  employerLibraryId String?
+  employerLibrary   Library? @relation("LibraryStaff", fields: [employerLibraryId], references: [id])
   bookings  Booking[]
   queries   Query[]
   checkins  CheckinLog[] @relation("StudentCheckins")
@@ -69,8 +72,9 @@ model Library {
   description   String?
   seatsAvailable Int?
   photos        String[]
-
   facilities    String[] 
+  
+  compactSeatMap Boolean @default(false)
   
   // Banking/KYC
   paymentAccountId String? // Handled by Razorpay (Legacy/Coming soon)
@@ -84,6 +88,10 @@ model Library {
   queries       Query[]
   relays        Relay[]
   checkinLogs   CheckinLog[]
+  expenses      Expense[]
+  inquiries     Inquiry[]
+
+  staff         User[] @relation("LibraryStaff")
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -192,6 +200,7 @@ model Booking {
   isPaused  Boolean @default(false)
   pausedAt  DateTime?
   totalPausedDays Int @default(0)
+  revokedReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -284,4 +293,41 @@ model PlatformFeedback {
 
   @@index([targetType])
   @@index([submitterId])
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  libraryId   String
+  library     Library  @relation(fields: [libraryId], references: [id])
+  name        String   // e.g. "Rent", "Electricity", "Staff"
+  amount      Float
+  date        DateTime @default(now())
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([libraryId])
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+model Inquiry {
+  id          String   @id @default(uuid())
+  libraryId   String
+  library     Library  @relation(fields: [libraryId], references: [id])
+  name        String
+  phone       String
+  message     String?
+  status      InquiryStatus @default(NEW)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([libraryId])
+  @@index([status])
 }

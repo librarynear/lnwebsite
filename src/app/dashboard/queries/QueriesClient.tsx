@@ -19,7 +19,7 @@ export function QueriesClient({ queries }: { queries: any[] }) {
           </div>
         )}
 
-        {queries.map(query => (
+        {queries.map((query, index) => (
           <div key={query.id} className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col sm:flex-row gap-6 items-start">
             <div className={`p-3 rounded-xl shrink-0 ${query.type === 'FEEDBACK' ? 'bg-primary/10 text-primary' : query.type === 'COMPLAINT' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}`}>
               {query.type === 'FEEDBACK' && <MessageSquare className="w-6 h-6" />}
@@ -30,7 +30,7 @@ export function QueriesClient({ queries }: { queries: any[] }) {
             <div className="flex-1 space-y-2 w-full">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-foreground">{query.student.name}</h3>
+                  <h3 className="font-bold text-foreground">#{index + 1}. {query.student.name}</h3>
                   <span className="text-muted-foreground text-sm">• {new Date(query.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>

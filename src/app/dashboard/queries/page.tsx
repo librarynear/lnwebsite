@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 
 export default async function QueriesPage() {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
   if (!library) redirect("/onboarding");
 
   const queries = await prisma.query.findMany({

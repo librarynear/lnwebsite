@@ -42,28 +42,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No active plan found for this library" }, { status: 403 });
     }
 
-    // Determine if checking in or checking out by looking at the last log for
-    // this library *today* — a stale check-in from a prior day must not flip a
-    // fresh arrival into a check-out.
+    // Atomic check-in toggle — prevents duplicate status from rapid NFC taps.
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const lastLog = await prisma.checkinLog.findFirst({
-      where: { studentId, libraryId: relay.libraryId, timestamp: { gte: startOfDay } },
-      orderBy: { timestamp: 'desc' }
-    });
 
-    const newStatus = (lastLog && lastLog.status === "CHECK_IN") ? "CHECK_OUT" : "CHECK_IN";
+    const newStatus = await prisma.$transaction(async (tx) => {
+      const lastLog = await tx.checkinLog.findFirst({
+        where: { studentId, libraryId: relay.libraryId, timestamp: { gte: startOfDay } },
+        orderBy: { timestamp: 'desc' },
+      });
 
-    // Log the event
-    await prisma.checkinLog.create({
-      data: {
-        studentId,
-        libraryId: relay.libraryId,
-        relayId: relay.id,
-        status: newStatus,
-        isOfflineSync: false
-      }
-    });
+      const status = (lastLog && lastLog.status === "CHECK_IN") ? "CHECK_OUT" : "CHECK_IN";
+
+      await tx.checkinLog.create({
+        data: {
+          studentId,
+          libraryId: relay.libraryId,
+          relayId: relay.id,
+          status,
+          isOfflineSync: false,
+        },
+      });
+
+      return status;
+    }, { isolationLevel: 'Serializable' });
 
     // In a real hardware deployment, this API would return a cryptographic signature
     // that the phone passes to the local relay to physically unlock the door over local WiFi/BLE.

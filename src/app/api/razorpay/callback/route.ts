@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import prisma from '@/lib/prisma';
@@ -9,57 +9,76 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
+function getAppUrl(req: NextRequest): string {
+  const env = process.env.NEXT_PUBLIC_APP_URL;
+  if (env && !env.includes('localhost')) return env;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+  const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+
 /**
- * Razorpay redirects the browser here (POST with form-encoded body) after a
- * successful payment via UPI intent or any redirect-based method.
+ * Razorpay Payment Link callback — after a successful payment on Razorpay's
+ * hosted page, the browser is redirected here with GET query params:
+ *   ?razorpay_payment_id=...&razorpay_payment_link_id=...
+ *   &razorpay_payment_link_reference_id=...&razorpay_payment_link_status=...
+ *   &razorpay_signature=...
  *
- * The session cookie may be absent (SameSite=lax blocks cross-site POSTs), so
- * we authenticate via the Razorpay signature + the Redis-stored booking intent
- * instead of getSession().
+ * We verify the signature, retrieve the booking intent from Redis, create the
+ * booking, and redirect to the student dashboard.
  */
-export async function POST(req: Request) {
-  const host = req.headers.get('host') || 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL ? 'https://www.focusdesk.in' : `${protocol}://${host}`);
+export async function GET(req: NextRequest) {
+  const appUrl = getAppUrl(req);
 
   try {
-    const formData = await req.formData();
-    const razorpay_payment_id = formData.get('razorpay_payment_id') as string | null;
-    const razorpay_order_id = formData.get('razorpay_order_id') as string | null;
-    const razorpay_signature = formData.get('razorpay_signature') as string | null;
+    const url = new URL(req.url);
+    const paymentId = url.searchParams.get('razorpay_payment_id');
+    const linkId = url.searchParams.get('razorpay_payment_link_id');
+    const refId = url.searchParams.get('razorpay_payment_link_reference_id');
+    const linkStatus = url.searchParams.get('razorpay_payment_link_status');
+    const signature = url.searchParams.get('razorpay_signature');
 
-    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+    console.log('[callback] params:', { paymentId: !!paymentId, linkId: !!linkId, refId, linkStatus, sig: !!signature });
+
+    if (!paymentId || !linkId || !refId || !linkStatus || !signature) {
+      console.error('[callback] Missing required params');
       return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
     }
 
-    // 1. Verify Razorpay signature
+    // 1. Verify Payment Link signature
+    //    Payload: payment_link_id|payment_link_reference_id|payment_link_status|payment_id
     const secret = process.env.RAZORPAY_KEY_SECRET!;
-    const expected = crypto
-      .createHmac('sha256', secret)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
+    const payload = `${linkId}|${refId}|${linkStatus}|${paymentId}`;
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(razorpay_signature as string, 'hex'))) {
+    if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))) {
       return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
     }
 
-    // 2. Retrieve the booking intent we stored when the order was created
-    const intentKey = `razorpay:intent:${razorpay_order_id}`;
+    if (linkStatus !== 'paid') {
+      return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
+    }
+
+    // 2. Retrieve booking intent from Redis (keyed by our reference_id)
+    const intentKey = `razorpay:intent:${refId}`;
     const raw = await redis.get(intentKey);
     if (!raw) {
       return NextResponse.redirect(`${appUrl}/?payment=expired`, { status: 303 });
     }
     const intent = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    const { studentId, libraryId, planId, seatId, hasLocker, standaloneLockerId } = intent as {
+    const { studentId, libraryId, planId, seatId, hasLocker, standaloneLockerId, orderId } = intent as {
       studentId: string;
       libraryId: string;
       planId: string;
       seatId: string | null;
       hasLocker: boolean;
       standaloneLockerId: string | null;
+      orderId?: string;
     };
 
-    // 4. Fetch plan + cross-entity validation
+    // 3. Fetch plan + cross-entity validation
     const plan = await prisma.plan.findUnique({ where: { id: planId } });
     if (!plan || plan.libraryId !== libraryId) {
       return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
@@ -79,52 +98,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Server-side amount validation
-    let expectedAmount = plan.discount
-      ? plan.price - (plan.price * plan.discount) / 100
-      : plan.price;
+    // 4. Atomic booking creation inside a serializable transaction
+    const paymentRef = `plink_${linkId}_${paymentId}`;
 
-    if (hasLocker && seatId) {
-      const seat = await prisma.seat.findUnique({ where: { id: seatId } });
-      if (seat?.lockerPriceMonthly) {
-        expectedAmount += seat.lockerPriceMonthly * (plan.validityDays / 28);
-      }
-    } else if (standaloneLockerId) {
-      const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
-      if (locker) {
-        expectedAmount += locker.price * (plan.validityDays / 28);
-      }
-    }
-
-    const expectedPaise = Math.round(expectedAmount * 100);
-
-    const payment = await razorpay.payments.fetch(razorpay_payment_id as string);
-    const paidPaise = Number(payment.amount);
-
-    if (Math.abs(paidPaise - expectedPaise) > 1) {
-      return NextResponse.redirect(`${appUrl}/?payment=mismatch`, { status: 303 });
-    }
-
-    if (payment.status === 'authorized') {
-      try {
-        await razorpay.payments.capture(razorpay_payment_id as string, paidPaise, "INR");
-      } catch (err) {
-        console.error("Payment capture failed in callback:", err);
-        return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
-      }
-    } else if (payment.status !== 'captured') {
-      return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
-    }
-
-    // 6. Atomic booking creation (same logic as verify route)
     await prisma.$transaction(async (tx) => {
-      // Replay attack prevention moved into serializable transaction
-      const existing = await tx.booking.findFirst({
-        where: { paymentRef: razorpay_order_id as string },
-      });
-      if (existing) {
-        throw new Error('PAYMENT_ALREADY_PROCESSED');
-      }
+      // Replay prevention: check if this payment link already created a booking
+      const existing = await tx.booking.findFirst({ where: { paymentRef } });
+      if (existing) throw new Error('PAYMENT_ALREADY_PROCESSED');
 
       const activeBooking = await tx.booking.findFirst({
         where: { studentId, libraryId, status: 'CONFIRMED', endTime: { gt: new Date() } },
@@ -164,7 +144,7 @@ export async function POST(req: Request) {
           libraryId,
           seatId,
           planId,
-          paymentRef: razorpay_order_id,
+          paymentRef,
           hasLocker: hasLocker || false,
           standaloneLockerId: standaloneLockerId || null,
           startTime,
@@ -174,8 +154,11 @@ export async function POST(req: Request) {
       });
     }, { isolationLevel: 'Serializable' });
 
-    // 7. Clean up
+    // 5. Clean up Redis — delete both refId and orderId intent keys to prevent webhook double-booking
     await redis.del(intentKey);
+    if (orderId) {
+      await redis.del(`razorpay:intent:${orderId}`);
+    }
     await redis.del(`library:${libraryId}`);
 
     return NextResponse.redirect(
@@ -184,19 +167,20 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error('Razorpay callback error:', error);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     if (error.message === 'PAYMENT_ALREADY_PROCESSED') {
-      return NextResponse.redirect(
-        `${appUrl}/student/dashboard?booking=success`,
-        { status: 303 },
-      );
+      return NextResponse.redirect(`${appUrl}/student/dashboard?booking=success`, { status: 303 });
     }
-    if (error.message === 'SEAT_TAKEN') {
-      return NextResponse.redirect(`${appUrl}/?payment=seat_taken`, { status: 303 });
-    }
-    if (error.message === 'LOCKER_TAKEN') {
-      return NextResponse.redirect(`${appUrl}/?payment=locker_taken`, { status: 303 });
+    if (error.message === 'SEAT_TAKEN' || error.message === 'LOCKER_TAKEN') {
+      try {
+        const url = new URL(req.url);
+        const pId = url.searchParams.get('razorpay_payment_id');
+        if (pId) await razorpay.payments.refund(pId, {});
+      } catch (refundErr) {
+        console.error('Auto-refund failed:', refundErr);
+      }
+      const label = error.message === 'SEAT_TAKEN' ? 'seat_taken' : 'locker_taken';
+      return NextResponse.redirect(`${appUrl}/?payment=${label}`, { status: 303 });
     }
 
     return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });

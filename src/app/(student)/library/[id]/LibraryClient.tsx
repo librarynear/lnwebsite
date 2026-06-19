@@ -1,18 +1,13 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock, Grid, X, ChevronLeft, ChevronRight, Share, Heart } from "lucide-react"
 import Link from "next/link"
-import Script from "next/script"
 import { useRouter } from "next/navigation"
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import { InquiryForm } from "./InquiryForm";
+import LiveSeatMap from "@/components/LiveSeatMap"
+import { toast } from "react-hot-toast"
 
 export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlanEndDate, studentPhone, studentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
   const router = useRouter();
@@ -58,6 +53,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
     }
   };
   const [isProcessing, setIsProcessing] = useState(false);
+  const checkoutLockRef = useRef(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -154,24 +150,26 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
   }
   let endDate = new Date(startDate);
   if (selectedPlan) {
-    endDate.setDate(endDate.getDate() + selectedPlan.validityDays);
+    endDate.setDate(endDate.getDate() + selectedPlan.validityDays - 1);
   }
 
   const handleCheckout = async () => {
+    if (checkoutLockRef.current) return;
     if (!studentId) {
       router.push(`/login?returnUrl=/library/${library.id}`);
       return;
     }
     if (!selectedPlan) {
-      alert("Please select a plan.");
+      toast.error("Please select a plan.");
       return;
     }
     
     if (!isFlexible && !selectedSeat) {
-      alert("Please select a seat for this Fixed plan.");
+      toast.error("Please select a seat for this Fixed plan.");
       return;
     }
 
+    checkoutLockRef.current = true;
     setIsProcessing(true);
 
     if (paymentMode === "RECEPTION") {
@@ -190,14 +188,16 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
         });
         const data = await res.json();
         if (data.success) {
+          toast.success("Booking requested! Please pay at the reception to confirm your seat.");
           setShowSuccessModal(true);
         } else {
-          alert(data.error || "Failed to initiate booking");
+          toast.error(data.error || "Failed to initiate booking");
         }
       } catch (e) {
-        alert("An error occurred during booking");
+        toast.error("An error occurred during booking");
       } finally {
         setIsProcessing(false);
+        checkoutLockRef.current = false;
       }
       return;
     }
@@ -206,74 +206,25 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
       const orderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           planId: selectedPlan.id,
           seatId: isFlexible ? null : selectedSeat.id,
           hasLocker: seatHasMandatoryLocker,
           standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null
         })
       });
-      const orderData = await orderRes.json();
+      const data = await orderRes.json();
 
-      if (!orderData.id) throw new Error("Failed to create order");
+      if (!data.payment_url) {
+        throw new Error(data.error || "Failed to create payment");
+      }
 
-      // Use callback_url instead of handler so the flow survives UPI
-      // intent redirects (which destroy the in-page JS context). Razorpay
-      // POSTs the payment details to this URL after a successful payment,
-      // and the server creates the booking + redirects to the dashboard.
-      const callbackUrl = `${window.location.origin}/api/razorpay/callback`;
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: "INR",
-        name: library.name,
-        description: isFlexible ? `Booking Flexible Plan - ${selectedPlan.name}` : `Booking Seat ${selectedSeat.name} - ${selectedPlan.name}`,
-        order_id: orderData.id,
-        callback_url: callbackUrl,
-        redirect: true,
-        prefill: {
-          name: "Student",
-          email: studentEmail || "guest@focusdesk.in",
-          contact: studentPhone ? (studentPhone.startsWith('+') ? studentPhone : `+91${studentPhone.replace(/\D/g, '').slice(-10)}`) : "+919876543210",
-          method: "upi"
-        },
-        config: {
-          display: {
-            blocks: {
-              upi: {
-                name: "Pay via UPI",
-                instruments: [{ method: "upi" }]
-              }
-            },
-            sequence: ["block.upi"],
-            preferences: { show_default_blocks: true }
-          }
-        },
-        theme: {
-          color: "#7C2C2E"
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-            import('react-hot-toast').then(({ default: toast }) => {
-              toast.error("Payment cancelled");
-            });
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response: any){
-        setIsProcessing(false);
-        alert("Payment failed. Please try again.");
-      });
-      rzp.open();
-
-    } catch (error) {
+      window.location.href = data.payment_url;
+    } catch (error: any) {
       console.error(error);
-      alert("Error initiating checkout");
+      toast.error(error.message || "Error initiating checkout");
       setIsProcessing(false);
+      checkoutLockRef.current = false;
     }
   }
 
@@ -304,7 +255,6 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
 
   return (
     <div className="min-h-screen bg-background pb-32">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       
       {/* Success Modal */}
       {showSuccessModal && (
@@ -355,14 +305,14 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
       </div>
 
       {/* Top Full Width Photos */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 library-gallery">
         <LibraryPhotoGallery images={photos} libraryName={library.name} />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 flex flex-col lg:grid lg:grid-cols-3 gap-y-12 lg:gap-x-12 relative">
         
         {/* Left Column 1: About */}
-        <div className="order-1 lg:col-span-2 lg:col-start-1 lg:row-start-1 space-y-12">
+        <div className="order-1 lg:col-span-2 lg:col-start-1 lg:row-start-1 space-y-12 about-section">
           <section className="space-y-4">
             <h2 className="text-2xl font-bold font-heading tracking-tight">About</h2>
             <div className="flex flex-wrap gap-4 text-sm font-medium text-muted-foreground bg-muted/30 p-4 rounded-xl border border-border">
@@ -379,7 +329,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
         </div>
 
         {/* Right Column: Sticky Booking Widget */}
-        <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2" id="booking-widget">
+        <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 booking-widget-container" id="booking-widget">
           <div className="lg:sticky lg:top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
             <h3 className="text-2xl font-black font-heading tracking-tight text-foreground">
               {selectedPlan ? (
@@ -511,78 +461,24 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
                   </label>
                 </div>
                 <div className="mt-2">
-                  <div className="bg-muted/30 border border-border rounded-2xl p-0 overflow-hidden relative">
-                  <div className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm text-[10px] text-muted-foreground px-2 py-1 rounded-full border border-border font-bold flex items-center gap-1">
-                    <Grid className="w-3 h-3" /> Pinch to Zoom
-                  </div>
-                  <TransformWrapper
-                    initialScale={1}
-                    minScale={0.5}
-                    maxScale={3}
-                    centerOnInit={true}
-                    wheel={{ step: 0.1 }}
-                  >
-                    <TransformComponent wrapperClass="!w-full !h-[300px] cursor-grab active:cursor-grabbing">
-                      <div className="w-full h-full p-8 flex items-center justify-center">
-                        <div className="w-max mx-auto flex flex-col gap-3 transition-transform duration-500 ease-out">
-                          {Array.from({ length: maxY + 1 }).map((_, y) => (
-                            <div key={y} className="flex gap-3">
-                              {Array.from({ length: maxX + 1 }).map((_, x) => {
-                                const seat = library.seats.find((s:any) => s.gridX === x && s.gridY === y);
-                                if (!seat) return <div key={x} className="w-10 h-10"></div>;
-
-                                const isOccupied = occupiedSeatIds.includes(seat.id);
-                                const isSelected = selectedSeat?.id === seat.id;
-                                
-                                let seatClass = "bg-background border-border hover:border-primary cursor-pointer text-foreground shadow-[2px_4px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_8px_0px_0px_rgba(0,0,0,0.1)] hover:-translate-y-2";
-                                
-                                const isDisabled = isOccupied || seat.type === 'NON_RESERVABLE';
-
-                                if (isDisabled) {
-                                  seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed shadow-none";
-                                } else if (isSelected) {
-                                  seatClass = "bg-primary border-primary text-primary-foreground shadow-[2px_8px_0px_0px_rgba(0,0,0,0.2)] -translate-y-2";
-                                }
-
-                                return (
-                                  <div 
-                                    key={seat.id} 
-                                    onClick={() => {
-                                      if (!isDisabled) {
-                                        setSelectedSeat(seat);
-                                        if (seat.hasLocker) {
-                                          setSelectedStandaloneLockerId("");
-                                        }
-                                        setTimeout(() => {
-                                          const widget = document.getElementById('payment-section');
-                                          if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                                        }, 100);
-                                      }
-                                    }}
-                                    className={`relative w-10 h-10 rounded-lg border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 ${seatClass}`}
-                                  >
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      {seat.name}
-                                    </div>
-                                    {seat.hasLocker && (
-                                      <div className="absolute -top-3 -right-2 bg-foreground text-background p-0.5 rounded-full shadow-lg z-10">
-                                        <Lock className="w-2.5 h-2.5" />
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ))}
-                          <div className="mt-4 mx-auto w-full text-center py-1.5 bg-border/50 rounded-md text-muted-foreground text-[10px] tracking-widest uppercase font-bold border border-border">
-                            Front Desk
-                          </div>
-                        </div>
-                      </div>
-                    </TransformComponent>
-                  </TransformWrapper>
+                  <LiveSeatMap 
+                    library={library}
+                    occupiedSeatIds={occupiedSeatIds}
+                    interactive={true}
+                    selectedSeat={selectedSeat}
+                    compactMode={true}
+                    onSeatSelect={(seat) => {
+                      setSelectedSeat(seat);
+                      if (seat.hasLocker) {
+                        setSelectedStandaloneLockerId("");
+                      }
+                      setTimeout(() => {
+                        const widget = document.getElementById('payment-section');
+                        if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                      }, 100);
+                    }}
+                  />
                 </div>
-              </div>
               </>
             )}
 
@@ -600,7 +496,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
                           <span className="font-bold text-sm text-foreground">Attached Locker</span>
                           <span className="font-bold text-sm">+₹{lockerCost.toFixed(0)}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-foreground/80">
                           Included with this seat.
                         </p>
                       </>
@@ -651,7 +547,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
             {selectedPlan && (
               <div className="flex justify-between items-center text-sm font-medium mt-4 bg-muted/30 p-4 rounded-xl border border-border">
                 <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">Valid From</span>
+                  <span className="text-foreground/70 text-xs uppercase tracking-wider font-bold mb-1">Valid From</span>
                   <span className="text-foreground">{startDate.toLocaleDateString()}</span>
                 </div>
                 <div className="flex flex-col text-right">
@@ -678,10 +574,10 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
 
         {/* Left Column 2: Facilities & Map */}
         <div className="order-3 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2 space-y-12">
-          <hr className="border-border hidden lg:block" />
+          <hr className="border-border hidden lg:block facilities-section" />
 
           {/* Facilities */}
-          <section>
+          <section className="facilities-section">
             <h2 className="text-2xl font-bold font-heading tracking-tight mb-6">What this place offers</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-8">
               {library.facilities.map((fac: string) => (
@@ -692,10 +588,10 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
             </div>
           </section>
 
-          <hr className="border-border" />
+          <hr className="border-border location-section" />
 
           {/* Map Location */}
-          <section>
+          <section className="location-section">
             <h2 className="text-2xl font-bold font-heading tracking-tight mb-6">Location</h2>
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
               <iframe 
@@ -706,6 +602,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
                 allowFullScreen={false} 
                 loading="lazy" 
                 referrerPolicy="no-referrer-when-downgrade"
+                className="grayscale hover:grayscale-0 transition-all duration-700"
               />
               <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -724,7 +621,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
             </div>
           </section>
 
-          <section className="mt-8 border-t border-border pt-8">
+          <section className="mt-8 border-t border-border pt-8 feedback-section">
             <h2 className="text-2xl font-black text-foreground mb-4 font-heading flex items-center gap-2">
               Feedback & Support
             </h2>
@@ -754,6 +651,13 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
                 ⚠️ File Complaint
               </button>
             </div>
+          </section>
+
+          <hr className="border-border inquiry-section" />
+
+          {/* Contact / Inquiry */}
+          <section className="inquiry-section">
+            <InquiryForm libraryId={library.id} />
           </section>
 
         </div>

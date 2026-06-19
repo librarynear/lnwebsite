@@ -2,7 +2,7 @@
 
 import { Search, MapPin, X, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, Suspense } from "react";
 
 interface SearchBarProps {
   compact?: boolean;
@@ -10,7 +10,30 @@ interface SearchBarProps {
 
 type NearbyPhase = "idle" | "locating" | "searching";
 
-export function SearchBar({ compact = false }: SearchBarProps) {
+function SearchBarFallback({ compact = false }: SearchBarProps) {
+  return (
+    <div className="relative w-full">
+      <div className={`flex items-center w-full bg-white rounded-full border border-border ${
+        compact ? "pl-1.5 md:pl-2 pr-1.5 py-1.5" : "shadow-[0_3px_15px_-2px_rgba(0,0,0,0.12)] pl-1.5 md:pl-2 pr-1.5 md:pr-2 py-1.5 md:py-2"
+      }`}>
+        <div className={`${compact ? "h-8 w-8 md:h-10 md:w-10" : "h-10 w-10 md:h-12 md:w-12"} rounded-full bg-primary/50 flex items-center justify-center shrink-0 mr-2 md:mr-3`}>
+          <Search className="h-4 w-4 md:h-5 md:w-5 text-white" strokeWidth={3} />
+        </div>
+        <div className="flex-1 h-10" />
+      </div>
+    </div>
+  );
+}
+
+export function SearchBar(props: SearchBarProps) {
+  return (
+    <Suspense fallback={<SearchBarFallback compact={props.compact} />}>
+      <SearchBarInner {...props} />
+    </Suspense>
+  );
+}
+
+function SearchBarInner({ compact = false }: SearchBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);

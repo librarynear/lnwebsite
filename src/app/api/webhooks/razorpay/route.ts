@@ -52,39 +52,113 @@ export async function POST(req: Request) {
         }
       }
     } else if (event.event === "payment.captured" || event.event === "order.paid") {
-      // Async payment capture
-      let orderId = event.event === "order.paid" ? event.payload.order.entity.id : event.payload.payment.entity.order_id;
+      let orderId = event.event === "order.paid"
+        ? event.payload.order.entity.id
+        : event.payload.payment.entity.order_id;
+
       if (orderId) {
-        // Wrap in transaction to avoid race
-        await prisma.$transaction(async (tx) => {
-          const existing = await tx.booking.findUnique({ where: { paymentRef: orderId } });
-          if (!existing) {
+        let bookingCreated = false;
+        try {
+          await prisma.$transaction(async (tx) => {
+            const existingByOrder = await tx.booking.findFirst({ where: { paymentRef: orderId } });
+            if (existingByOrder) {
+              bookingCreated = true;
+              return;
+            }
+
             const { redis } = await import("@/lib/redis");
             const intentStr = await redis.get(`razorpay:intent:${orderId}`);
-            if (intentStr) {
-              const intent = typeof intentStr === 'string' ? JSON.parse(intentStr) : intentStr;
-              const plan = await tx.plan.findUnique({ where: { id: intent.planId } });
-              if (plan) {
-                const now = new Date();
-                const endTime = new Date(now.getTime() + plan.validityDays * 24 * 60 * 60 * 1000);
-                await tx.booking.create({
-                  data: {
-                    studentId: intent.studentId,
-                    libraryId: intent.libraryId,
-                    planId: intent.planId,
-                    seatId: intent.seatId,
-                    hasLocker: intent.hasLocker,
-                    standaloneLockerId: intent.standaloneLockerId,
-                    startTime: now,
-                    endTime,
-                    status: "CONFIRMED",
-                    paymentRef: orderId
-                  }
-                });
-              }
+            if (!intentStr) return;
+
+            const intent = typeof intentStr === 'string' ? JSON.parse(intentStr) : intentStr;
+            const plan = await tx.plan.findUnique({ where: { id: intent.planId } });
+            if (!plan) {
+              throw new Error("PLAN_NOT_FOUND");
             }
+
+            const activeBooking = await tx.booking.findFirst({
+              where: {
+                studentId: intent.studentId,
+                libraryId: intent.libraryId,
+                status: 'CONFIRMED',
+                endTime: { gt: new Date() },
+              },
+              orderBy: { endTime: 'desc' },
+            });
+
+            const startTime = activeBooking ? new Date(activeBooking.endTime) : new Date();
+            const endTime = new Date(startTime);
+            endTime.setDate(endTime.getDate() + plan.validityDays);
+
+            if (intent.seatId) {
+              const seatClash = await tx.booking.findFirst({
+                where: {
+                  seatId: intent.seatId,
+                  status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+                  startTime: { lt: endTime },
+                  endTime: { gt: startTime },
+                },
+              });
+              if (seatClash) throw new Error("SEAT_ALREADY_BOOKED");
+            }
+
+            if (intent.standaloneLockerId) {
+              const lockerClash = await tx.booking.findFirst({
+                where: {
+                  standaloneLockerId: intent.standaloneLockerId,
+                  status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+                  endTime: { gt: new Date() },
+                },
+              });
+              if (lockerClash) throw new Error("LOCKER_ALREADY_BOOKED");
+            }
+
+            await tx.booking.create({
+              data: {
+                studentId: intent.studentId,
+                libraryId: intent.libraryId,
+                planId: intent.planId,
+                seatId: intent.seatId,
+                hasLocker: intent.hasLocker,
+                standaloneLockerId: intent.standaloneLockerId,
+                startTime,
+                endTime,
+                status: "CONFIRMED",
+                paymentRef: orderId,
+              },
+            });
+
+            bookingCreated = true;
+
+            await redis.del(`razorpay:intent:${orderId}`);
+            if (intent.orderId && intent.orderId !== orderId) {
+              await redis.del(`razorpay:intent:${intent.orderId}`);
+            }
+          }, { isolationLevel: 'Serializable' });
+        } catch (err: any) {
+          if (err.message === "SEAT_ALREADY_BOOKED" || err.message === "LOCKER_ALREADY_BOOKED") {
+            try {
+              const Razorpay = require('razorpay');
+              const rzp = new Razorpay({
+                key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+                key_secret: process.env.RAZORPAY_KEY_SECRET!,
+              });
+              const paymentId = event.event === "order.paid"
+                ? event.payload.payment?.entity?.id
+                : event.payload.payment.entity.id;
+              if (paymentId) {
+                await rzp.payments.refund(paymentId, {});
+                console.log(`Refunded payment ${paymentId} due to conflict`);
+              }
+            } catch (refundErr) {
+              console.error("Refund failed:", refundErr);
+            }
+          } else if (err.message === "PLAN_NOT_FOUND") {
+            return NextResponse.json({ error: "Plan not found" }, { status: 500 });
+          } else {
+            throw err;
           }
-        });
+        }
       }
     } else if (event.event === "payment.authorized") {
       const paymentId = event.payload.payment.entity.id;

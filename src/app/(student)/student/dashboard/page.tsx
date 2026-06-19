@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PauseResumeButton from "./PauseResumeButton";
 import BookingSuccessToast from "./BookingSuccessToast";
+import LocateSeatModal from "./LocateSeatModal";
+import ExtendPlanModal from "./ExtendPlanModal";
+
+const formatDate = (date: Date) => date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' });
+const formatDateTime = (date: Date) => date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default async function StudentDashboardPage() {
   // Consumer page: any logged-in user can view their own bookings, including
@@ -101,70 +106,90 @@ export default async function StudentDashboardPage() {
             ) : (
               <div className="space-y-4">
                 {activeBookings.map((booking) => (
-                  <div key={booking.id} className="bg-card rounded-2xl border border-border p-6 shadow-sm border-l-4 border-l-success">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${booking.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                            {booking.status}
-                          </span>
-                          <span className="text-sm text-muted-foreground font-medium">{booking.plan.name} • ₹{booking.plan.price}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Link href={`/library/${booking.libraryId}`} className="text-xl font-bold text-foreground hover:underline inline-block">
-                            {booking.library.name}
-                          </Link>
-                          <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} pausedAt={booking.pausedAt} />
-                          <Link href={`/library/${booking.libraryId}`} className="bg-primary/10 text-primary text-xs font-bold px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
-                            Extend Plan
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-                          <MapPin className="w-4 h-4" /> {booking.library.locality}, {booking.library.city}
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2 shrink-0">
-                        {booking.seat ? (
-                          <div className="bg-primary/5 border border-primary/20 px-4 py-3 rounded-xl text-center min-w-[80px]">
-                            <p className="text-xs text-primary uppercase tracking-wider font-bold mb-1">Seat</p>
-                            <p className="text-xl font-black text-primary">{booking.seat.name}</p>
-                          </div>
-                        ) : (
-                          <div className="bg-muted border border-border px-4 py-3 rounded-xl text-center min-w-[80px]">
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Seat</p>
-                            <p className="text-sm font-bold text-foreground mt-1">FLEXIBLE</p>
-                          </div>
-                        )}
+                  <div key={booking.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col">
+                    {/* Header: Status & Date */}
+                    <div className="bg-muted/30 px-6 py-3 border-b border-border flex justify-between items-center">
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${booking.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                        {booking.status}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" /> Booked: {formatDateTime(booking.createdAt)}
+                      </span>
+                    </div>
 
-                        {booking.hasLocker && (
-                          <div className="bg-muted border border-border px-4 py-3 rounded-xl text-center min-w-[80px]">
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Locker</p>
-                            <p className="text-xl font-black text-foreground">
-                              {booking.standaloneLocker ? booking.standaloneLocker.name : "Attached"}
-                            </p>
-                          </div>
-                        )}
+                    {/* Title & Location */}
+                    <div className="p-6 pb-4">
+                      <Link href={`/library/${booking.libraryId}`} className="text-2xl font-black text-foreground hover:underline inline-block mb-1">
+                        {booking.library.name}
+                      </Link>
+                      <div className="flex items-center gap-1.5 text-foreground/70 text-sm">
+                        <MapPin className="w-4 h-4" /> {booking.library.locality}, {booking.library.city}
                       </div>
                     </div>
-                    
-                    <hr className="border-border my-4" />
-                    
-                    <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
-                      <div className="flex items-center gap-2 text-foreground">
-                        <Calendar className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Valid from {booking.startTime.toLocaleDateString()} to {booking.endTime.toLocaleDateString()}</span>
+
+                    {/* Ticket Body: Details */}
+                    <div className="px-6 pb-6">
+                      <div className="bg-background rounded-xl border border-border p-5 flex flex-col sm:flex-row justify-between gap-5">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Plan details</p>
+                            <p className="text-base font-bold text-foreground">{booking.plan.name} <span className="text-muted-foreground font-normal mx-1">•</span> <span className="text-primary">₹{booking.plan.price}</span></p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                              <span>Valid: <strong className="text-foreground">{formatDate(booking.startTime)}</strong> to <strong className="text-foreground">{formatDate(booking.endTime)}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
+                              <Clock className="w-4 h-4 text-muted-foreground" />
+                              <span>{booking.plan.durationHours ? `${booking.plan.durationHours} hr access/day` : 'Full Day access'}</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
+                              <Key className="w-4 h-4 text-muted-foreground" />
+                              <span>Access Code: <strong className="text-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{booking.id.split('-')[0].toUpperCase()}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 sm:flex-col items-center sm:items-center justify-center sm:justify-center shrink-0 border-t sm:border-t-0 sm:border-l border-border pt-5 sm:pt-0 sm:pl-5 w-full sm:w-[140px]">
+                          {booking.seat ? (
+                            <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
+                              <p className="text-[10px] text-primary uppercase tracking-widest font-bold mb-0.5">Seat</p>
+                              <p className="text-2xl font-black text-primary">{booking.seat.name}</p>
+                            </div>
+                          ) : (
+                            <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Seat</p>
+                              <p className="text-sm font-bold text-foreground mt-1">FLEXIBLE</p>
+                            </div>
+                          )}
+
+                          {booking.hasLocker && (
+                            <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Locker</p>
+                              <p className="text-base font-bold text-foreground">
+                                {booking.standaloneLocker ? booking.standaloneLocker.name : "Attached"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-foreground">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <span className="font-medium">
-                          {booking.plan.durationHours ? `${booking.plan.durationHours} hr access/day` : 'Full Day access'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-foreground">
-                        <Key className="w-4 h-4 text-primary" />
-                        <span className="font-medium">Access Code: {booking.id.split('-')[0].toUpperCase()}</span>
-                      </div>
+                    </div>
+
+                    {/* Action Footer */}
+                    <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} pausedAt={booking.pausedAt} />
+                      <ExtendPlanModal 
+                        booking={booking} 
+                        studentId={session.userId} 
+                        studentEmail={student.email} 
+                        studentPhone={student.phone} 
+                      />
+                      <LocateSeatModal 
+                        libraryId={booking.libraryId} 
+                        targetSeatId={booking.seatId} 
+                        isFlexible={booking.plan.type === "FLEXIBLE"} 
+                      />
                     </div>
                   </div>
                 ))}
@@ -184,7 +209,7 @@ export default async function StudentDashboardPage() {
                       <h3 className="font-bold text-foreground">{booking.library.name}</h3>
                       <div className="flex items-center gap-4 text-sm mt-1">
                         <span className="text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" /> Expired {booking.endTime.toLocaleDateString()}
+                          <Calendar className="w-3.5 h-3.5" /> Expired {formatDate(booking.endTime)}
                         </span>
                         <span className="text-muted-foreground flex items-center gap-1">
                           {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{booking.plan.price}

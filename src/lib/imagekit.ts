@@ -26,16 +26,26 @@ export async function uploadImage(
   mimeTypeForFallback = "image/jpeg",
 ): Promise<string> {
   if (imagekit) {
-    const res = await imagekit.upload({
+    const uploadPromise = imagekit.upload({
       file: data,
       fileName,
       folder,
       useUniqueFileName: true,
     });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('ImageKit upload timed out after 15s')), 15_000)
+    );
+    const res = await Promise.race([uploadPromise, timeoutPromise]);
     return res.url;
   }
 
-  // Dev fallback: inline data URL (never used in production where IK is set).
+  // In production, ImageKit MUST be configured — fail loudly instead of
+  // silently storing multi-KB base64 strings in Postgres.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('ImageKit is not configured. Set NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, and NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT.');
+  }
+
+  // Dev fallback: inline data URL (only used in local development).
   const base64 = Buffer.isBuffer(data) ? data.toString("base64") : data;
   return `data:${mimeTypeForFallback};base64,${base64}`;
 }

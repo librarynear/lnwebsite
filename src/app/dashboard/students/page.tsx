@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 
 export default async function ManageStudentsPage() {
   const session = await getSession();
-  if (!session || session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
   if (!library) redirect("/onboarding");
 
   const bookings = await prisma.booking.findMany({
@@ -35,9 +35,14 @@ export default async function ManageStudentsPage() {
     where: { libraryId: library.id }
   });
 
+  const seats = await prisma.seat.findMany({
+    where: { libraryId: library.id },
+    orderBy: { name: 'asc' }
+  });
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <StudentsClient bookings={bookings} plans={plans} logs={logs} relays={relays} />
+      <StudentsClient bookings={bookings} plans={plans} logs={logs} relays={relays} seats={seats} />
     </div>
   );
 }

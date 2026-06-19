@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from "react";
-import { Grip, Plus, Trash2, Save, Undo2, Loader2, Lock } from "lucide-react";
+import { Grip, Plus, Trash2, Save, Undo2, Loader2, Lock, X } from "lucide-react";
 import { saveSeatLayoutAndLockers, getSeatLayoutAndLockers } from "@/app/actions/seat-actions";
+import LiveSeatMap from "@/components/LiveSeatMap";
 
 export default function SeatsManagerPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -14,30 +15,41 @@ export default function SeatsManagerPage() {
   
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
+  const [previewMode, setPreviewMode] = useState(false);
+
   useEffect(() => {
     async function load() {
       const data = await getSeatLayoutAndLockers();
+      
+      let finalRows = 5;
+      let finalCols = 8;
       
       // Calculate dimensions from existing seats if any
       if (data.seats && data.seats.length > 0) {
         const maxR = Math.max(...data.seats.map(s => s.y)) + 1;
         const maxC = Math.max(...data.seats.map(s => s.x)) + 1;
-        setRows(Math.max(5, maxR));
-        setCols(Math.max(8, maxC));
+        finalRows = Math.max(5, maxR);
+        finalCols = Math.max(8, maxC);
+        setRows(finalRows);
+        setCols(finalCols);
       }
+
+
+
+      const isEmptyLibrary = !data.seats || data.seats.length === 0;
 
       // Initialize grid, filling in gaps with EMPTY
       const grid: any[] = [];
-      for (let i = 0; i < Math.max(5, rows) * Math.max(8, cols); i++) {
-        const x = i % Math.max(8, cols);
-        const y = Math.floor(i / Math.max(8, cols));
+      for (let i = 0; i < finalRows * finalCols; i++) {
+        const x = i % finalCols;
+        const y = Math.floor(i / finalCols);
         const id = `${String.fromCharCode(65 + y)}${x + 1}`;
         
         const existing = data.seats.find(s => s.x === x && s.y === y);
         if (existing) {
           grid.push({ ...existing, id }); // ensure id matches coords
         } else {
-          grid.push({ id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" });
+          grid.push({ id, x, y, type: isEmptyLibrary ? 'NORMAL' : 'EMPTY', hasLocker: false, lockerPriceMonthly: "" });
         }
       }
       
@@ -107,7 +119,7 @@ export default function SeatsManagerPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveSeatLayoutAndLockers(seats, standaloneLockers);
+      await saveSeatLayoutAndLockers(seats, standaloneLockers, true);
       alert("Layout & Lockers saved successfully!");
     } catch (e) {
       alert("Failed to save layout.");
@@ -228,16 +240,23 @@ export default function SeatsManagerPage() {
           </div>
         </div>
 
-        {/* Grid Builder */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-card rounded-2xl border border-border p-6 shadow-sm overflow-auto min-h-[500px]">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
               <h2 className="font-bold text-foreground">Interactive Seat Grid</h2>
-              <div className="flex gap-4 text-xs font-medium text-muted-foreground">
-                <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-background"></div> Normal</span>
-                <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-muted"></div> Reserved</span>
-                <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-destructive/5 border-dashed border-destructive/50"></div> Non-Res</span>
-                <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> Has Locker</span>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setPreviewMode(true)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors bg-muted border-border text-muted-foreground hover:bg-muted/80`}
+                >
+                  Preview Student View
+                </button>
+                <div className="flex gap-4 text-xs font-medium text-muted-foreground">
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-background"></div> Normal</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-muted"></div> Reserved</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-destructive/5 border-dashed border-destructive/50"></div> Non-Res</span>
+                  <span className="flex items-center gap-1"><Lock className="w-3 h-3" /> Has Locker</span>
+                </div>
               </div>
             </div>
             
@@ -342,6 +361,36 @@ export default function SeatsManagerPage() {
 
         </div>
       </div>
+      
+      {/* Preview Modal Overlay */}
+      {previewMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-4xl max-h-[90vh] rounded-3xl border border-border shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-black text-foreground">Student View Preview</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This is how the seat map will look to students when they are booking a seat.
+                </p>
+              </div>
+              <button 
+                onClick={() => setPreviewMode(false)}
+                className="p-3 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto bg-muted/10">
+              <LiveSeatMap 
+                library={{ seats: seats.map(s => ({ ...s, gridX: s.x, gridY: s.y, name: s.id })) }} 
+                occupiedSeatIds={[]} 
+                compactMode={true}
+                interactive={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

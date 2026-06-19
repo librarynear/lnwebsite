@@ -10,7 +10,7 @@ import { redis } from "@/lib/redis"
 const MAX_SEATS = 2000;
 const MAX_LOCKERS = 1000;
 
-export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: any[]) {
+export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: any[], compactSeatMap: boolean = false) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -94,6 +94,11 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
     if (lockerData.length > 0) {
       await tx.standaloneLocker.createMany({ data: lockerData, skipDuplicates: true });
     }
+
+    await tx.library.update({
+      where: { id: library.id },
+      data: { compactSeatMap }
+    });
   });
 
   await redis.del(`library:${library.id}`);
@@ -103,7 +108,7 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
 
 export async function getSeatLayoutAndLockers() {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { seats: [], standaloneLockers: [] };
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { seats: [], standaloneLockers: [], compactSeatMap: false };
 
   const library = await prisma.library.findFirst({
     where: session.role === 'ADMIN' ? {} : { librarianId: session.userId },
@@ -113,7 +118,7 @@ export async function getSeatLayoutAndLockers() {
     }
   });
 
-  if (!library) return { seats: [], standaloneLockers: [] };
+  if (!library) return { seats: [], standaloneLockers: [], compactSeatMap: false };
 
   return {
     seats: library.seats.map(s => ({
@@ -128,6 +133,7 @@ export async function getSeatLayoutAndLockers() {
       id: l.id,
       name: l.name,
       price: l.price.toString()
-    }))
+    })),
+    compactSeatMap: library.compactSeatMap
   };
 }

@@ -187,3 +187,14 @@ body.scroll-down .search-bar-sticky {
     transform: translateY(-5rem); /* 80px (h-20) */
   }
 }
+
+/* Embed Mode Styles */
+.embed-mode header,
+.embed-mode footer {
+  display: none !important;
+}
+
+.embed-mode,
+.embed-mode main {
+  background: transparent !important;
+}

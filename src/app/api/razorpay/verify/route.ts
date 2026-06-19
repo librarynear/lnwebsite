@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { endOfDayIST } from "@/lib/date-utils";
 import { getSession } from '@/app/actions/auth-actions';
 
 const razorpay = new Razorpay({
@@ -11,10 +12,13 @@ const razorpay = new Razorpay({
 });
 
 export async function POST(req: Request) {
+  let refundPaymentId: string | null = null;
   try {
-    const host = req.headers.get('host') || 'localhost:3000';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL ? 'https://www.focusdesk.in' : `${protocol}://${host}`);
+    const forwardedHost = req.headers.get('x-forwarded-host');
+    const host = forwardedHost || req.headers.get('host') || 'localhost:3000';
+    const protocol = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const envAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const appUrl = (envAppUrl && !envAppUrl.includes('localhost')) ? envAppUrl : `${protocol}://${host}`;
 
     // 1. Auth check
     const session = await getSession();
@@ -33,6 +37,7 @@ export async function POST(req: Request) {
       hasLocker,
       standaloneLockerId
     } = await req.json();
+    refundPaymentId = razorpay_payment_id;
 
     // 1b. Basic type validation on identifiers
     if (
@@ -127,14 +132,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payment invalid or failed' }, { status: 400 });
     }
 
-    // 10. Atomic booking creation with serializable transaction to prevent race conditions
+    // 10. Start transaction to create booking
     const booking = await prisma.$transaction(async (tx) => {
-      // Replay attack prevention inside serializable tx
-      const existingPayment = await tx.booking.findFirst({
+      // Replay attack prevention: Ensure paymentRef isn't already used
+      const existing = await tx.booking.findUnique({
         where: { paymentRef: razorpay_order_id }
       });
-      if (existingPayment) {
-        throw new Error("PAYMENT_ALREADY_PROCESSED");
+      if (existing) {
+        throw new Error('Order already fulfilled');
+      }
+
+      // Check seat availability
+      if (seatId) {
+        const activeBooking = await tx.booking.findFirst({
+          where: {
+            seatId,
+            status: 'CONFIRMED',
+            endTime: { gt: new Date() }
+          }
+        });
+        if (activeBooking) {
+          throw new Error('SEAT_ALREADY_BOOKED');
+        }
       }
 
       // Check for existing active booking (extension logic)
@@ -149,8 +168,7 @@ export async function POST(req: Request) {
       });
 
       const startTime = activeBooking ? new Date(activeBooking.endTime) : new Date();
-      const endTime = new Date(startTime);
-      endTime.setDate(endTime.getDate() + plan.validityDays);
+      const endTime = endOfDayIST(startTime, plan.validityDays - 1);
 
       // Check for existing seat booking (double-booking prevention). For
       // extensions, the student's own current booking ends exactly when the
@@ -205,14 +223,28 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Razorpay Verify Error:", error);
     
-    if (error.message === "PAYMENT_ALREADY_PROCESSED") {
+    if (error.message === "PAYMENT_ALREADY_PROCESSED" || error.message === "Order already fulfilled") {
       return NextResponse.json({ error: 'Payment already processed' }, { status: 409 });
     }
-    if (error.message === "SEAT_TAKEN") {
-      return NextResponse.json({ error: 'This seat has just been reserved by someone else.' }, { status: 409 });
+    
+    if (error.message === "SEAT_TAKEN" || error.message === "SEAT_ALREADY_BOOKED") {
+      try {
+        if (refundPaymentId) await razorpay.payments.refund(refundPaymentId, {});
+        return NextResponse.json({ error: 'This seat was just reserved by someone else! We have fully refunded your payment.' }, { status: 409 });
+      } catch (refundError) {
+        console.error("Refund failed:", refundError);
+        return NextResponse.json({ error: 'This seat was just reserved. Please contact support for a manual refund.' }, { status: 409 });
+      }
     }
+
     if (error.message === "LOCKER_TAKEN") {
-      return NextResponse.json({ error: 'This locker has just been reserved by someone else.' }, { status: 409 });
+      try {
+        if (refundPaymentId) await razorpay.payments.refund(refundPaymentId, {});
+        return NextResponse.json({ error: 'This locker was just reserved by someone else! We have fully refunded your payment.' }, { status: 409 });
+      } catch (refundError) {
+        console.error("Refund failed:", refundError);
+        return NextResponse.json({ error: 'This locker was just reserved. Please contact support for a manual refund.' }, { status: 409 });
+      }
     }
 
     return NextResponse.json({ error: 'An error occurred verifying payment' }, { status: 500 });

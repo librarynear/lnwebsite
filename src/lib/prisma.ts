@@ -7,7 +7,14 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-const connectionString = `${process.env.DATABASE_URL || process.env.DIRECT_URL}`
+const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
+
+if (!connectionString) {
+  throw new Error(
+    'Missing DATABASE_URL or DIRECT_URL environment variable. ' +
+    'Database connection cannot be established.',
+  );
+}
 
 const pool = globalForPrisma.pool ?? new Pool({ 
   connectionString,

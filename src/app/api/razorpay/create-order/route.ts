@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import Razorpay from 'razorpay';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
@@ -9,9 +9,18 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-export async function POST(req: Request) {
+function getAppUrl(req: NextRequest): string {
+  const env = process.env.NEXT_PUBLIC_APP_URL;
+  if (env && !env.includes('localhost')) return env;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+  const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+
+export async function POST(req: NextRequest) {
   try {
-    // Auth check
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,10 +43,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
-    // Cross-entity validation: verify plan belongs to a library
     const libraryId = plan.libraryId;
 
-    // Validate seat belongs to same library
+    const library = await prisma.library.findUnique({
+      where: { id: libraryId },
+      select: { name: true },
+    });
+
     if (seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
       if (!seat || seat.libraryId !== libraryId) {
@@ -45,7 +57,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Validate locker belongs to same library
     if (standaloneLockerId) {
       const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
       if (!locker || locker.libraryId !== libraryId) {
@@ -53,19 +64,32 @@ export async function POST(req: Request) {
       }
     }
 
-    let planPrice = plan.discount 
-      ? plan.price - (plan.price * plan.discount / 100) 
+    // Check seat availability before creating payment link
+    if (seatId) {
+      const seatClash = await prisma.booking.findFirst({
+        where: {
+          seatId,
+          status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+          endTime: { gt: new Date() },
+        },
+      });
+      if (seatClash) {
+        return NextResponse.json({ error: 'This seat is no longer available' }, { status: 409 });
+      }
+    }
+
+    let planPrice = plan.discount
+      ? plan.price - (plan.price * plan.discount / 100)
       : plan.price;
 
     let lockerCost = 0;
-    
+
     if (hasLocker && seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
       if (seat) {
         lockerCost = (seat.lockerPriceMonthly || 0) * (plan.validityDays / 28);
       }
     } else if (standaloneLockerId) {
-      // Prevent double booking of standalone lockers (wrapped in transaction for atomicity)
       const existingLockerBooking = await prisma.booking.findFirst({
         where: {
           standaloneLockerId,
@@ -85,40 +109,63 @@ export async function POST(req: Request) {
 
     const totalAmount = planPrice + lockerCost;
 
-    // Defensive: never create an order for a non-positive / non-finite / absurd
-    // amount even if upstream plan data is somehow corrupt.
     if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 1_000_000) {
       return NextResponse.json({ error: 'Invalid order amount' }, { status: 400 });
     }
 
-    const options = {
-      amount: Math.round(totalAmount * 100), // amount in paise
+    const appUrl = getAppUrl(req);
+    const refId = `ref_${session.userId.substring(0, 8)}_${Date.now()}`;
+
+    const customerInfo: Record<string, string> = {};
+    customerInfo.name = (session as any).name || "Student";
+    if (session.phone) customerInfo.contact = session.phone.startsWith('+') ? session.phone : `+91${session.phone}`;
+    if (session.email) customerInfo.email = session.email;
+
+    const callbackUrl = `${appUrl}/api/razorpay/callback`;
+
+    if (callbackUrl.includes('localhost')) {
+      console.error('[create-order] FATAL: callback_url is localhost — Razorpay will NOT redirect after payment. Set NEXT_PUBLIC_APP_URL to your production domain.');
+      return NextResponse.json({ error: 'Payment system is misconfigured. Please contact support.' }, { status: 500 });
+    }
+
+    const link = await razorpay.paymentLink.create({
+      amount: Math.round(totalAmount * 100),
       currency: "INR",
-      receipt: `rcpt_${session.userId.substring(0, 8)}_${Date.now()}`,
+      accept_partial: false,
+      reference_id: refId,
+      description: `${plan.name} – ${library?.name || 'Library'}`,
+      customer: Object.keys(customerInfo).length > 0 ? customerInfo : undefined,
+      callback_url: callbackUrl,
+      callback_method: "get",
       notes: {
         planId,
         seatId: seatId || '',
         studentId: session.userId,
         libraryId,
-      }
-    };
+      },
+      expire_by: Math.floor(Date.now() / 1000) + 1800,
+    } as any);
 
-    const order = await razorpay.orders.create(options);
-
-    // Persist the booking intent so the post-payment callback can recover it
-    // after a UPI intent redirect (which destroys the in-page JS context).
-    await redis.set(`razorpay:intent:${order.id}`, JSON.stringify({
+    const intent = JSON.stringify({
       studentId: session.userId,
       libraryId,
       planId,
       seatId: seatId || null,
       hasLocker: hasLocker || false,
       standaloneLockerId: standaloneLockerId || null,
-    }), { ex: 3600 });
+      orderId: (link as any).order_id || null,
+    });
 
-    return NextResponse.json(order);
+    // Store intent keyed by our reference_id (used by callback GET)
+    await redis.set(`razorpay:intent:${refId}`, intent, { ex: 3600 });
+    // Also key by the internal order_id so the webhook can find it
+    if ((link as any).order_id) {
+      await redis.set(`razorpay:intent:${(link as any).order_id}`, intent, { ex: 3600 });
+    }
+
+    return NextResponse.json({ payment_url: link.short_url });
   } catch (error: any) {
     console.error("Razorpay error:", error);
-    return NextResponse.json({ error: 'An error occurred creating order' }, { status: 500 });
+    return NextResponse.json({ error: 'An error occurred creating payment' }, { status: 500 });
   }
 }

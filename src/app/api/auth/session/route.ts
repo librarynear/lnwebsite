@@ -20,8 +20,18 @@ export async function POST(req: Request) {
     // (otherwise a prior logout would mark this brand-new session as revoked).
     try {
       const decoded = await adminAuth.verifyIdToken(idToken);
-      await redis.del(`revoked:${decoded.uid}`);
-      await redis.del(`usersess:${decoded.uid}`);
+      // Must clear revocation flag — if this fails, the new session is DOA
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await redis.del(`revoked:${decoded.uid}`);
+          await redis.del(`usersess:${decoded.uid}`);
+          break;
+        } catch (redisErr) {
+          if (attempt === 1) {
+            console.error('CRITICAL: Failed to clear revocation flag on login — session may be rejected', redisErr);
+          }
+        }
+      }
     } catch {
       // Non-fatal — proceed with cookie issuance.
     }

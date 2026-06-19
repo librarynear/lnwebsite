@@ -46,7 +46,8 @@ export async function POST(req: Request) {
         redirect_url: safeRedirectUrl,
         name: 'Student',
         document_requested: ["AADHAAR"]
-      })
+      }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     const data = await response.json();

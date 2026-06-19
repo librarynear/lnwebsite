@@ -15,9 +15,7 @@ export const revalidate = 60
 
 export default async function HomePage() {
   const session = await getSession();
-  if (session?.role === 'LIBRARIAN' || session?.role === 'ADMIN') {
-    redirect('/dashboard');
-  }
+  // Allow all users, including staff, to view the consumer homepage
 
   // Fetch top 3 libraries to showcase in the interactive mockup and carousel
   const libraries = await prisma.library.findMany({
@@ -43,8 +41,8 @@ export default async function HomePage() {
           {/* Left Content */}
           <div className="flex-1 flex flex-col justify-center items-start z-10">
             <h1 className="text-5xl md:text-6xl lg:text-[76px] font-extrabold tracking-tight font-heading leading-[1.05] text-[#0f172a]">
-              Find Your Perfect <br />
-              <span className="text-[#3b82f6]">Study Space</span>
+              Book Premium <br />
+              <span className="text-[#3b82f6]">Study Libraries</span>
             </h1>
             
             <p className="mt-8 text-lg md:text-xl text-slate-600 max-w-xl leading-relaxed">

@@ -34,7 +34,12 @@ export async function POST(request: Request) {
     // library. This stops a leaked key from injecting arbitrary check-in logs
     // for unrelated users.
     const knownStudents = await prisma.booking.findMany({
-      where: { libraryId: relay.libraryId },
+      where: {
+        libraryId: relay.libraryId,
+        status: { in: ['CONFIRMED', 'COMPLETED'] },
+        endTime: { gt: new Date() },
+        isPaused: false,
+      },
       select: { studentId: true },
       distinct: ['studentId'],
     });
@@ -61,7 +66,7 @@ export async function POST(request: Request) {
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     if (validEntries.length > 0) {
-      await prisma.checkinLog.createMany({ data: validEntries });
+      await prisma.checkinLog.createMany({ data: validEntries, skipDuplicates: true });
     }
 
     // Update relay last sync

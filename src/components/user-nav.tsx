@@ -16,7 +16,7 @@ import { logout } from "@/app/actions/auth-actions"
 export function UserNav({ user }: { user: any }) {
   const router = useRouter();
   const initials = user?.name ? user.name.substring(0, 1).toUpperCase() : "U";
-  const isStaff = user?.role === 'LIBRARIAN' || user?.role === 'ADMIN';
+  const isStaff = user?.role === 'LIBRARIAN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST';
 
   return (
     <DropdownMenu>

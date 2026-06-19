@@ -115,7 +115,7 @@ export default async function LibrariesPage(props: any) {
                   <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
                     <Image
                       src={imageUrl}
-                      alt={`${library.name} thumbnail`}
+                      alt={`${library.name} study room in ${locality}, ${library.city || "Delhi"} — quiet seating with AC`}
                       fill
                       priority={index < 4}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"

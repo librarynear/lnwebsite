@@ -31,31 +31,36 @@ export async function completeOnboarding(formData: FormData) {
   });
   const seatsAvailable = seatsAvailableStr ? (parseInt(seatsAvailableStr) || null) : null;
 
-  // Check if they already have a library
-  const existing = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
-  if (existing) {
+  // Atomic check-and-create to prevent duplicate libraries from concurrent submits.
+  const library = await prisma.$transaction(async (tx) => {
+    const existing = await tx.library.findFirst({
+      where: { librarianId: session.userId },
+    });
+    if (existing) {
+      return null;
+    }
+
+    return tx.library.create({
+      data: {
+        librarianId: session.userId,
+        name,
+        managerName,
+        managerPhone,
+        facilities,
+        address,
+        metroStation,
+        googleMapsUrl,
+        seatsAvailable,
+        photos: [],
+        city: formData.get("city") as string || "Unknown",
+        locality: formData.get("locality") as string || "Unknown",
+      },
+    });
+  }, { isolationLevel: 'Serializable' });
+
+  if (!library) {
     redirect("/dashboard");
   }
-
-  const library = await prisma.library.create({
-    data: {
-      librarianId: session.userId,
-      name,
-      managerName,
-      managerPhone,
-      facilities,
-      address,
-      metroStation,
-      googleMapsUrl,
-      seatsAvailable,
-      // Start with no photos; the feed shows a graceful fallback until the
-      // librarian uploads real images (avoids every new library sharing the
-      // same stock photo).
-      photos: [],
-      city: "Demo City", // Default since it wasn't in onboarding MVP form
-      locality: "Demo Locality",
-    }
-  });
 
   // Role promotion to LIBRARIAN happens via admin approval in approveLibrary action
   // Do NOT self-promote here

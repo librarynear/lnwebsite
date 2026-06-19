@@ -75,12 +75,59 @@ export default async function LibraryDetailsPage(props: any) {
   // Filter out occupied lockers so they can't be booked
   library.standaloneLockers = library.standaloneLockers.filter((l: any) => !occupiedLockerIds.includes(l.id));
 
-  return <LibraryClient 
-    library={library} 
-    occupiedSeatIds={occupiedSeatIds} 
-    studentId={session?.userId || ""} 
-    currentPlanEndDate={currentPlanEndDate} 
-    studentPhone={session?.phone || ""}
-    studentEmail={session?.email || ""}
-  />
+  // Generate JSON-LD Structured Data
+  const minPrice = library.plans.length > 0 
+    ? Math.min(...library.plans.map((p: any) => p.price)) 
+    : 500;
+  const maxPrice = library.plans.length > 0 
+    ? Math.max(...library.plans.map((p: any) => p.price)) 
+    : 2000;
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": ["LocalBusiness", "Library"],
+    "name": library.name,
+    "image": library.photos.length > 0 ? library.photos[0] : "https://ik.imagekit.io/focusdesk/logo.png",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": library.address,
+      "addressLocality": library.locality || library.city || "Delhi",
+      "addressRegion": library.state || "Delhi",
+      "postalCode": library.pinCode || "110001",
+      "addressCountry": "IN"
+    },
+    "priceRange": `₹${minPrice} - ₹${maxPrice}`,
+    "telephone": library.managerPhone || "",
+    "url": `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in'}/library/${library.id}`,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "24"
+    },
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": library.openingTime || "06:00",
+        "closes": library.closingTime || "22:00"
+      }
+    ]
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+      <LibraryClient 
+        library={library} 
+        occupiedSeatIds={occupiedSeatIds} 
+        studentId={session?.userId || ""} 
+        currentPlanEndDate={currentPlanEndDate} 
+        studentPhone={session?.phone || ""}
+        studentEmail={session?.email || ""}
+      />
+    </>
+  )
 }

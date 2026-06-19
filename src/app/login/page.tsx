@@ -68,8 +68,10 @@ export default function LoginPage() {
   }, [resendTimer]);
 
   // Auto-submit OTP
+  const lastSubmittedOtp = useRef('');
   useEffect(() => {
-    if (step === 'OTP' && otp.length === 6 && !loading) {
+    if (step === 'OTP' && otp.length === 6 && !loading && otp !== lastSubmittedOtp.current) {
+      lastSubmittedOtp.current = otp;
       handleVerifyOtp(new Event('submit') as unknown as React.FormEvent);
     }
   }, [otp, step, loading]);
@@ -121,14 +123,11 @@ export default function LoginPage() {
       const result = await confirmationResult.confirm(otp)
       const user = result.user
 
-      // Check if user already exists
       const dbCheck = await checkUserExists(formattedPhone);
 
       if (dbCheck.exists) {
-        // User exists, log them in directly (syncUserOnSignup preserves existing name)
         await completeLogin(user, formattedPhone, '')
       } else {
-        // New user, ask for name
         setStep('NAME')
         setLoading(false)
       }
@@ -136,6 +135,7 @@ export default function LoginPage() {
       console.error(err)
       toast.error("Invalid OTP code.")
       setLoading(false)
+    } finally {
       submittingOtpRef.current = false;
     }
   }
@@ -165,7 +165,12 @@ export default function LoginPage() {
 
   async function completeLogin(firebaseUser: any, phone: string, userName: string) {
     try {
-      await syncUserOnSignup(firebaseUser.uid, phone, userName)
+      const syncResult = await syncUserOnSignup(firebaseUser.uid, phone, userName)
+      if (syncResult && 'error' in syncResult) {
+        toast.error(syncResult.error || "An error occurred during signup");
+        setLoading(false)
+        return
+      }
 
       const idToken = await firebaseUser.getIdToken()
       const res = await fetch('/api/auth/session', {
@@ -178,7 +183,7 @@ export default function LoginPage() {
         toast.success("Successfully logged in!")
         const urlParams = new URLSearchParams(window.location.search)
         const returnUrl = urlParams.get('returnUrl')
-        if (returnUrl) {
+        if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
           window.location.href = returnUrl
         } else {
           const dest = await getPostLoginRedirect()

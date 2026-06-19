@@ -11,7 +11,7 @@ const SESSION_CACHE_TTL_SECONDS = 30
 // Revoked sessions are remembered for the full cookie lifetime (14 days).
 const REVOCATION_TTL_SECONDS = 60 * 60 * 24 * 14
 
-type SessionData = { userId: string; role: string; email: string | null; phone: string | null }
+type SessionData = { userId: string; role: string; email: string | null; phone: string | null; employerLibraryId: string | null }
 
 async function generateFocusDeskId() {
   let id = "";
@@ -38,21 +38,15 @@ export async function getSession(): Promise<SessionData | null> {
   if (!sessionCookie || !adminAuth) return null;
 
   try {
-    // Verify the cookie signature LOCALLY (no Firebase network round-trip on
-    // every request). Revocation is handled via our own Redis set below, so we
-    // don't pass checkRevoked=true (which would call Firebase each time).
     const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie);
     const authId = decodedClaims.uid;
 
-    // Server-side revocation (populated on logout) — kills stolen cookies
-    // without a per-request Firebase call.
     try {
       if (await redis.get(`revoked:${authId}`)) return null;
     } catch {
-      // Redis unavailable: fall through (cookie signature is still valid).
+      // Redis unavailable: fall through
     }
 
-    // Short-lived cache of the user row to avoid a DB hit on every request.
     const cacheKey = `usersess:${authId}`;
     try {
       const cached = await redis.get(cacheKey);
@@ -60,20 +54,24 @@ export async function getSession(): Promise<SessionData | null> {
         return (typeof cached === 'string' ? JSON.parse(cached) : cached) as SessionData;
       }
     } catch {
-      // Ignore cache read errors and fall back to the DB.
+      // Ignore cache read errors
     }
 
-    // Find user by Firebase UID (authId).
-    // If no user found by authId, don't auto-link by phone/email (security risk
-    // - account takeover). User must go through syncUserOnSignup.
     const user = await prisma.user.findUnique({ where: { authId } });
     if (!user) return null;
 
-    const sessionData: SessionData = { userId: user.id, role: user.role, email: user.email, phone: user.phone };
+    const sessionData: SessionData = { 
+      userId: user.id, 
+      role: user.role, 
+      email: user.email, 
+      phone: user.phone,
+      employerLibraryId: user.employerLibraryId
+    };
+    
     try {
       await redis.set(cacheKey, JSON.stringify(sessionData), { ex: SESSION_CACHE_TTL_SECONDS });
     } catch {
-      // Cache write failures are non-fatal.
+      // Cache write failures are non-fatal
     }
     return sessionData;
   } catch (error) {
@@ -82,14 +80,9 @@ export async function getSession(): Promise<SessionData | null> {
   }
 }
 
-/**
- * Where to send a user immediately after login. Staff land on their dashboard;
- * everyone else on the consumer home. (Librarians can still browse the
- * consumer site via the in-app switcher.)
- */
 export async function getPostLoginRedirect(): Promise<string> {
   const session = await getSession();
-  if (session && (session.role === 'LIBRARIAN' || session.role === 'ADMIN')) {
+  if (session && (session.role === 'LIBRARIAN' || session.role === 'ADMIN' || session.role === 'RECEPTIONIST')) {
     return '/dashboard';
   }
   return '/';
@@ -160,15 +153,24 @@ export async function logout() {
   if (sessionCookie && adminAuth) {
     try {
       const decoded = await adminAuth.verifySessionCookie(sessionCookie);
+      // Revoke Firebase refresh tokens (defence in depth)
       await adminAuth.revokeRefreshTokens(decoded.uid);
-      try {
-        await redis.set(`revoked:${decoded.uid}`, '1', { ex: REVOCATION_TTL_SECONDS });
-        await redis.del(`usersess:${decoded.uid}`);
-      } catch {
-        // Non-fatal
+
+      // Redis revocation — retry once on failure since this is the primary
+      // mechanism that blocks stolen cookies.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await redis.set(`revoked:${decoded.uid}`, '1', { ex: REVOCATION_TTL_SECONDS });
+          await redis.del(`usersess:${decoded.uid}`);
+          break;
+        } catch (redisErr) {
+          if (attempt === 1) {
+            console.error('CRITICAL: Redis revocation failed after retry — stolen cookie may remain valid', redisErr);
+          }
+        }
       }
     } catch (e) {
-      // Session already invalid, proceed with logout
+      // Session cookie already invalid — nothing to revoke
     }
   }
   

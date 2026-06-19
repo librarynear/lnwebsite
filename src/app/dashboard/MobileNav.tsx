@@ -5,8 +5,9 @@ import Link from "next/link"
 import { Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { logout } from "@/app/actions/auth-actions"
 
-export function MobileNav() {
+export function MobileNav({ role }: { role: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -22,27 +23,51 @@ export function MobileNav() {
           <Link onClick={() => setOpen(false)} href="/dashboard" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Overview
           </Link>
-          <Link onClick={() => setOpen(false)} href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Manage Seats
-          </Link>
-          <Link onClick={() => setOpen(false)} href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Manage Plans
-          </Link>
+          {role !== 'RECEPTIONIST' && (
+            <>
+              <Link onClick={() => setOpen(false)} href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Manage Seats
+              </Link>
+              <Link onClick={() => setOpen(false)} href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Manage Plans
+              </Link>
+            </>
+          )}
           <Link onClick={() => setOpen(false)} href="/dashboard/students" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Students
           </Link>
           <Link onClick={() => setOpen(false)} href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Queries
           </Link>
+          <Link onClick={() => setOpen(false)} href="/dashboard/inquiries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+            Inquiries
+          </Link>
+          {role !== 'RECEPTIONIST' && (
+            <Link onClick={() => setOpen(false)} href="/dashboard/financials" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              Financials
+            </Link>
+          )}
         </nav>
         
         <div className="p-4 border-t border-sidebar-border mt-auto">
-          <Link onClick={() => setOpen(false)} href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Settings
-          </Link>
-          <button className="w-full text-left px-4 py-2.5 mt-2 rounded-lg font-medium text-destructive hover:bg-destructive/10 transition-colors">
-            Logout
-          </button>
+          {role !== 'RECEPTIONIST' && (
+            <>
+              <Link onClick={() => setOpen(false)} href="/dashboard/staff" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Staff & Roles
+              </Link>
+              <Link onClick={() => setOpen(false)} href="/dashboard/widgets" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Widgets
+              </Link>
+              <Link onClick={() => setOpen(false)} href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Settings
+              </Link>
+            </>
+          )}
+          <form action={logout}>
+            <button type="submit" className="w-full text-left px-4 py-2.5 mt-2 rounded-lg font-medium text-destructive hover:bg-destructive/10 transition-colors">
+              Logout
+            </button>
+          </form>
         </div>
       </SheetContent>
     </Sheet>

@@ -12,9 +12,9 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
   // Defence in depth: gate the whole dashboard surface to staff. Individual
   // pages also guard, but the layout ensures no page can accidentally leak.
   if (!session) redirect("/login");
-  if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN') redirect("/");
+  if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST') redirect("/");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
+  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
@@ -30,26 +30,48 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
           <Link href="/dashboard" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Overview
           </Link>
-          <Link href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Manage Seats
-          </Link>
-          <Link href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Manage Plans
-          </Link>
           <Link href="/dashboard/students" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Students
           </Link>
           <Link href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
             Queries
           </Link>
-          {/* Removed View Public Page / Browse as user link per request */}
+          <Link href="/dashboard/inquiries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+            Inquiries
+          </Link>
+          {session.role !== 'RECEPTIONIST' && (
+            <>
+              <Link href="/dashboard/financials" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Financials
+              </Link>
+              <Link href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Manage Seats
+              </Link>
+              <Link href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Manage Plans
+              </Link>
+            </>
+          )}
+          <Link href="/dashboard/approvals" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+            Pending Approvals
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-sidebar-border mt-auto">
 
-          <Link href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
-            Settings
-          </Link>
+          {session.role !== 'RECEPTIONIST' && (
+            <>
+              <Link href="/dashboard/staff" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Staff & Roles
+              </Link>
+              <Link href="/dashboard/widgets" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Widgets
+              </Link>
+              <Link href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                Settings
+              </Link>
+            </>
+          )}
           <form action={logout}>
             <button type="submit" className="w-full text-left px-4 py-2.5 mt-2 rounded-lg font-medium text-destructive hover:bg-destructive/10 transition-colors">
               Logout
@@ -66,7 +88,7 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
             <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
             <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusDesk</span>
           </Link>
-          <MobileNav />
+          <MobileNav role={session.role} />
         </header>
         
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-background">
