@@ -399,11 +399,13 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
         if (clash) throw new Error("SEAT_TAKEN");
       }
 
-      await tx.booking.update({
-        where: { id: bookingId },
+      await tx.booking.create({
         data: {
+          studentId: booking.studentId,
+          libraryId: booking.libraryId,
           planId: targetPlan.id,
           seatId: targetSeatId,
+          startTime: baseDate,
           endTime: newEndTime,
           status: "CONFIRMED",
           paymentRef: `RENEWAL_${paymentMethod}_${Date.now()}`

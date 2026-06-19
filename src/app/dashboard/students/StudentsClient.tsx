@@ -175,17 +175,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     (b.student.phone && b.student.phone.includes(search))
   );
 
-  const activeBookings = searchedBookings.filter(b => {
+  const latestBookingsMap = new Map();
+  for (const b of searchedBookings) {
+    const existing = latestBookingsMap.get(b.studentId);
+    if (!existing || new Date(b.endTime).getTime() > new Date(existing.endTime).getTime()) {
+      latestBookingsMap.set(b.studentId, b);
+    }
+  }
+  const uniqueSearchedBookings = Array.from(latestBookingsMap.values());
+
+  const activeBookings = uniqueSearchedBookings.filter((b: any) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     return b.status === 'CONFIRMED' && end >= now;
   });
-  const inactiveBookings = searchedBookings.filter(b => {
+  const inactiveBookings = uniqueSearchedBookings.filter((b: any) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     return b.status !== 'CANCELLED' && end < now;
   });
-  const revokedBookings = searchedBookings.filter(b => b.status === 'CANCELLED');
+  const revokedBookings = uniqueSearchedBookings.filter((b: any) => b.status === 'CANCELLED');
 
   const getFilteredBookings = () => {
     let list = [];
@@ -211,6 +220,21 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   }
 
   const displayedBookings = getFilteredBookings();
+
+  // Renew Plan Math
+  const renewBookingData = bookings.find(b => b.id === renewModalBookingId);
+  const renewTargetPlan = renewPlanMode === 'SAME' ? renewBookingData?.plan : plans.find(p => p.id === renewSelectedPlanId);
+  let renewNewExpiryStr = "";
+  let renewAddedDays = 0;
+  if (renewBookingData && renewTargetPlan) {
+    const end = new Date(renewBookingData.endTime);
+    const n = new Date();
+    const baseDate = end > n ? end : n;
+    renewAddedDays = renewTargetPlan.validityDays;
+    const futureEnd = new Date(baseDate);
+    futureEnd.setDate(futureEnd.getDate() + renewAddedDays - (end > n ? 0 : 1));
+    renewNewExpiryStr = futureEnd.toLocaleDateString();
+  }
 
   return (
     <>
@@ -1208,7 +1232,47 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           <DialogHeader>
             <DialogTitle>Renew Plan</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+
+          {renewBookingData && (
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                {renewBookingData.student.name?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div>
+                <div className="font-bold text-foreground text-sm">{renewBookingData.student.name}</div>
+                <div className="text-xs text-muted-foreground font-mono">{renewBookingData.student.uniqueId}</div>
+              </div>
+            </div>
+          )}
+
+          <div className="py-2 space-y-4">
+            
+            {/* Current vs Future State Preview */}
+            {renewBookingData && (
+              <div className="bg-primary/5 rounded-xl border border-primary/20 p-4 space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Currently on:</span>
+                  <span className="font-medium text-foreground">{renewBookingData.plan?.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm pb-3 border-b border-primary/10">
+                  <span className="text-muted-foreground">Current Expiry:</span>
+                  {new Date(renewBookingData.endTime) < new Date() ? (
+                    <span className="font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded text-xs">Expired</span>
+                  ) : (
+                    <span className="font-medium text-foreground">{new Date(renewBookingData.endTime).toLocaleDateString()}</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-sm pt-1">
+                  <span className="font-bold text-primary">Selecting this extends by:</span>
+                  <span className="font-bold text-primary">+{renewAddedDays} Days</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-bold text-foreground">New Expiry:</span>
+                  <span className="font-bold text-success bg-success/10 px-2 py-0.5 rounded">{renewNewExpiryStr}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex bg-muted p-1 rounded-lg">
               <button 
                 onClick={() => setRenewPlanMode('SAME')}
@@ -1261,7 +1325,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             )}
           </div>
           
-          <div className="flex flex-col gap-3 pt-2 border-t border-border mt-4">
+          <div className="flex flex-col gap-3 pt-2 border-t border-border mt-2">
             <Button 
               onClick={async () => {
                 if (!renewModalBookingId) return;
@@ -1273,7 +1337,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
                   );
-                  toast.success("Plan renewed (Cash)");
+                  toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   window.location.reload();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to renew");
@@ -1297,7 +1361,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
                   );
-                  toast.success("Plan renewed (Online)");
+                  toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   window.location.reload();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to renew");
