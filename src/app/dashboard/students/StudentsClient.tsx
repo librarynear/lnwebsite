@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from "react"
-import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X } from "lucide-react"
+import { useState, useEffect, Fragment } from "react"
+import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
 import { initializeApp, getApps } from "firebase/app"
@@ -56,9 +56,11 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [profileStudent, setProfileStudent] = useState<any | null>(null)
   const [addingStudent, setAddingStudent] = useState(false)
   
-  // Seat Change Modal
   const [seatChangeBookingId, setSeatChangeBookingId] = useState<string | null>(null)
   const [selectedNewSeatId, setSelectedNewSeatId] = useState<string | null>(null)
+
+  // Expandable Rows
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Renew Plan Modal
   const [renewModalBookingId, setRenewModalBookingId] = useState<string | null>(null);
@@ -466,7 +468,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-muted/50 border-b border-border">
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground w-16">S.No.</th>
+                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground w-28">S.No.</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">ID</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Student</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Current Plan</th>
@@ -484,7 +486,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
                   const isExpired = endOfDay < today;
                   
-                  let rowClass = "hover:bg-muted/30 transition-colors";
+                  const isExpanded = expandedRows.has(booking.studentId);
+                  const toggleExpand = () => {
+                    const newSet = new Set(expandedRows);
+                    if (isExpanded) newSet.delete(booking.studentId);
+                    else newSet.add(booking.studentId);
+                    setExpandedRows(newSet);
+                  };
+                  
+                  let rowClass = `hover:bg-muted/30 transition-colors ${isExpanded ? 'bg-muted/10' : ''}`;
                   let statusBadge = null;
 
                   if (activeTab === 'ACTIVE') {
@@ -529,9 +539,18 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   const assignedSeat = seats.find(s => s.id === booking.seatId);
 
                   return (
-                    <tr key={booking.id} className={rowClass}>
+                    <Fragment key={booking.id}>
+                    <tr className={rowClass}>
                       <td className="p-4 text-sm font-medium text-muted-foreground">
-                        {(currentPage - 1) * PAGE_SIZE + index + 1}
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={toggleExpand} 
+                            className="text-muted-foreground hover:text-primary transition-colors focus:outline-none bg-background rounded-full p-0.5 shadow-sm border border-border"
+                          >
+                            {isExpanded ? <MinusCircle className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+                          </button>
+                          {(currentPage - 1) * PAGE_SIZE + index + 1}
+                        </div>
                       </td>
                       <td className="p-4">
                         {booking.student.uniqueId ? (
@@ -718,6 +737,46 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         </DropdownMenu>
                       </td>
                     </tr>
+                    {isExpanded && (
+                      <tr className="bg-muted/5 border-b border-border">
+                        <td colSpan={6} className="p-0">
+                          <div className="px-14 py-4 space-y-3 shadow-inner">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                              <History className="w-3.5 h-3.5" /> Plan History
+                            </h4>
+                            <div className="grid gap-2">
+                              {bookings
+                                .filter(b => b.studentId === booking.studentId)
+                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                .map(hist => {
+                                  const hStart = new Date(hist.startTime);
+                                  const hEnd = new Date(hist.endTime);
+                                  const hIsExpired = hEnd < today;
+                                  return (
+                                    <div key={hist.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background shadow-sm text-sm">
+                                      <div>
+                                        <div className="font-bold">{hist.plan?.name} <span className="text-xs font-normal text-muted-foreground ml-2">₹{hist.totalAmount}</span></div>
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                          {hStart.toLocaleDateString()} - {hEnd.toLocaleDateString()}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        {hist.seatId ? <span className="text-xs text-muted-foreground">Seat: {seats.find(s => s.id === hist.seatId)?.name || 'Unknown'}</span> : <span className="text-xs text-muted-foreground">No Seat</span>}
+                                        {hist.status === 'CONFIRMED' && !hist.isPaused && !hIsExpired && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success/10 text-success">ACTIVE</span>}
+                                        {hist.status === 'CONFIRMED' && hist.isPaused && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/10 text-warning">PAUSED</span>}
+                                        {hist.status === 'CONFIRMED' && hIsExpired && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground">EXPIRED</span>}
+                                        {hist.status === 'PENDING_PAYMENT' && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/10 text-warning">PENDING</span>}
+                                        {hist.status === 'CANCELLED' && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-destructive/10 text-destructive">REVOKED</span>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })
               ) : (
