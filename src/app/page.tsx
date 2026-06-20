@@ -260,12 +260,12 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
       )}
 
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
-        <div className="container mx-auto px-4 md:px-10 flex items-center gap-3 overflow-x-auto no-scrollbar py-3 md:py-4">
+        <div className="container mx-auto px-4 md:px-10 flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2 md:py-3">
           <IntentLink
             href="/"
-            className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors md:px-5 md:py-2.5 md:text-sm ${
+            className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-semibold transition-colors md:px-4 md:py-2 ${
               !locality && !q
-                ? "bg-primary text-white shadow-md shadow-primary/20"
+                ? "bg-primary text-white shadow-sm shadow-primary/20"
                 : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
             }`}
           >
@@ -275,9 +275,9 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
             <IntentLink
               key={topLocality}
               href={`/?locality=${encodeURIComponent(topLocality)}`}
-              className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors md:px-5 md:py-2.5 md:text-sm ${
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-medium transition-colors md:px-4 md:py-2 ${
                 locality === topLocality
-                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  ? "bg-primary text-white shadow-sm shadow-primary/20"
                   : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
               }`}
             >

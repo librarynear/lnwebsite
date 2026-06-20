@@ -156,9 +156,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       
-      <Suspense fallback={null}>
-        <HomeSearchShell />
-      </Suspense>
+
 
       <main className="w-full flex justify-center pb-20">
         <article className="w-full max-w-[680px] px-5 md:px-0 mt-10 md:mt-16">
@@ -218,6 +216,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           
         </article>
       </main>
+      
+      <div className="w-full border-t border-border/40 bg-slate-50/30">
+        <div className="container mx-auto px-6 py-12 md:px-10 flex flex-col items-center text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-black mb-4">Ready to find your perfect study space?</h2>
+          <p className="text-muted-foreground mb-8 max-w-lg">Search libraries near you to compare amenities, fees, and metro connectivity instantly.</p>
+          <div className="w-full">
+            <Suspense fallback={null}>
+              <HomeSearchShell />
+            </Suspense>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
