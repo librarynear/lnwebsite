@@ -144,16 +144,17 @@ export default async function LocalityPage({ params }: PageProps) {
       name: `Best Libraries in ${locality}, ${cityLabel}`,
       url: pageUrl,
       description: `Browse study libraries and reading rooms in ${locality}, ${cityLabel}.`,
-      mainEntity: {
-        "@type": "ItemList",
-        numberOfItems: libraries.length,
-        itemListElement: libraries.slice(0, 10).map((lib, i) => ({
-          "@type": "ListItem",
-          position: i + 1,
-          name: lib.display_name,
-          url: `${siteUrl}/${city}/library/${lib.slug}`,
-        })),
-      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      numberOfItems: libraries.length,
+      itemListElement: libraries.slice(0, 10).map((lib, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: lib.display_name,
+        url: `${siteUrl}/${city}/library/${lib.slug}`,
+      })),
     },
     {
       "@context": "https://schema.org",

@@ -50,9 +50,21 @@ function parseAmenities(value: string | null) {
     .filter(Boolean);
 }
 
+import { getSiteUrl } from "@/lib/site-url";
+
 export const metadata = {
-  title: "For Owners",
-  description: "List your study library on LibraryNear and reach nearby students.",
+  title: "List Your Library — For Owners | LibraryNear",
+  description: "List your study library on LibraryNear and reach nearby students searching for reading rooms in Delhi. Manage your plans and reach more students today.",
+  alternates: {
+    canonical: `${getSiteUrl()}/for-owners`,
+  },
+  openGraph: {
+    type: "website",
+    title: "List Your Library — For Owners | LibraryNear",
+    description: "List your study library on LibraryNear and reach nearby students searching for reading rooms in Delhi.",
+    siteName: "LibraryNear",
+    url: `${getSiteUrl()}/for-owners`,
+  },
 };
 
 function statusLabel(status: string) {

@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { Building2, MapPinned, ShieldCheck } from "lucide-react";
 
+import { getSiteUrl } from "@/lib/site-url";
+
 export const metadata = {
-  title: "About LibraryNear — Study Library Discovery Platform",
+  title: "About LibraryNear — Study Library Directory Delhi",
   description:
-    "LibraryNear helps students discover, compare, and shortlist study libraries and reading rooms in Delhi. Learn how we connect students with verified library spaces near metro stations.",
+    "LibraryNear is the leading study library directory in Delhi. Discover reading rooms near you, compare amenities, fees, and metro access, and shortlist your perfect study space.",
+  alternates: {
+    canonical: `${getSiteUrl()}/about`,
+  },
   openGraph: {
     type: "website",
-    title: "About LibraryNear — Study Library Discovery Platform",
+    title: "About LibraryNear — Study Library Directory Delhi",
     description:
-      "LibraryNear helps students discover, compare, and shortlist study libraries and reading rooms in Delhi.",
+      "Discover reading rooms near you, compare amenities, and shortlist your perfect study space in Delhi.",
     siteName: "LibraryNear",
+    url: `${getSiteUrl()}/about`,
   },
 };
 

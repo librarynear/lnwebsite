@@ -274,12 +274,8 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
           {topLocalities.map((topLocality) => (
             <IntentLink
               key={topLocality}
-              href={`/?locality=${encodeURIComponent(topLocality)}`}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-medium transition-colors md:px-4 md:py-2 ${
-                locality === topLocality
-                  ? "bg-primary text-white shadow-sm shadow-primary/20"
-                  : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
-              }`}
+              href={`/delhi/locality/${topLocality.toLowerCase().replace(/\s+/g, "-")}`}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-medium transition-colors md:px-4 md:py-2 border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary`}
             >
               {topLocality}
             </IntentLink>
