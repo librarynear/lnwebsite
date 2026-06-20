@@ -15,7 +15,8 @@ async function getPosts() {
     slug,
     mainImage,
     publishedAt,
-    seoDescription
+    seoDescription,
+    "readingTime": round(length(pt::text(body)) / 5 / 200)
   }`;
   return client.fetch(query);
 }
@@ -29,71 +30,79 @@ export default async function BlogIndexPage() {
   const posts = await getPosts();
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white">
       <Suspense fallback={null}>
         <HomeSearchShell />
       </Suspense>
 
-      <section className="bg-white border-b border-border/50">
-        <div className="container mx-auto px-6 py-10 md:px-10 md:py-14">
-          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-4xl">
-            LibraryNear Blog
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-            Guides, tips, and insights on finding the perfect study space in Delhi.
-          </p>
-        </div>
-      </section>
+      <section className="container mx-auto px-6 py-10 md:px-10 md:py-16 max-w-[680px]">
+        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-black mb-4 font-sans">
+          LibraryNear Blog
+        </h1>
+        <p className="text-lg leading-7 text-gray-500 mb-12 font-sans border-b border-gray-200 pb-12">
+          Guides, tips, and insights on finding the perfect study space in Delhi.
+        </p>
 
-      <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
         {posts.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
+          <div className="text-center py-20 text-gray-500">
             <p className="text-lg">No blog posts found.</p>
             <p className="text-sm mt-2">Check back soon for new content!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post: any) => (
-              <IntentLink
-                key={post._id}
-                href={`/blog/${post.slug.current}`}
-                className="group flex flex-col gap-3"
-              >
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-muted border border-border/40">
-                  {post.mainImage ? (
-                    <Image
-                      src={urlForImage(post.mainImage)?.url() || ""}
-                      alt={post.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300">
-                      No Image
+          <div className="flex flex-col">
+            {posts.map((post: any) => {
+              const readTime = Math.max(1, post.readingTime || 3);
+              return (
+                <IntentLink
+                  key={post._id}
+                  href={`/blog/${post.slug.current}`}
+                  className="group flex items-center justify-between gap-6 py-8 border-b border-gray-100 last:border-0"
+                >
+                  <div className="flex flex-col flex-1 min-w-0 pr-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 shrink-0">
+                        <Image src="/logo.png" alt="LibraryNear" width={20} height={20} className="object-cover w-full h-full" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-900 font-sans">LibraryNear Team</span>
+                    </div>
+                    
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 font-sans leading-snug group-hover:underline decoration-gray-300 underline-offset-4 line-clamp-2">
+                      {post.title}
+                    </h2>
+                    
+                    {post.seoDescription && (
+                      <p className="text-base text-gray-600 mb-3 font-serif line-clamp-2 hidden md:block">
+                        {post.seoDescription}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center gap-2 text-[13px] text-gray-500 font-sans mt-1">
+                      {post.publishedAt && (
+                        <span>
+                          {new Date(post.publishedAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      )}
+                      <span>·</span>
+                      <span>{readTime} min read</span>
+                    </div>
+                  </div>
+                  
+                  {post.mainImage && (
+                    <div className="relative w-[100px] h-[100px] md:w-[150px] md:h-[100px] shrink-0 overflow-hidden bg-gray-50">
+                      <Image
+                        src={urlForImage(post.mainImage)?.width(300).height(200).url() || ""}
+                        alt={post.title}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
                   )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  {post.publishedAt && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  )}
-                  <h2 className="text-lg font-bold text-black group-hover:text-primary transition-colors line-clamp-2">
-                    {post.title}
-                  </h2>
-                  {post.seoDescription && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {post.seoDescription}
-                    </p>
-                  )}
-                </div>
-              </IntentLink>
-            ))}
+                </IntentLink>
+              );
+            })}
           </div>
         )}
       </section>

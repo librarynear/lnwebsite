@@ -15,7 +15,8 @@ async function getPost(slug: string) {
     mainImage,
     publishedAt,
     seoDescription,
-    body
+    body,
+    "readingTime": round(length(pt::text(body)) / 5 / 200)
   }`;
   return client.fetch(query, { slug });
 }
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const imageUrl = post.mainImage ? urlForImage(post.mainImage)?.width(1200).height(630).url() : `${siteUrl}/og-default.png`;
 
   return {
-    title: `${post.title} — LibraryNear Blog`,
+    title: `${post.title} — LibraryNear`,
     description: post.seoDescription || `Read ${post.title} on LibraryNear.`,
     openGraph: {
       title: post.title,
@@ -66,45 +67,51 @@ const portableTextComponents = {
     image: ({ value }: any) => {
       if (!value?.asset?._ref) return null;
       return (
-        <div className="relative w-full aspect-video my-8 rounded-xl overflow-hidden bg-muted border border-border/50">
+        <figure className="relative w-full md:w-[120%] md:-ml-[10%] aspect-video my-10 md:my-14 overflow-hidden bg-gray-50 border border-gray-100">
           <Image
             src={urlForImage(value)?.url() || ""}
             alt={value.alt || "Blog image"}
             fill
-            className="object-cover"
+            className="object-contain md:object-cover"
           />
-        </div>
+          {value.alt && (
+            <figcaption className="absolute bottom-[-32px] w-full text-center text-sm text-gray-500 font-sans mt-2">
+              {value.alt}
+            </figcaption>
+          )}
+        </figure>
       );
     },
   },
   block: {
-    h1: ({ children }: any) => <h1 className="text-3xl font-bold mt-10 mb-4 text-black">{children}</h1>,
-    h2: ({ children }: any) => <h2 className="text-2xl font-bold mt-10 mb-4 text-black">{children}</h2>,
-    h3: ({ children }: any) => <h3 className="text-xl font-bold mt-8 mb-3 text-black">{children}</h3>,
-    normal: ({ children }: any) => <p className="text-base leading-relaxed mb-6 text-slate-700">{children}</p>,
+    h1: ({ children }: any) => <h1 className="text-3xl md:text-4xl font-bold mt-12 mb-6 text-gray-900 font-sans tracking-tight">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-2xl md:text-3xl font-bold mt-12 mb-4 text-gray-900 font-sans tracking-tight">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-xl md:text-2xl font-bold mt-8 mb-4 text-gray-900 font-sans tracking-tight">{children}</h3>,
+    normal: ({ children }: any) => <p className="text-[20px] md:text-[21px] leading-[32px] md:leading-[34px] mb-8 text-gray-800 font-serif whitespace-pre-wrap">{children}</p>,
     blockquote: ({ children }: any) => (
-      <blockquote className="border-l-4 border-primary pl-4 italic my-6 text-slate-600 bg-slate-50 py-3 pr-4 rounded-r-lg">
+      <blockquote className="border-l-[3px] border-black pl-5 md:pl-6 my-10 text-[21px] md:text-[24px] leading-relaxed italic text-gray-800 font-serif">
         {children}
       </blockquote>
     ),
   },
   list: {
-    bullet: ({ children }: any) => <ul className="list-disc pl-6 mb-6 space-y-2 text-slate-700">{children}</ul>,
-    number: ({ children }: any) => <ol className="list-decimal pl-6 mb-6 space-y-2 text-slate-700">{children}</ol>,
+    bullet: ({ children }: any) => <ul className="list-disc pl-6 mb-8 space-y-3 text-[20px] md:text-[21px] leading-[32px] text-gray-800 font-serif">{children}</ul>,
+    number: ({ children }: any) => <ol className="list-decimal pl-6 mb-8 space-y-3 text-[20px] md:text-[21px] leading-[32px] text-gray-800 font-serif">{children}</ol>,
   },
   listItem: {
-    bullet: ({ children }: any) => <li>{children}</li>,
-    number: ({ children }: any) => <li>{children}</li>,
+    bullet: ({ children }: any) => <li className="pl-2">{children}</li>,
+    number: ({ children }: any) => <li className="pl-2">{children}</li>,
   },
   marks: {
     link: ({ children, value }: any) => {
       const rel = !value.href.startsWith("/") ? "noreferrer noopener" : undefined;
       return (
-        <a href={value.href} rel={rel} className="text-primary hover:underline font-medium">
+        <a href={value.href} rel={rel} className="text-black underline underline-offset-4 decoration-gray-300 hover:decoration-black transition-colors">
           {children}
         </a>
       );
     },
+    strong: ({ children }: any) => <strong className="font-bold text-gray-900">{children}</strong>,
   },
 };
 
@@ -117,6 +124,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   }
 
   const siteUrl = getSiteUrl();
+  const readTime = Math.max(1, post.readingTime || 3);
+  
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -126,7 +135,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     dateModified: post.publishedAt,
     author: [{
       "@type": "Organization",
-      name: "LibraryNear",
+      name: "LibraryNear Team",
       url: siteUrl,
     }],
     publisher: {
@@ -151,47 +160,64 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <HomeSearchShell />
       </Suspense>
 
-      <article className="container mx-auto px-6 md:px-10 py-10 md:py-16 max-w-4xl">
-        <header className="mb-10 text-center">
-          {post.publishedAt && (
-            <p className="text-sm font-medium text-primary mb-3">
-              {new Date(post.publishedAt).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </p>
-          )}
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-black mb-6 leading-tight">
-            {post.title}
-          </h1>
-          {post.seoDescription && (
-            <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto">
-              {post.seoDescription}
-            </p>
-          )}
-        </header>
+      <main className="w-full flex justify-center pb-20">
+        <article className="w-full max-w-[680px] px-5 md:px-0 mt-10 md:mt-16">
+          <header className="mb-10">
+            <h1 className="text-[32px] md:text-[42px] leading-[40px] md:leading-[52px] font-bold tracking-tight text-gray-900 mb-8 font-sans">
+              {post.title}
+            </h1>
+            
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 shrink-0">
+                <Image src="/logo.png" alt="LibraryNear" width={44} height={44} className="object-cover w-full h-full" />
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[16px] font-medium text-gray-900 font-sans leading-tight">
+                  LibraryNear Team
+                </span>
+                <div className="flex items-center gap-2 text-[14px] text-gray-500 font-sans mt-0.5">
+                  {post.publishedAt && (
+                    <span>
+                      {new Date(post.publishedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric"
+                      })}
+                    </span>
+                  )}
+                  <span>·</span>
+                  <span>{readTime} min read</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="w-full h-[1px] bg-gray-100 mb-10" />
+          </header>
 
-        {post.mainImage && (
-          <div className="relative w-full aspect-[21/9] md:aspect-[2/1] rounded-2xl overflow-hidden bg-muted mb-12 shadow-sm border border-border/40">
-            <Image
-              src={urlForImage(post.mainImage)?.url() || ""}
-              alt={post.title}
-              fill
-              priority
-              className="object-cover"
-            />
+          {post.mainImage && (
+            <figure className="relative w-full aspect-[16/9] md:aspect-[2/1] overflow-hidden bg-gray-50 mb-12">
+              <Image
+                src={urlForImage(post.mainImage)?.url() || ""}
+                alt={post.title}
+                fill
+                priority
+                className="object-cover"
+              />
+            </figure>
+          )}
+
+          <div className="w-full">
+            {post.body ? (
+              <PortableText value={post.body} components={portableTextComponents} />
+            ) : (
+              <p className="text-gray-500 italic font-serif text-[20px]">No content available.</p>
+            )}
           </div>
-        )}
-
-        <div className="prose prose-lg prose-slate max-w-none">
-          {post.body ? (
-            <PortableText value={post.body} components={portableTextComponents} />
-          ) : (
-            <p className="text-slate-500 text-center italic">No content available.</p>
-          )}
-        </div>
-      </article>
+          
+          <div className="w-full h-[1px] bg-gray-100 mt-16 mb-8" />
+          
+        </article>
+      </main>
     </div>
   );
 }
