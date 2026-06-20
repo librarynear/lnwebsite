@@ -97,6 +97,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     alternates: {
       canonical: canonicalUrl,
     },
+    openGraph: {
+      type: "website",
+      url: canonicalUrl,
+      title,
+      description,
+      siteName: "LibraryNear",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
     robots: shouldIndex
       ? {
           index: true,
