@@ -24,12 +24,7 @@ export async function Navbar() {
         </IntentLink>
 
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
-          <IntentLink
-            href="/blog"
-            className="text-xs font-semibold text-slate-600 hover:text-black transition-colors md:px-2 md:text-[13px] hidden sm:block"
-          >
-            Blog
-          </IntentLink>
+
           <IntentLink
             href="/for-owners"
             className="text-xs font-semibold rounded-full border border-primary text-primary hover:bg-primary/5 px-3 py-1.5 transition-colors md:px-4 md:text-[13px]"
