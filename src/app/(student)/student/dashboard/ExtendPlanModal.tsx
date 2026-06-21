@@ -6,13 +6,24 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
 interface ExtendPlanModalProps {
-  booking: any;
+  libraryId: string;
+  planId: string;
+  seatId: string | null;
+  standaloneLockerId: string | null;
+  isFlexible: boolean;
+  hasMandatoryLocker: boolean;
   studentId: string;
-  studentEmail: string | null;
-  studentPhone: string | null;
 }
 
-export default function ExtendPlanModal({ booking, studentId, studentEmail, studentPhone }: ExtendPlanModalProps) {
+export default function ExtendPlanModal({ 
+  libraryId, 
+  planId, 
+  seatId, 
+  standaloneLockerId, 
+  isFlexible, 
+  hasMandatoryLocker, 
+  studentId 
+}: ExtendPlanModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<"CHOICE" | "PAYMENT_METHOD">("CHOICE");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,16 +32,13 @@ export default function ExtendPlanModal({ booking, studentId, studentEmail, stud
 
   const handleChooseAnother = () => {
     setIsOpen(false);
-    router.push(`/library/${booking.libraryId}`);
+    router.push(`/library/${libraryId}`);
   };
 
   const handleCheckout = async (mode: "ONLINE" | "RECEPTION") => {
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
     setIsProcessing(true);
-
-    const isFlexible = booking.plan.type === "FLEXIBLE";
-    const seatHasMandatoryLocker = booking.seat?.hasLocker || false;
 
     if (mode === "RECEPTION") {
       try {
@@ -39,11 +47,11 @@ export default function ExtendPlanModal({ booking, studentId, studentEmail, stud
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             studentId,
-            libraryId: booking.libraryId,
-            seatId: isFlexible ? null : booking.seatId,
-            planId: booking.planId,
-            hasLocker: seatHasMandatoryLocker,
-            standaloneLockerId: booking.standaloneLockerId
+            libraryId,
+            seatId: isFlexible ? null : seatId,
+            planId,
+            hasLocker: hasMandatoryLocker,
+            standaloneLockerId
           })
         });
         const data = await res.json();
@@ -68,10 +76,10 @@ export default function ExtendPlanModal({ booking, studentId, studentEmail, stud
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: booking.planId,
-          seatId: isFlexible ? null : booking.seatId,
-          hasLocker: seatHasMandatoryLocker,
-          standaloneLockerId: booking.standaloneLockerId
+          planId,
+          seatId: isFlexible ? null : seatId,
+          hasLocker: hasMandatoryLocker,
+          standaloneLockerId
         })
       });
       const data = await orderRes.json();

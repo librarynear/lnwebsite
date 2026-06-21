@@ -180,10 +180,13 @@ export default async function StudentDashboardPage() {
                     <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} pausedAt={booking.pausedAt} />
                       <ExtendPlanModal 
-                        booking={booking} 
-                        studentId={session.userId} 
-                        studentEmail={student.email} 
-                        studentPhone={student.phone} 
+                        libraryId={booking.libraryId}
+                        planId={booking.planId}
+                        seatId={booking.seatId}
+                        standaloneLockerId={booking.standaloneLockerId}
+                        isFlexible={booking.plan.type === "FLEXIBLE"}
+                        hasMandatoryLocker={booking.seat?.hasLocker || false}
+                        studentId={session.userId}
                       />
                       <LocateSeatModal 
                         libraryId={booking.libraryId} 
