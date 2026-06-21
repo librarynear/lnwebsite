@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, MapPin, Loader2 } from "lucide-react";
 import LiveSeatMap from "@/components/LiveSeatMap";
+import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 
 interface LocateSeatModalProps {
   libraryId: string;
@@ -14,6 +15,7 @@ export default function LocateSeatModal({ libraryId, targetSeatId, isFlexible }:
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<{ library: any; occupiedSeatIds: string[] } | null>(null);
+  const realtimeOccupiedSeatIds = useRealtimeSeats(libraryId, data?.occupiedSeatIds || []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function LocateSeatModal({ libraryId, targetSeatId, isFlexible }:
               ) : data ? (
                 <LiveSeatMap 
                   library={data.library}
-                  occupiedSeatIds={data.occupiedSeatIds}
+                  occupiedSeatIds={realtimeOccupiedSeatIds}
                   targetSeatId={targetSeatId}
                   isFlexible={isFlexible}
                   interactive={false}

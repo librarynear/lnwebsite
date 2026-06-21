@@ -7,6 +7,8 @@ import { DashboardCompareChart } from "./DashboardCompareChart";
 import { DashboardAttendance } from "./DashboardAttendance";
 import { DashboardPendingApprovals } from "./DashboardPendingApprovals";
 
+import { LiveEntryLogs } from "@/components/LiveEntryLogs";
+
 export default async function LibrarianDashboardPage() {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/");
@@ -260,8 +262,9 @@ export default async function LibrarianDashboardPage() {
           </div>
         </div>
 
-        <div className="h-[420px]">
+        <div className="h-[420px] flex flex-col gap-6">
           <DashboardAttendance logs={checkinLogs as any} />
+          <LiveEntryLogs libraryId={library.id} />
         </div>
       </div>
 

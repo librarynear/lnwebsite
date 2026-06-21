@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CreditCard, Wallet, Lock, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 
 const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
   ssr: false,
@@ -40,10 +41,13 @@ export function BookingClient({
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
   const selectedSeat = seats.find(s => s.id === selectedSeatId);
 
+  const realtimeOccupiedSeatIds = useRealtimeSeats(library.id, occupiedSeatIds);
+
   const totalAmount = selectedPlan ? selectedPlan.price : 0;
 
   const handleSeatClick = (seatId: string) => {
-    if (occupiedSeatIds.includes(seatId)) return;
+    // If seat is occupied, do nothing
+    if (realtimeOccupiedSeatIds.includes(seatId)) return;
     const seat = seats.find(s => s.id === seatId);
     if (!seat || seat.type === 'NON_RESERVABLE' || seat.type === 'EMPTY') return;
     setSelectedSeatId(seatId === selectedSeatId ? null : seatId);
@@ -144,7 +148,7 @@ export function BookingClient({
           <div className="bg-muted/10 p-6 rounded-xl border border-border/50 overflow-x-auto">
             <LiveSeatMap 
               library={{ seats }}
-              occupiedSeatIds={occupiedSeatIds}
+              occupiedSeatIds={realtimeOccupiedSeatIds}
               compactMode={false}
               interactive={true}
               onSeatSelect={(seat: any) => handleSeatClick(seat.id)}
