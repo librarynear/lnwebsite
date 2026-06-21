@@ -123,7 +123,7 @@ export default function LoginPage() {
       const result = await confirmationResult.confirm(otp)
       const user = result.user
 
-      const dbCheck = await checkUserExists(formattedPhone);
+      const dbCheck = await checkUserExists(formattedPhone, user.uid);
 
       if (dbCheck.exists) {
         await completeLogin(user, formattedPhone, '')

@@ -92,11 +92,27 @@ export async function getPostLoginRedirect(): Promise<string> {
 // are no longer directly used for credentials, but we keep the logic here for 
 // Prisma DB creation just in case, or we move it strictly to client side + JIT.
 // The `login` and `signup` forms in the UI will need to be converted to client components.
-export async function checkUserExists(phone: string) {
+export async function checkUserExists(phone: string, authId?: string) {
   try {
-    const user = await prisma.user.findUnique({ where: { phone } });
-    // Don't leak name — only return existence
-    return { exists: !!user };
+    if (authId) {
+      const userByAuth = await prisma.user.findUnique({ where: { authId } });
+      if (userByAuth) return { exists: true };
+    }
+
+    const normalizedPhone = phone.startsWith('+91') ? phone.slice(3) : phone;
+    const phoneWithCode = phone.startsWith('+91') ? phone : `+91${phone}`;
+
+    const userByPhone = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { phone: phone },
+          { phone: normalizedPhone },
+          { phone: phoneWithCode }
+        ]
+      } 
+    });
+    
+    return { exists: !!userByPhone };
   } catch (e) {
     return { error: "Failed to check user." };
   }
@@ -112,32 +128,59 @@ export async function syncUserOnSignup(authId: string, phone: string, name?: str
       return { error: 'Invalid auth credentials' };
     }
 
-    let user = await prisma.user.findUnique({ where: { phone } });
-    if (user) {
-      // Prevent account hijacking: don't overwrite an existing authId
-      if (user.authId && user.authId !== authId) {
+    // 1. Try to find by authId first (Definitive match for returning Firebase users)
+    let userByAuth = await prisma.user.findUnique({ where: { authId } });
+    if (userByAuth) {
+      if (name && userByAuth.name !== name) {
+        await prisma.user.update({
+          where: { id: userByAuth.id },
+          data: { name }
+        });
+      }
+      return { success: true, isNewUser: false };
+    }
+
+    // 2. Try to find by phone (Fallback for manual admin creations without country code)
+    const normalizedPhone = phone.startsWith('+91') ? phone.slice(3) : phone;
+    const phoneWithCode = phone.startsWith('+91') ? phone : `+91${phone}`;
+
+    let userByPhone = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { phone: phone },
+          { phone: normalizedPhone },
+          { phone: phoneWithCode }
+        ]
+      } 
+    });
+
+    if (userByPhone) {
+      // Prevent account hijacking
+      if (userByPhone.authId && userByPhone.authId !== authId) {
         return { error: 'This phone number is already registered with another account' };
       }
       await prisma.user.update({
-        where: { id: user.id },
-        data: name ? { authId, name } : { authId }
+        where: { id: userByPhone.id },
+        data: name ? { authId, phone, name } : { authId, phone } // Ensure we save the standard Firebase phone format
       });
       return { success: true, isNewUser: false };
-    } else {
-      if (!name) {
-        return { success: true, isNewUser: true };
-      }
-      await prisma.user.create({
-        data: {
-          authId,
-          phone,
-          name,
-          role: "STUDENT",
-          uniqueId: await generateFocusXId()
-        }
-      });
+    } 
+
+    // 3. New User entirely
+    if (!name) {
       return { success: true, isNewUser: true };
     }
+    await prisma.user.create({
+      data: {
+        authId,
+        phone,
+        name,
+        role: "STUDENT",
+        uniqueId: await generateFocusXId()
+      }
+    });
+    return { success: true, isNewUser: true };
+    
   } catch (e) {
     console.error("Failed to sync user to DB on signup:", e);
     return { error: "Failed to sync user." };
