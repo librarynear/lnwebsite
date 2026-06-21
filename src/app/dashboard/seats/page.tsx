@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Grip, Plus, Trash2, Save, Undo2, Loader2, Lock, X } from "lucide-react";
 import { saveSeatLayoutAndLockers, getSeatLayoutAndLockers } from "@/app/actions/seat-actions";
 import LiveSeatMap from "@/components/LiveSeatMap";
@@ -16,6 +16,43 @@ export default function SeatsManagerPage() {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
   const [previewMode, setPreviewMode] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeft(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walkX = (x - startX) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeft - walkX;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleTopScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (scrollRef.current && !isDragging) {
+      scrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
+  const handleMainScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (topScrollRef.current && !isDragging) {
+      topScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -243,7 +280,7 @@ export default function SeatsManagerPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm overflow-x-auto overflow-y-auto max-w-full min-h-[500px]">
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm max-w-full min-h-[500px]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
               <h2 className="font-bold text-foreground">Interactive Seat Grid</h2>
               <div className="flex items-center gap-4">
@@ -261,8 +298,26 @@ export default function SeatsManagerPage() {
                 </div>
               </div>
             </div>
-            
-            <div className="w-max flex flex-col gap-3 mt-4 p-8 bg-muted/20 border border-border/50 rounded-xl relative">
+
+            {/* Top Scrollbar */}
+            <div 
+              ref={topScrollRef} 
+              onScroll={handleMainScroll}
+              className="w-full overflow-x-auto overflow-y-hidden mb-2 custom-scrollbar"
+            >
+              <div style={{ width: `${cols * 68 + 64}px`, height: '1px' }}></div>
+            </div>
+
+            <div 
+              ref={scrollRef}
+              onScroll={handleTopScroll}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+              className={`w-full overflow-x-auto overflow-y-auto custom-scrollbar ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            >
+              <div className="w-max flex flex-col gap-3 p-8 bg-muted/20 border border-border/50 rounded-xl relative select-none">
               {Array.from({ length: rows }).map((_, y) => (
                 <div key={y} className="flex gap-3 relative">
                   {seats.filter(s => s.y === y && s.x < cols).map(seat => {
@@ -304,6 +359,7 @@ export default function SeatsManagerPage() {
                   })}
                 </div>
               ))}
+            </div>
             </div>
             
             <div className="mt-8 mx-auto max-w-sm text-center py-3 bg-muted rounded-xl text-muted-foreground text-sm tracking-widest uppercase font-bold border border-border shadow-sm">
