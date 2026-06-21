@@ -41,6 +41,7 @@ model User {
   bookings  Booking[]
   queries   Query[]
   checkins  CheckinLog[] @relation("StudentCheckins")
+  entryLogs EntryLog[]
   platformFeedbacks PlatformFeedback[] @relation("SubmitterPlatformFeedback")
   
   createdAt DateTime @default(now())
@@ -88,6 +89,7 @@ model Library {
   queries       Query[]
   relays        Relay[]
   checkinLogs   CheckinLog[]
+  entryLogs     EntryLog[]
   expenses      Expense[]
   inquiries     Inquiry[]
 
@@ -330,4 +332,20 @@ model Inquiry {
 
   @@index([libraryId])
   @@index([status])
+}
+
+model EntryLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+  doorId    String?
+  timestamp DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([libraryId])
+  @@index([timestamp])
 }
