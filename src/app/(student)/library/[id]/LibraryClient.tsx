@@ -186,14 +186,16 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       ? selectedPlan.price - (selectedPlan.price * selectedPlan.discount / 100) 
       : selectedPlan.price;
       
+    const lockerMonths = Math.max(1, Math.round(selectedPlan.validityDays / 30));
+
     if (seatHasMandatoryLocker) {
       hasLockerIncluded = true;
-      lockerCost = selectedSeat.lockerPriceMonthly || 0;
+      lockerCost = (selectedSeat.lockerPriceMonthly || 0) * lockerMonths;
     } else if (selectedStandaloneLockerId) {
       hasLockerIncluded = true;
       const locker = library.standaloneLockers.find((l:any) => l.id === selectedStandaloneLockerId);
       if (locker) {
-        lockerCost = locker.price;
+        lockerCost = locker.price * lockerMonths;
       }
     }
   }

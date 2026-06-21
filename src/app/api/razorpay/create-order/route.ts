@@ -110,11 +110,12 @@ export async function POST(req: NextRequest) {
       : plan.price;
 
     let lockerCost = 0;
+    const lockerMonths = Math.max(1, Math.round(plan.validityDays / 30));
 
     if (hasLocker && seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
       if (seat) {
-        lockerCost = seat.lockerPriceMonthly || 0;
+        lockerCost = (seat.lockerPriceMonthly || 0) * lockerMonths;
       }
     } else if (standaloneLockerId) {
       const existingLockerBooking = await prisma.booking.findFirst({
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
       if (locker) {
-        lockerCost = locker.price;
+        lockerCost = locker.price * lockerMonths;
       }
     }
 
