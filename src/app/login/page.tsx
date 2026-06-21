@@ -182,6 +182,13 @@ export default function LoginPage() {
       if (res.ok) {
         toast.success("Successfully logged in!")
         const urlParams = new URLSearchParams(window.location.search)
+        
+        if (urlParams.get('popup') === 'true') {
+          window.opener?.postMessage({ type: 'LOGIN_SUCCESS', token: idToken }, '*');
+          window.close();
+          return;
+        }
+
         const returnUrl = urlParams.get('returnUrl')
         if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
           window.location.href = returnUrl

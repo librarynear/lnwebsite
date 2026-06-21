@@ -9,7 +9,7 @@ async function main() {
   if (!librarian) {
     librarian = await prisma.user.create({
       data: {
-        email: "librarian@FocusDesk.com",
+        email: "librarian@FocusX.com",
         name: "Admin Librarian",
         role: "LIBRARIAN",
         uniqueId: "LIB001"

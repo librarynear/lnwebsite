@@ -38,7 +38,7 @@ export function BentoFeatures() {
             viewport={{ once: true }}
             className="text-4xl md:text-5xl font-extrabold tracking-tight font-heading text-slate-900"
           >
-            Why Choose <span className="text-primary">FocusDesk</span>
+            Why Choose <span className="text-primary">FocusX</span>
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}

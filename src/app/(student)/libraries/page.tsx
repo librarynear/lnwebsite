@@ -7,8 +7,8 @@ import { SaveButton } from "@/components/save-button"
 
 import { redis } from "@/lib/redis"
 
-export const dynamic = 'force-dynamic'
 
+import { Suspense } from "react";
 export default async function LibrariesPage(props: any) {
   // Consumer surface is role-agnostic: any visitor (including librarians/admins
   // who want to browse/book like a regular user) can view this page.
@@ -65,7 +65,9 @@ export default async function LibrariesPage(props: any) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <HomeSearchShell />
+      <Suspense fallback={<div className="h-20" />}>
+        <HomeSearchShell />
+      </Suspense>
 
       {/* Main Grid */}
       <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
@@ -91,8 +93,10 @@ export default async function LibrariesPage(props: any) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
             {libraries.map((library: any, index: number) => {
-              const minPrice = library.plans.length > 0 
-                ? Math.min(...library.plans.map((p: any) => p.price)) 
+              const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+              const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
+              const minPrice = plansToUse.length > 0 
+                ? Math.min(...plansToUse.map((p: any) => p.price)) 
                 : 0;
 
               const locality = library.locality || library.address.split(',')[0];

@@ -5,8 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/actions/auth-actions";
+import { Suspense } from "react";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+async function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   
   if (!session) {
@@ -27,7 +28,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         where: { id: session.userId },
         data: { role: "ADMIN" }
       });
-      // The session object won't reflect this update until the next request, but we can safely proceed for this render
     } else {
       redirect("/dashboard"); // Redirect unauthorized users
     }
@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="flex items-center gap-2 group">
-            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-xl font-heading font-bold text-primary">Admin Control</span>
           </Link>
           <span className="text-xs px-2 py-1 bg-destructive/10 text-destructive rounded-full font-bold uppercase tracking-wide">
@@ -61,5 +61,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
+          <p className="text-muted-foreground font-medium">Loading Admin Portal...</p>
+        </div>
+      </div>
+    }>
+      <AdminAuthWrapper>{children}</AdminAuthWrapper>
+    </Suspense>
   );
 }

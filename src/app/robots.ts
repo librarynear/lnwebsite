@@ -15,6 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         '/student/'
       ],
     },
-    sitemap: 'https://www.focusdesk.in/sitemap.xml',
+    sitemap: 'https://www.focusx.in/sitemap.xml',
   }
 }

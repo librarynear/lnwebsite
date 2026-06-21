@@ -29,7 +29,7 @@ export function PartnerCTA() {
               <span className="text-blue-400">Fill them today.</span>
             </h2>
             <p className="mt-6 text-lg text-slate-300 max-w-xl leading-relaxed">
-              Partner with FocusDesk to digitize your library, manage bookings seamlessly, and reach thousands of students searching for study spaces in your area.
+              Partner with FocusX to digitize your library, manage bookings seamlessly, and reach thousands of students searching for study spaces in your area.
             </p>
           </div>
 

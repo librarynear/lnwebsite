@@ -95,7 +95,7 @@ export function BookingClient({
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: data.order.amount,
           currency: "INR",
-          name: "FocusDesk",
+          name: "FocusX",
           description: "Library Booking",
           order_id: data.order.id,
           handler: async function (response: any) {

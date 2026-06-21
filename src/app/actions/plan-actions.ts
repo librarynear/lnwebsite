@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from "@/lib/prisma"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { PlanType } from "@prisma/client"
 import { getSession } from "./auth-actions"
 import { redis } from "@/lib/redis"
@@ -44,6 +44,8 @@ export async function addPlan(formData: FormData) {
   });
 
   await redis.del(`library:${library.id}`);
+  updateTag(`library:${library.id}`);
+  updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
@@ -78,6 +80,8 @@ export async function batchAddPlans(plansData: string) {
   await prisma.plan.createMany({ data });
 
   await redis.del(`library:${library.id}`);
+  updateTag(`library:${library.id}`);
+  updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
@@ -94,6 +98,8 @@ export async function deletePlan(planId: string) {
   });
 
   await redis.del(`library:${library.id}`);
+  updateTag(`library:${library.id}`);
+  updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
@@ -119,6 +125,8 @@ export async function editPlan(formData: FormData) {
   });
 
   await redis.del(`library:${library.id}`);
+  updateTag(`library:${library.id}`);
+  updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }

@@ -6,13 +6,18 @@ import { redis } from '@/lib/redis';
 import { endOfDayIST } from "@/lib/date-utils";
 import { getSession } from '@/app/actions/auth-actions';
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+function getRazorpayClient(): Razorpay {
+  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error('Razorpay keys are not configured (NEXT_PUBLIC_RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)');
+  }
+  return new Razorpay({ key_id, key_secret });
+}
 
 export async function POST(req: Request) {
   let refundPaymentId: string | null = null;
+  const razorpay = getRazorpayClient();
   try {
     const forwardedHost = req.headers.get('x-forwarded-host');
     const host = forwardedHost || req.headers.get('host') || 'localhost:3000';

@@ -13,7 +13,7 @@ const REVOCATION_TTL_SECONDS = 60 * 60 * 24 * 14
 
 type SessionData = { userId: string; role: string; email: string | null; phone: string | null; employerLibraryId: string | null }
 
-async function generateFocusDeskId() {
+async function generateFocusXId() {
   let id = "";
   let exists = true;
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -133,7 +133,7 @@ export async function syncUserOnSignup(authId: string, phone: string, name?: str
           phone,
           name,
           role: "STUDENT",
-          uniqueId: await generateFocusDeskId()
+          uniqueId: await generateFocusXId()
         }
       });
       return { success: true, isNewUser: true };

@@ -64,7 +64,7 @@ export default async function StudentDashboardPage() {
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">FocusDesk ID</p>
+                <p className="text-sm text-muted-foreground mb-1">FocusX ID</p>
                 <div className="bg-muted px-4 py-2 rounded-lg font-mono font-bold text-lg tracking-widest text-center text-foreground border border-border/50 select-all">
                   {student.uniqueId}
                 </div>

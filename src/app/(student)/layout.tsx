@@ -11,24 +11,23 @@ import prisma from "@/lib/prisma";
 import { Plus } from "lucide-react";
 import { EmbedStyles } from "@/components/EmbedStyles";
 
-export default async function StudentLayout({ children }: { children: ReactNode }) {
-  const session = await getSession();
-  let user = null;
-  if (session?.userId) {
-    user = await prisma.user.findUnique({ where: { id: session.userId } });
-  }
+import { Suspense } from "react";
+import { NavbarAuth } from "@/components/navbar-auth";
 
+export default async function StudentLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <EmbedStyles />
+      <Suspense fallback={null}>
+        <EmbedStyles />
+      </Suspense>
       <ScrollDirection />
       {/* Top Navbar */}
       <header className="navbar-sticky sticky top-0 z-50 w-full border-b border-border bg-white transition-transform duration-300 ease-in-out">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-10">
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-2xl tracking-tight hidden sm:block">
-              <span className="text-primary font-heading font-bold text-[22px]">FocusDesk</span>
+              <span className="text-primary font-heading font-bold text-[22px]">FocusX</span>
             </span>
           </Link>
 
@@ -41,13 +40,9 @@ export default async function StudentLayout({ children }: { children: ReactNode 
               Add Your Library
             </Link>
             
-            {session && user ? (
-              <UserNav user={user} />
-            ) : (
-              <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors ml-2">
-                Sign In
-              </Link>
-            )}
+            <Suspense fallback={<div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse ml-2" />}>
+              <NavbarAuth />
+            </Suspense>
           </div>
         </div>
       </header>

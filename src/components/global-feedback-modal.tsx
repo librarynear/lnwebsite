@@ -71,7 +71,7 @@ export function GlobalFeedbackModal() {
         onClick={handleOpen}
         className="text-[14px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
       >
-        <MessageSquarePlus className="w-4 h-4" /> Feedback to FocusDesk
+        <MessageSquarePlus className="w-4 h-4" /> Feedback to FocusX
       </button>
 
       {isOpen && (

@@ -4,10 +4,14 @@ import Razorpay from 'razorpay';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+function getRazorpayClient(): Razorpay {
+  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error('Razorpay keys are not configured (NEXT_PUBLIC_RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)');
+  }
+  return new Razorpay({ key_id, key_secret });
+}
 
 function getAppUrl(req: NextRequest): string {
   const env = process.env.NEXT_PUBLIC_APP_URL;
@@ -31,9 +35,9 @@ function getAppUrl(req: NextRequest): string {
  */
 export async function GET(req: NextRequest) {
   const appUrl = getAppUrl(req);
+  const url = new URL(req.url);
 
   try {
-    const url = new URL(req.url);
     const paymentId = url.searchParams.get('razorpay_payment_id');
     const linkId = url.searchParams.get('razorpay_payment_link_id');
     const refId = url.searchParams.get('razorpay_payment_link_reference_id');
@@ -204,7 +208,7 @@ export async function GET(req: NextRequest) {
       try {
         const url = new URL(req.url);
         const pId = url.searchParams.get('razorpay_payment_id');
-        if (pId) await razorpay.payments.refund(pId, {});
+        if (pId) await getRazorpayClient().payments.refund(pId, {});
       } catch (refundErr) {
         console.error('Auto-refund failed:', refundErr);
       }

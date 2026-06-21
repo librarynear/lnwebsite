@@ -18,7 +18,7 @@ export default async function WidgetsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-heading font-bold text-foreground">Marketing Widgets</h1>
-        <p className="text-muted-foreground mt-1">Embed FocusDesk into your own website or share direct booking links.</p>
+        <p className="text-muted-foreground mt-1">Embed FocusX into your own website or share direct booking links.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -37,7 +37,7 @@ export default async function WidgetsPage() {
           
           <CopyableField 
             label="Direct URL"
-            value={`https://www.focusdesk.in/library/${library.id}`}
+            value={`https://www.focusx.in/library/${library.id}`}
             hint="Students will see your library and immediately proceed to booking."
           />
         </div>
@@ -56,7 +56,7 @@ export default async function WidgetsPage() {
 
           <CopyableField 
             label="iframe Code"
-            value={`<iframe src="https://www.focusdesk.in/library/${library.id}/book?embed=true" width="100%" height="800px" frameborder="0" style="border: 1px solid #eee; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);"></iframe>`}
+            value={`<iframe src="https://www.focusx.in/library/${library.id}/book?embed=true" width="100%" height="800px" frameborder="0" style="border: 1px solid #eee; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);"></iframe>`}
             isTextarea={true}
             hint="The header and footer are automatically hidden in embed mode."
           />

@@ -17,23 +17,23 @@ const headingFont = IBM_Plex_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusx.in'),
   title: {
-    template: "%s | FocusDesk",
-    default: "FocusDesk | Book Premium Study Libraries Near You",
+    template: "%s | FocusX",
+    default: "FocusX | Book Premium Study Libraries Near You",
   },
-  description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusDesk — India's study space platform.",
+  description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusX — India's study space platform.",
   openGraph: {
-    title: "FocusDesk | Book Premium Study Libraries",
-    description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusDesk.",
-    url: "https://www.focusdesk.in",
-    siteName: "FocusDesk",
+    title: "FocusX | Book Premium Study Libraries",
+    description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusX.",
+    url: "https://www.focusx.in",
+    siteName: "FocusX",
     images: [
       {
         url: "https://ik.imagekit.io/focusdesk/logo.png",
         width: 1200,
         height: 630,
-        alt: "FocusDesk - Book Study Libraries",
+        alt: "FocusX - Book Study Libraries",
       },
     ],
     locale: "en_IN",
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FocusDesk | Book Premium Study Libraries",
-    description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusDesk.",
+    title: "FocusX | Book Premium Study Libraries",
+    description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusX.",
     images: ["https://ik.imagekit.io/focusdesk/logo.png"],
   },
   icons: {

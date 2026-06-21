@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { getSession } from "./auth-actions"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { redis, deleteByPattern } from "@/lib/redis"
 import { parseSafeUrl } from "@/lib/validation"
 
@@ -46,6 +46,8 @@ export async function approveLibrary(libraryId: string) {
   });
   
   await clearLibraryCache(libraryId);
+  updateTag(`library:${libraryId}`);
+  updateTag('libraries:featured');
   revalidatePath('/admin');
   revalidatePath('/'); // Revalidate public feed
 }
@@ -59,6 +61,8 @@ export async function rejectLibrary(libraryId: string) {
   });
   
   await clearLibraryCache(libraryId);
+  updateTag(`library:${libraryId}`);
+  updateTag('libraries:featured');
   revalidatePath('/admin');
   revalidatePath('/');
 }
@@ -112,6 +116,8 @@ export async function updateLibraryDetails(libraryId: string, formData: FormData
   });
 
   await clearLibraryCache(libraryId);
+  updateTag(`library:${libraryId}`);
+  updateTag('libraries:featured');
   revalidatePath('/admin');
   revalidatePath(`/admin/edit/${libraryId}`);
   revalidatePath('/');

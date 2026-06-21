@@ -120,7 +120,7 @@ export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
           <div className="pt-10 px-4 pb-3 border-b border-border bg-white z-30 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={24} height={24} className="object-contain" />
+                <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={24} height={24} className="object-contain" />
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-semibold rounded-full bg-[#0a1128] text-white px-3 py-1.5">
                 <Plus className="w-3 h-3" />

@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from "@/lib/prisma"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { SeatType } from "@prisma/client"
 import { getSession } from "./auth-actions"
 import { redis } from "@/lib/redis"
@@ -102,6 +102,7 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
   });
 
   await redis.del(`library:${library.id}`);
+  updateTag(`library:${library.id}`);
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/seats");
 }

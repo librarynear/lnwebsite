@@ -10,26 +10,34 @@ import { FeaturedCarousel } from "@/components/home/featured-carousel"
 import { BentoFeatures } from "@/components/home/bento-features"
 import { Testimonials } from "@/components/home/testimonials"
 import { PartnerCTA } from "@/components/home/partner-cta"
+import { cacheLife, cacheTag } from "next/cache"
 
-export const revalidate = 60
-
-export default async function HomePage() {
-  const session = await getSession();
-  // Allow all users, including staff, to view the consumer homepage
-
-  // Fetch top 3 libraries to showcase in the interactive mockup and carousel
-  const libraries = await prisma.library.findMany({
+async function getFeaturedLibraries() {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('libraries:featured');
+  const libs = await prisma.library.findMany({
     where: {
       kycStatus: "APPROVED",
     },
     include: {
       plans: true,
     },
-    take: 3,
     orderBy: {
       createdAt: 'desc'
     }
   });
+
+  // Sort Kripa Library to the top, limit to 3
+  return libs.sort((a, b) => {
+    if (a.name === 'Kripa Library') return -1;
+    if (b.name === 'Kripa Library') return 1;
+    return 0;
+  }).slice(0, 3);
+}
+export default async function HomePage() {
+  // Fetch top 3 libraries to showcase in the interactive mockup and carousel
+  const libraries = await getFeaturedLibraries();
 
   return (
     <div className="flex flex-col bg-background overflow-hidden relative w-full">

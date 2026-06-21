@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from "@/lib/prisma"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { getSession } from "./auth-actions"
 import { redis } from "@/lib/redis"
 import { parseSafeUrl } from "@/lib/validation"
@@ -100,6 +100,8 @@ export async function updateLibrarySettings(formData: FormData) {
   });
 
   await redis.del(`library:${id}`);
+  updateTag(`library:${id}`);
+  updateTag('libraries:featured');
   revalidatePath("/dashboard/settings");
   revalidatePath("/libraries"); 
   revalidatePath(`/library/${id}`); 

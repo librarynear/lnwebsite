@@ -154,7 +154,7 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
               <Input id="name" name="name" defaultValue={user.name} required readOnly={user.digilockerVerified} className={user.digilockerVerified ? "bg-muted cursor-not-allowed text-muted-foreground" : ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="uniqueId">FocusDesk ID</Label>
+              <Label htmlFor="uniqueId">FocusX ID</Label>
               <Input id="uniqueId" value={user.uniqueId || "Not Generated"} readOnly className="bg-muted font-mono font-bold cursor-not-allowed text-muted-foreground" />
             </div>
             

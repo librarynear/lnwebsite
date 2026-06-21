@@ -61,8 +61,8 @@ export default function LibrarianOnboarding() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="h-16 border-b border-border bg-card flex items-center px-6 gap-2 group">
-        <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
-        <div className="text-xl font-heading font-bold text-primary hidden sm:block">FocusDesk for Partners</div>
+        <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+        <div className="text-xl font-heading font-bold text-primary hidden sm:block">FocusX for Partners</div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">

@@ -3,14 +3,14 @@ import prisma from '@/lib/prisma';
 import { getSession } from '@/app/actions/auth-actions';
 
 export async function GET(req: Request) {
+  const session = await getSession();
+  const { searchParams } = new URL(req.url);
+  const libraryId = searchParams.get('libraryId');
+
   try {
-    const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const { searchParams } = new URL(req.url);
-    const libraryId = searchParams.get('libraryId');
 
     if (!libraryId) {
       return NextResponse.json({ error: 'Missing libraryId' }, { status: 400 });

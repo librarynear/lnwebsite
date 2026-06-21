@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!studentId && authRole === 'STUDENT') {
+    if (!studentId) {
       studentId = authUserId;
     }
 

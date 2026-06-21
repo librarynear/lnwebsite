@@ -1,6 +1,7 @@
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { DollarSign, TrendingDown, TrendingUp } from "lucide-react";
 import FinancialCharts from "./FinancialCharts";
 import { ExpenseForm, DeleteExpenseButton } from "./ExpenseForm";
@@ -110,7 +111,9 @@ export default async function FinancialsPage({
         <p className="text-muted-foreground mt-1">Track your revenue, expenses, and net profit.</p>
       </div>
 
-      <DateRangeFilter />
+      <Suspense fallback={<div className="h-10" />}>
+        <DateRangeFilter />
+      </Suspense>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">

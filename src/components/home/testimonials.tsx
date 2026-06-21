@@ -7,7 +7,7 @@ const testimonials = [
   {
     name: "Riya Sharma",
     exam: "UPSC Aspirant",
-    content: "Finding a quiet place to study in Delhi was impossible until I found FocusDesk. The ergonomic chairs and silent environment helped me increase my study hours from 6 to 10 hours a day.",
+    content: "Finding a quiet place to study in Delhi was impossible until I found FocusX. The ergonomic chairs and silent environment helped me increase my study hours from 6 to 10 hours a day.",
     initials: "RS",
     color: "bg-blue-100 text-blue-700"
   },
@@ -47,7 +47,7 @@ export function Testimonials() {
             transition={{ delay: 0.1 }}
             className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto"
           >
-            Don't just take our word for it. Here is what students are saying about their FocusDesk experience.
+            Don't just take our word for it. Here is what students are saying about their FocusX experience.
           </motion.p>
         </div>
 

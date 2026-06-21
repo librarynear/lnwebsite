@@ -54,7 +54,9 @@ export default function SeatsManagerPage() {
       }
       
       setSeats(grid);
-      setStandaloneLockers(data.standaloneLockers || []);
+      const lockers = data.standaloneLockers || [];
+      // Assuming lockers have createdAt or we just reverse to put newer at top
+      setStandaloneLockers(lockers.reverse());
       setIsLoading(false);
     }
     load();
@@ -105,7 +107,7 @@ export default function SeatsManagerPage() {
   };
 
   const addStandaloneLocker = () => {
-    setStandaloneLockers([...standaloneLockers, { id: Date.now().toString(), name: `L${standaloneLockers.length + 1}`, price: "" }]);
+    setStandaloneLockers([{ id: Date.now().toString(), name: `L${standaloneLockers.length + 1}`, price: "" }, ...standaloneLockers]);
   };
 
   const updateStandaloneLocker = (id: string, field: string, value: any) => {
@@ -241,7 +243,7 @@ export default function SeatsManagerPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm overflow-auto min-h-[500px]">
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm overflow-x-auto overflow-y-auto max-w-full min-h-[500px]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
               <h2 className="font-bold text-foreground">Interactive Seat Grid</h2>
               <div className="flex items-center gap-4">

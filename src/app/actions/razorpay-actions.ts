@@ -5,10 +5,14 @@ import { getSession } from "./auth-actions"
 import Razorpay from "razorpay"
 import { headers } from "next/headers"
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+function getRazorpayClient(): Razorpay {
+  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error('Razorpay keys are not configured (NEXT_PUBLIC_RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)');
+  }
+  return new Razorpay({ key_id, key_secret });
+}
 
 export async function createRazorpayLinkedAccount() {
   const session = await getSession();
@@ -23,7 +27,7 @@ export async function createRazorpayLinkedAccount() {
   if (library.paymentAccountId) return library.paymentAccountId; // Already has an account
 
   try {
-    const account = await razorpay.accounts.create({
+    const account = await getRazorpayClient().accounts.create({
       email: library.librarian.email || "no-reply@focusdesk.in",
       phone: library.librarian.phone || library.managerPhone || "9999999999",
       type: "route",

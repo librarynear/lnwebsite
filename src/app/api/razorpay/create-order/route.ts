@@ -4,10 +4,18 @@ import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
 import { getSession } from '@/app/actions/auth-actions';
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Lazily construct the client so a missing key fails loudly at request time
+// instead of silently signing requests with placeholder creds (which produces
+// confusing downstream Razorpay auth errors). Keeping it out of module scope
+// also avoids the constructor throwing during build-time page-data collection.
+function getRazorpayClient(): Razorpay {
+  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error('Razorpay keys are not configured (NEXT_PUBLIC_RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)');
+  }
+  return new Razorpay({ key_id, key_secret });
+}
 
 function getAppUrl(req: NextRequest): string {
   const env = process.env.NEXT_PUBLIC_APP_URL;
@@ -146,6 +154,8 @@ export async function POST(req: NextRequest) {
       console.error('[create-order] FATAL: callback_url is localhost — Razorpay will NOT redirect after payment. Set NEXT_PUBLIC_APP_URL to your production domain.');
       return NextResponse.json({ error: 'Payment system is misconfigured. Please contact support.' }, { status: 500 });
     }
+
+    const razorpay = getRazorpayClient();
 
     const link = await razorpay.paymentLink.create({
       amount: Math.round(totalAmount * 100),

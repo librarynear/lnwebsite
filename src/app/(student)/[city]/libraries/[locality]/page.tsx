@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import { Suspense } from "react";
 import Link from "next/link"
 import { MapPin } from "lucide-react"
 import { HomeSearchShell } from "@/components/home-search-shell"
@@ -7,7 +8,7 @@ import { SaveButton } from "@/components/save-button"
 import { redis } from "@/lib/redis"
 import { Metadata } from "next"
 
-export const dynamic = 'force-dynamic'
+
 
 function capitalize(str: string) {
   if (!str) return '';
@@ -18,13 +19,13 @@ export async function generateMetadata(props: any): Promise<Metadata> {
   const params = await props.params;
   const city = capitalize(decodeURIComponent(params.city));
   const locality = capitalize(decodeURIComponent(params.locality));
-  const canonical = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in'}/${params.city}/libraries/${params.locality}`;
+  const canonical = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusx.in'}/${params.city}/libraries/${params.locality}`;
   return {
-    title: `Best Study Libraries in ${locality}, ${city} | FocusDesk`,
+    title: `Best Study Libraries in ${locality}, ${city} | FocusX`,
     description: `Find and book premium study libraries and reading rooms in ${locality}, ${city} starting at ₹500/mo. Compare seats, amenities & ratings.`,
     alternates: { canonical },
     openGraph: {
-      title: `Best Study Libraries in ${locality}, ${city} | FocusDesk`,
+      title: `Best Study Libraries in ${locality}, ${city} | FocusX`,
       description: `Find and book premium study libraries and reading rooms in ${locality}, ${city} starting at ₹500/mo.`,
       url: canonical,
     }
@@ -33,16 +34,43 @@ export async function generateMetadata(props: any): Promise<Metadata> {
 
 export default async function LocalityLibrariesPage(props: any) {
   const params = await props.params;
-  const searchParams = await props.searchParams;
-  const query = searchParams?.query || "";
-  const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
-  
   const cityName = decodeURIComponent(params.city);
   const displayCity = capitalize(cityName);
   const localityName = decodeURIComponent(params.locality);
   const displayLocality = capitalize(localityName);
 
-  const cacheKey = `libraries:city:${cityName}:locality:${localityName}:search:${query}`;
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Suspense fallback={<div className="h-20" />}>
+        <HomeSearchShell />
+      </Suspense>
+
+      <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <p className="text-lg font-medium animate-pulse">Loading libraries...</p>
+          </div>
+        }>
+          <LibraryList 
+            city={cityName} 
+            displayCity={displayCity} 
+            locality={localityName} 
+            displayLocality={displayLocality} 
+            searchParamsPromise={props.searchParams} 
+            paramsCity={params.city} 
+          />
+        </Suspense>
+      </section>
+    </div>
+  )
+}
+
+async function LibraryList({ city, displayCity, locality, displayLocality, searchParamsPromise, paramsCity }: { city: string, displayCity: string, locality: string, displayLocality: string, searchParamsPromise: Promise<any>, paramsCity: string }) {
+  const searchParams = await searchParamsPromise;
+  const query = searchParams?.query || "";
+  const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
+
+  const cacheKey = `libraries:city:${city}:locality:${locality}:search:${query}`;
   let libraries: any = null;
 
   if (!isNearMe) {
@@ -53,8 +81,8 @@ export default async function LocalityLibrariesPage(props: any) {
     libraries = await prisma.library.findMany({
       where: {
         kycStatus: "APPROVED",
-        city: { equals: cityName, mode: 'insensitive' },
-        locality: { equals: localityName, mode: 'insensitive' },
+        city: { equals: city, mode: 'insensitive' },
+        locality: { equals: locality, mode: 'insensitive' },
         ...(query ? {
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
@@ -85,7 +113,7 @@ export default async function LocalityLibrariesPage(props: any) {
     return 0;
   });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusdesk.in';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusx.in';
   const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -99,113 +127,111 @@ export default async function LocalityLibrariesPage(props: any) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <>
       {libraries.length > 0 && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
         />
       )}
-      <HomeSearchShell />
-
-      <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">
-            {query
-              ? `Results for "${query}" in ${displayLocality}, ${displayCity}`
-              : `${libraries.length > 0 ? libraries.length : "0"} libraries in ${displayLocality}, ${displayCity}`}
-          </h1>
-          {query && (
-            <Link href={`/${params.city}/libraries/${params.locality}`} className="text-sm text-primary font-medium hover:underline">
-              Clear all
-            </Link>
-          )}
-        </div>
-
-        {libraries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <MapPin className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-lg font-medium">No libraries found in {displayLocality}</p>
-            <p className="text-sm mt-1">Try searching in {displayCity} instead</p>
-            <div className="mt-4">
-              <Link href={`/${params.city}/libraries`} className="text-primary font-medium hover:underline">
-                View all libraries in {displayCity}
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-            {libraries.map((library: any, index: number) => {
-              const minPrice = library.plans.length > 0 
-                ? Math.min(...library.plans.map((p: any) => p.price)) 
-                : 0;
-
-              const locality = library.locality || library.address.split(',')[0];
-
-              let imageUrl = library.photos && library.photos.length > 0 ? library.photos[0] : null;
-              if (!imageUrl) {
-                const demoImages = [
-                  "https://images.unsplash.com/photo-1568667256549-094345857637?w=800&q=80",
-                  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
-                  "https://images.unsplash.com/photo-1510531704581-5b28709e5a16?w=800&q=80",
-                  "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80",
-                  "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&q=80"
-                ];
-                imageUrl = demoImages[index % demoImages.length];
-              }
-
-              return (
-                <Link key={library.id} href={`/library/${library.id}`} className="group flex flex-col gap-2 cursor-pointer">
-                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
-                    <Image
-                      src={imageUrl}
-                      alt={`${library.name} study room in ${locality}, ${library.city || displayCity} — quiet seating with AC`}
-                      fill
-                      priority={index < 4}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                    
-                    <SaveButton 
-                      library={{
-                        id: library.id,
-                        name: library.name,
-                        locality: locality,
-                        city: library.city,
-                        metroStation: library.metroStation,
-                        metroDistance: library.metroDistance,
-                        minPrice: minPrice,
-                        imageUrl: imageUrl || ""
-                      }} 
-                    />
-
-                    <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm z-10 text-black">
-                      Verified
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 mt-1">
-                    <h3 className="font-bold text-[15px] truncate text-foreground leading-snug tracking-tight">
-                      {library.name}
-                    </h3>
-                    <p className="text-[13px] text-muted-foreground truncate">{locality}</p>
-                    
-                    {library.metroStation ? (
-                      <p className="text-[13px] text-muted-foreground truncate">
-                        {library.metroDistance ? `${library.metroDistance} km from ${library.metroStation} metro` : `Near ${library.metroStation} metro`}
-                      </p>
-                    ) : (
-                      <p className="text-[13px] text-muted-foreground truncate">
-                        {library.city}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">
+          {query
+            ? `Results for "${query}" in ${displayLocality}, ${displayCity}`
+            : `${libraries.length > 0 ? libraries.length : "0"} libraries in ${displayLocality}, ${displayCity}`}
+        </h1>
+        {query && (
+          <Link href={`/${paramsCity}/libraries/${locality}`} className="text-sm text-primary font-medium hover:underline">
+            Clear all
+          </Link>
         )}
-      </section>
-    </div>
+      </div>
+
+      {libraries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <MapPin className="h-10 w-10 mb-3 opacity-30" />
+          <p className="text-lg font-medium">No libraries found in {displayLocality}</p>
+          <p className="text-sm mt-1">Try searching in {displayCity} instead</p>
+          <div className="mt-4">
+            <Link href={`/${paramsCity}/libraries`} className="text-primary font-medium hover:underline">
+              View all libraries in {displayCity}
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
+          {libraries.map((library: any, index: number) => {
+            const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+            const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
+            const minPrice = plansToUse.length > 0 
+              ? Math.min(...plansToUse.map((p: any) => p.price)) 
+              : 0;
+
+            const libraryLocality = library.locality || library.address.split(',')[0];
+
+            let imageUrl = library.photos && library.photos.length > 0 ? library.photos[0] : null;
+            if (!imageUrl) {
+              const demoImages = [
+                "https://images.unsplash.com/photo-1568667256549-094345857637?w=800&q=80",
+                "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80",
+                "https://images.unsplash.com/photo-1510531704581-5b28709e5a16?w=800&q=80",
+                "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&q=80",
+                "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&q=80"
+              ];
+              imageUrl = demoImages[index % demoImages.length];
+            }
+
+            return (
+              <Link key={library.id} href={`/library/${library.id}`} className="group flex flex-col gap-2 cursor-pointer">
+                <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
+                  <Image
+                    src={imageUrl}
+                    alt={`${library.name} study room in ${libraryLocality}, ${library.city || displayCity} — quiet seating with AC`}
+                    fill
+                    priority={index < 4}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                  
+                  <SaveButton 
+                    library={{
+                      id: library.id,
+                      name: library.name,
+                      locality: libraryLocality,
+                      city: library.city,
+                      metroStation: library.metroStation,
+                      metroDistance: library.metroDistance,
+                      minPrice: minPrice,
+                      imageUrl: imageUrl || ""
+                    }} 
+                  />
+
+                  <div className="absolute top-3 left-3 bg-white/95 px-2 py-0.5 rounded-md text-xs font-bold border border-black/5 shadow-sm z-10 text-black">
+                    Verified
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-0.5 mt-1">
+                  <h3 className="font-bold text-[15px] truncate text-foreground leading-snug tracking-tight">
+                    {library.name}
+                  </h3>
+                  <p className="text-[13px] text-muted-foreground truncate">{libraryLocality}</p>
+                  
+                  {library.metroStation ? (
+                    <p className="text-[13px] text-muted-foreground truncate">
+                      {library.metroDistance ? `${library.metroDistance} km from ${library.metroStation} metro` : `Near ${library.metroStation} metro`}
+                    </p>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground truncate">
+                      {library.city}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }

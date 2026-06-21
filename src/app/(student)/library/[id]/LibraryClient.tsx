@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock, Grid, X, ChevronLeft, ChevronRight, Share, Heart } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -20,7 +20,7 @@ const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
   ),
 })
 import { toast } from "react-hot-toast"
-export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlanEndDate, studentPhone, studentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
+export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds, studentId: initialStudentId, currentPlanEndDate: initialCurrentPlanEndDate, studentPhone: initialStudentPhone, studentEmail: initialStudentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
   const router = useRouter();
   const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
@@ -35,8 +35,51 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
   const [feedbackContent, setFeedbackContent] = useState("");
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
+  // Dynamic Session State
+  const [dynamicState, setDynamicState] = useState({
+    occupiedSeatIds: initialOccupiedSeatIds,
+    occupiedLockerIds: [] as string[],
+    studentId: initialStudentId,
+    currentPlanEndDate: initialCurrentPlanEndDate,
+    studentPhone: initialStudentPhone || "",
+    studentEmail: initialStudentEmail || "",
+    isLoading: true,
+    hasError: false
+  });
+
+  const loadDynamicData = useCallback(() => {
+    setDynamicState(s => ({ ...s, isLoading: true, hasError: false }));
+    fetch(`/api/library/dynamic-data?libraryId=${library.id}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        setDynamicState({
+          occupiedSeatIds: data.occupiedSeatIds || [],
+          occupiedLockerIds: data.occupiedLockerIds || [],
+          studentId: data.session?.userId || "",
+          currentPlanEndDate: data.currentPlanEndDate || null,
+          studentPhone: data.session?.phone || "",
+          studentEmail: data.session?.email || "",
+          isLoading: false,
+          hasError: false
+        });
+      })
+      .catch(e => {
+        // Surface the failure instead of silently showing every seat as free
+        // (which would let a user pick a taken seat and hit a 409 at checkout).
+        console.error("Failed to fetch dynamic library data:", e);
+        setDynamicState(s => ({ ...s, occupiedSeatIds: [], occupiedLockerIds: [], isLoading: false, hasError: true }));
+      });
+  }, [library.id]);
+
+  useEffect(() => {
+    loadDynamicData();
+  }, [loadDynamicData]);
+
   const handleFeedbackSubmit = async () => {
-    if (!studentId) {
+    if (!dynamicState.studentId) {
       router.push(`/login?returnUrl=/library/${library.id}`);
       return;
     }
@@ -104,8 +147,10 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
         savedLibraries = savedLibraries.filter((l: any) => l.id !== library.id);
         setIsSaved(false);
       } else {
-        const minPrice = library.plans && library.plans.length > 0 
-          ? Math.min(...library.plans.map((p: any) => p.price)) 
+        const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+        const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
+        const minPrice = plansToUse && plansToUse.length > 0 
+          ? Math.min(...plansToUse.map((p: any) => p.price)) 
           : 0;
 
         savedLibraries.push({
@@ -156,25 +201,15 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
   const totalAmount = planPrice + lockerCost;
 
   let startDate = new Date();
-  if (currentPlanEndDate) {
-    startDate = new Date(currentPlanEndDate);
+  if (dynamicState.currentPlanEndDate) {
+    startDate = new Date(dynamicState.currentPlanEndDate);
   }
   let endDate = new Date(startDate);
   if (selectedPlan) {
     endDate.setDate(endDate.getDate() + selectedPlan.validityDays - 1);
   }
 
-  const handleCheckout = async () => {
-    if (checkoutLockRef.current) return;
-    
-    const user = auth.currentUser;
-    if (!studentId && !user) {
-      const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
-      const retUrl = isEmbed ? `/library/${library.id}?embed=true` : `/library/${library.id}`;
-      router.push(`/login?returnUrl=${encodeURIComponent(retUrl)}`);
-      return;
-    }
-    const idToken = user ? await user.getIdToken() : undefined;
+  const executeCheckout = async (idToken?: string) => {
     if (!selectedPlan) {
       toast.error("Please select a plan.");
       return;
@@ -194,7 +229,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            studentId,
+            studentId: dynamicState.studentId,
             libraryId: library.id,
             seatId: isFlexible ? null : selectedSeat.id,
             planId: selectedPlan.id,
@@ -244,6 +279,38 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
       setIsProcessing(false);
       checkoutLockRef.current = false;
     }
+  };
+
+  const handleCheckout = async () => {
+    if (checkoutLockRef.current) return;
+    
+    const user = auth.currentUser;
+    if (!dynamicState.studentId && !user) {
+      const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
+      if (isEmbed) {
+        // Use popup for iframes to bypass third-party cookie blocking
+        const width = 400;
+        const height = 650;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        window.open('/login?popup=true', 'Login', `width=${width},height=${height},top=${top},left=${left}`);
+        
+        const listener = (e: MessageEvent) => {
+          if (e.data?.type === 'LOGIN_SUCCESS') {
+            window.removeEventListener('message', listener);
+            executeCheckout(e.data.token);
+          }
+        };
+        window.addEventListener('message', listener);
+        return;
+      }
+
+      const retUrl = isEmbed ? `/library/${library.id}?embed=true` : `/library/${library.id}`;
+      router.push(`/login?returnUrl=${encodeURIComponent(retUrl)}`);
+      return;
+    }
+    const idToken = user ? await user.getIdToken() : undefined;
+    executeCheckout(idToken);
   }
 
   // Compute unique hours for filters
@@ -271,6 +338,19 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
 
   const mapEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(library.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        const url = '/student/dashboard?booking=success';
+        try {
+          if (window.top !== window.self) window.top!.location.href = url;
+          else window.location.href = url;
+        } catch(e) { window.location.href = url; }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
+
   return (
     <div className="min-h-screen bg-background pb-32">
       
@@ -282,12 +362,18 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
               <Check className="w-10 h-10" />
             </div>
             <h2 className="text-3xl font-heading font-black text-foreground">Booking Confirmed!</h2>
-            <p className="text-muted-foreground">Your seat has been successfully reserved. You can view all details in your dashboard.</p>
+            <p className="text-muted-foreground">Your seat has been successfully reserved. You are being redirected to your bookings page...</p>
             <button 
-              onClick={() => router.push('/student/dashboard')}
+              onClick={() => {
+                const url = '/student/dashboard?booking=success';
+                try {
+                  if (window.top !== window.self) window.top!.location.href = url;
+                  else window.location.href = url;
+                } catch(e) { window.location.href = url; }
+              }}
               className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity mt-4"
             >
-              Go to Dashboard
+              Go to My Bookings
             </button>
           </div>
         </div>
@@ -348,7 +434,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
 
         {/* Right Column: Sticky Booking Widget */}
         <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 booking-widget-container" id="booking-widget">
-          <div className="lg:sticky lg:top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
+          <div className="relative lg:sticky lg:top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
             <h3 className="text-2xl font-black font-heading tracking-tight text-foreground">
               {selectedPlan ? (
                 <span>₹{totalAmount.toFixed(0)}</span>
@@ -481,7 +567,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
                 <div className="mt-2">
                   <LiveSeatMap 
                     library={library}
-                    occupiedSeatIds={occupiedSeatIds}
+                    occupiedSeatIds={dynamicState.occupiedSeatIds}
                     interactive={true}
                     selectedSeat={selectedSeat}
                     compactMode={true}
@@ -575,9 +661,29 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
               </div>
             )}
 
+            {/* Dynamic Load State Overlay */}
+            {dynamicState.isLoading && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] z-20 flex items-center justify-center rounded-3xl">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+
+            {/* Live availability failed to load — block checkout instead of risking a taken seat */}
+            {dynamicState.hasError && !dynamicState.isLoading && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-medium text-destructive">
+                <span>Couldn&apos;t load live seat availability.</span>
+                <button
+                  onClick={loadDynamicData}
+                  className="shrink-0 rounded-lg bg-destructive/20 px-3 py-1.5 font-bold hover:bg-destructive/30 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
             <button 
               onClick={handleCheckout}
-              disabled={!selectedPlan || (!isFlexible && !selectedSeat) || isProcessing}
+              disabled={!selectedPlan || (!isFlexible && !selectedSeat) || isProcessing || dynamicState.isLoading || dynamicState.hasError}
               className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg mt-4"
             >
               {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
@@ -646,7 +752,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
             <div className="flex gap-4">
               <button 
                 onClick={() => {
-                  if(!studentId) {
+                  if(!dynamicState.studentId) {
                     router.push(`/login?returnUrl=/library/${library.id}`);
                     return;
                   }
@@ -658,7 +764,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
               </button>
               <button 
                 onClick={() => {
-                  if(!studentId) {
+                  if(!dynamicState.studentId) {
                     router.push(`/login?returnUrl=/library/${library.id}`);
                     return;
                   }
@@ -717,7 +823,11 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
         <div>
           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Starting from</div>
           <div className="text-lg font-black text-foreground">
-            ₹{library.plans?.length > 0 ? Math.min(...library.plans.map((p: any) => p.price)) : 0} 
+            ₹{(() => {
+              const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+              const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
+              return plansToUse?.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 0;
+            })()} 
             <span className="text-sm font-medium text-muted-foreground font-sans"> / month</span>
           </div>
         </div>
@@ -757,7 +867,7 @@ export function LibraryClient({ library, occupiedSeatIds, studentId, currentPlan
         ) : (
           <button 
             onClick={handleCheckout}
-            disabled={isProcessing}
+            disabled={isProcessing || dynamicState.isLoading || dynamicState.hasError}
             className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg flex items-center gap-2 disabled:opacity-50"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

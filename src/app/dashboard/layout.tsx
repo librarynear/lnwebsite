@@ -6,8 +6,9 @@ import { MobileNav } from "./MobileNav";
 import { logout, getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { ExternalLink, Globe } from "lucide-react";
+import { Suspense } from "react";
 
-export default async function LibrarianLayout({ children }: { children: ReactNode }) {
+async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
   const session = await getSession();
   // Defence in depth: gate the whole dashboard surface to staff. Individual
   // pages also guard, but the layout ensures no page can accidentally leak.
@@ -21,8 +22,8 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex-col shadow-lg border-r border-sidebar-border hidden md:flex">
         <div className="p-6">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
-            <span className="text-xl font-heading font-bold text-sidebar-primary">FocusDesk</span>
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+            <span className="text-xl font-heading font-bold text-sidebar-primary">FocusX</span>
           </Link>
         </div>
         
@@ -85,8 +86,8 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusDesk Logo" width={32} height={32} className="object-contain" />
-            <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusDesk</span>
+            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+            <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusX</span>
           </Link>
           <MobileNav role={session.role} />
         </header>
@@ -96,5 +97,20 @@ export default async function LibrarianLayout({ children }: { children: ReactNod
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LibrarianLayout({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
+          <p className="text-muted-foreground font-medium">Loading Dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardAuthWrapper>{children}</DashboardAuthWrapper>
+    </Suspense>
   );
 }
