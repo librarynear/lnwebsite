@@ -107,12 +107,12 @@ export async function POST(req: Request) {
     if (hasLocker && seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
       if (seat && seat.lockerPriceMonthly) {
-        expectedAmount += seat.lockerPriceMonthly * (plan.validityDays / 28);
+        expectedAmount += seat.lockerPriceMonthly;
       }
     } else if (standaloneLockerId) {
       const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
       if (locker) {
-        expectedAmount += locker.price * (plan.validityDays / 28);
+        expectedAmount += locker.price;
       }
     }
 

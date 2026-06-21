@@ -188,12 +188,12 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       
     if (seatHasMandatoryLocker) {
       hasLockerIncluded = true;
-      lockerCost = (selectedSeat.lockerPriceMonthly || 0) * (selectedPlan.validityDays / 28);
+      lockerCost = selectedSeat.lockerPriceMonthly || 0;
     } else if (selectedStandaloneLockerId) {
       hasLockerIncluded = true;
       const locker = library.standaloneLockers.find((l:any) => l.id === selectedStandaloneLockerId);
       if (locker) {
-        lockerCost = locker.price * (selectedPlan.validityDays / 28);
+        lockerCost = locker.price;
       }
     }
   }
