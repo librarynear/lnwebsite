@@ -1,11 +1,8 @@
 import Image from "next/image";
-import { getCurrentViewer } from "@/lib/auth/profile";
-import { UserMenu } from "@/components/auth/user-menu";
+import { AuthMenuClient } from "@/components/auth/auth-menu-client";
 import { IntentLink } from "@/components/intent-link";
 
-export async function Navbar() {
-  const { user, profile } = await getCurrentViewer();
-
+export function Navbar() {
   return (
     <header className="navbar-sticky sticky top-0 z-50 w-full border-b border-border bg-white transition-transform duration-300 ease-in-out">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-10">
@@ -24,32 +21,13 @@ export async function Navbar() {
         </IntentLink>
 
         <div className="flex items-center gap-2 md:gap-4 shrink-0">
-
           <IntentLink
             href="/for-owners"
             className="text-xs font-semibold rounded-full border border-primary text-primary hover:bg-primary/5 px-3 py-1.5 transition-colors md:px-4 md:text-[13px]"
           >
             List Your Library
           </IntentLink>
-          <UserMenu
-            user={
-              user
-                ? {
-                  name:
-                    profile?.full_name ??
-                    (user.user_metadata?.full_name as string | undefined) ??
-                    (user.user_metadata?.name as string | undefined) ??
-                    null,
-                  email: profile?.email ?? user.email ?? null,
-                  avatarUrl:
-                    profile?.avatar_url ??
-                    (user.user_metadata?.avatar_url as string | undefined) ??
-                    (user.user_metadata?.picture as string | undefined) ??
-                    null,
-                }
-                : null
-            }
-          />
+          <AuthMenuClient />
         </div>
       </div>
     </header>

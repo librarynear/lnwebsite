@@ -117,29 +117,8 @@ function prioritizeLibrariesWithPhotos<T extends { cover_image_url?: string | nu
   });
 }
 
-interface HomeProps {
-  searchParams: Promise<{ locality?: string; q?: string }>;
-}
-
-export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
-  const { locality, q } = await searchParams;
+export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl();
-
-  if (locality || q) {
-    return {
-      title: locality ? `Libraries in ${locality}` : "Search Libraries in Delhi",
-      description: locality
-        ? `Browse libraries in ${locality}, Delhi on LibraryNear.`
-        : `Search libraries, reading rooms, and study spaces in Delhi on LibraryNear.`,
-      alternates: {
-        canonical: siteUrl,
-      },
-      robots: {
-        index: false,
-        follow: true,
-      },
-    };
-  }
 
   return {
     title: "LibraryNear - Find the Best Study Libraries Near You in Delhi",
@@ -151,9 +130,9 @@ export async function generateMetadata({ searchParams }: HomeProps): Promise<Met
   };
 }
 
-async function HomeContent({ locality, q }: { locality?: string; q?: string; }) {
+async function HomeContent() {
   const [librariesMeasurement, topLocalitiesMeasurement] = await Promise.all([
-    measureAsync("libraries", () => getHomeLibraries(locality, q)),
+    measureAsync("libraries", () => getHomeLibraries()),
     measureAsync("topLocalities", () => getHomeTopLocalities()),
   ]);
   const libraries = prioritizeLibrariesWithPhotos(librariesMeasurement.result).map(withCardImage);
@@ -161,7 +140,7 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
   logPerf(
     "home",
     [librariesMeasurement.metric, topLocalitiesMeasurement.metric],
-    `locality="${locality ?? ""}" q="${q ?? ""}" count=${libraries.length}`,
+    `count=${libraries.length}`,
   );
 
   const siteUrl = getSiteUrl();
@@ -245,29 +224,23 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
       />
 
       {/* HERO — H1 with primary keyword */}
-      {!locality && !q && (
-        <section className="border-b border-border/50 bg-white">
-          <div className="container mx-auto px-6 py-10 md:px-10 md:py-14">
-            <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-4xl">
-              Find the Best Study Libraries Near You in Delhi
-            </h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-              Compare verified study libraries by locality, metro station, amenities, and monthly fees.
-              Shortlist your ideal study space in minutes.
-            </p>
-          </div>
-        </section>
-      )}
+      <section className="border-b border-border/50 bg-white">
+        <div className="container mx-auto px-6 py-10 md:px-10 md:py-14">
+          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-4xl">
+            Find the Best Study Libraries Near You in Delhi
+          </h1>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+            Compare verified study libraries by locality, metro station, amenities, and monthly fees.
+            Shortlist your ideal study space in minutes.
+          </p>
+        </div>
+      </section>
 
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2 md:py-3">
           <IntentLink
             href="/"
-            className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-semibold transition-colors md:px-4 md:py-2 ${
-              !locality && !q
-                ? "bg-primary text-white shadow-sm shadow-primary/20"
-                : "border border-primary/30 text-muted-foreground hover:border-primary hover:text-primary"
-            }`}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-semibold transition-colors md:px-4 md:py-2 bg-primary text-white shadow-sm shadow-primary/20`}
           >
             All Delhi
           </IntentLink>
@@ -287,17 +260,8 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
       <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-black">
-            {q
-              ? `Results for "${q}"${locality ? ` in ${locality}` : ""}`
-              : locality
-                ? `Libraries in ${locality}`
-                : `${libraries.length > 0 ? "20+" : "0"} libraries in Delhi`}
+            {libraries.length > 0 ? "20+" : "0"} libraries in Delhi
           </h2>
-          {(locality || q) && (
-            <IntentLink href="/" className="text-sm text-primary font-medium hover:underline">
-              Clear all
-            </IntentLink>
-          )}
         </div>
 
         {libraries.length === 0 ? (
@@ -361,85 +325,79 @@ async function HomeContent({ locality, q }: { locality?: string; q?: string; }) 
       </section>
 
       {/* RICH CONTENT — How It Works + FAQ (only on default homepage, not filtered views) */}
-      {!locality && !q && (
-        <>
-          {/* How It Works */}
-          <section className="border-t border-border/40 bg-slate-50/40">
-            <div className="container mx-auto px-6 py-12 md:px-10">
-              <h2 className="text-2xl font-bold text-black mb-8">How LibraryNear works</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  {
-                    icon: Search,
-                    title: "Search by locality or metro",
-                    body: "Enter your preferred area or nearest metro station to discover study libraries within easy commuting distance.",
-                  },
-                  {
-                    icon: BookOpen,
-                    title: "Compare fees, amenities & timings",
-                    body: "View detailed profiles with photos, monthly plans, seating, Wi-Fi, AC, power backup, and operating hours side by side.",
-                  },
-                  {
-                    icon: CheckCircle,
-                    title: "Shortlist & connect",
-                    body: "Save libraries to your favourites, send enquiries directly, and choose the study space that fits your routine and budget.",
-                  },
-                ].map(({ icon: Icon, title, body }) => (
-                  <div key={title} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="text-base font-bold text-black">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Browse by locality */}
-          {topLocalities.length > 0 && (
-            <section className="border-t border-border/40 bg-white">
-              <div className="container mx-auto px-6 py-12 md:px-10">
-                <h2 className="text-2xl font-bold text-black mb-6">Browse libraries by locality in Delhi</h2>
-                <div className="flex flex-wrap gap-3">
-                  {topLocalities.slice(0, 15).map((loc) => (
-                    <IntentLink
-                      key={loc}
-                      href={`/delhi/locality/${loc.toLowerCase().replace(/\s+/g, "-")}`}
-                      className="rounded-full border border-primary/25 bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:border-primary hover:text-primary"
-                    >
-                      Libraries in {loc}
-                    </IntentLink>
-                  ))}
+      {/* How It Works */}
+      <section className="border-t border-border/40 bg-slate-50/40">
+        <div className="container mx-auto px-6 py-12 md:px-10">
+          <h2 className="text-2xl font-bold text-black mb-8">How LibraryNear works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Search,
+                title: "Search by locality or metro",
+                body: "Enter your preferred area or nearest metro station to discover study libraries within easy commuting distance.",
+              },
+              {
+                icon: BookOpen,
+                title: "Compare fees, amenities & timings",
+                body: "View detailed profiles with photos, monthly plans, seating, Wi-Fi, AC, power backup, and operating hours side by side.",
+              },
+              {
+                icon: CheckCircle,
+                title: "Shortlist & connect",
+                body: "Save libraries to your favourites, send enquiries directly, and choose the study space that fits your routine and budget.",
+              },
+            ].map(({ icon: Icon, title, body }) => (
+              <div key={title} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
                 </div>
+                <h3 className="text-base font-bold text-black">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
               </div>
-            </section>
-          )}
+            ))}
+          </div>
+        </div>
+      </section>
 
-          {/* FAQ */}
-          <section className="border-t border-border/40 bg-slate-50/40">
-            <div className="container mx-auto px-6 py-12 md:px-10">
-              <h2 className="text-2xl font-bold text-black mb-8">Frequently asked questions</h2>
-              <div className="grid gap-6 md:grid-cols-2">
-                {homeFaqs.map((faq) => (
-                  <div key={faq.q} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-                    <h3 className="text-base font-bold text-black">{faq.q}</h3>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{faq.a}</p>
-                  </div>
-                ))}
-              </div>
+      {/* Browse by locality */}
+      {topLocalities.length > 0 && (
+        <section className="border-t border-border/40 bg-white">
+          <div className="container mx-auto px-6 py-12 md:px-10">
+            <h2 className="text-2xl font-bold text-black mb-6">Browse libraries by locality in Delhi</h2>
+            <div className="flex flex-wrap gap-3">
+              {topLocalities.slice(0, 15).map((loc) => (
+                <IntentLink
+                  key={loc}
+                  href={`/delhi/locality/${loc.toLowerCase().replace(/\s+/g, "-")}`}
+                  className="rounded-full border border-primary/25 bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:border-primary hover:text-primary"
+                >
+                  Libraries in {loc}
+                </IntentLink>
+              ))}
             </div>
-          </section>
-        </>
+          </div>
+        </section>
       )}
+
+      {/* FAQ */}
+      <section className="border-t border-border/40 bg-slate-50/40">
+        <div className="container mx-auto px-6 py-12 md:px-10">
+          <h2 className="text-2xl font-bold text-black mb-8">Frequently asked questions</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {homeFaqs.map((faq) => (
+              <div key={faq.q} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+                <h3 className="text-base font-bold text-black">{faq.q}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
 
-export default async function Home({ searchParams }: HomeProps) {
-  const { locality, q } = await searchParams;
-
+export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <Suspense fallback={null}>
@@ -447,7 +405,7 @@ export default async function Home({ searchParams }: HomeProps) {
       </Suspense>
 
       <Suspense fallback={<HomeSkeleton />}>
-        <HomeContent locality={locality} q={q} />
+        <HomeContent />
       </Suspense>
     </div>
   );
