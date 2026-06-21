@@ -411,57 +411,57 @@ export default function SeatsManagerPage() {
             </div>
           </div>
 
-          {/* Standalone Lockers Manager */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="font-bold text-foreground text-xl">Standalone Lockers</h2>
-                <p className="text-sm text-muted-foreground">Add lockers that aren't attached to any specific seat.</p>
-              </div>
-              <button onClick={addStandaloneLocker} className="bg-muted text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted/80 transition-colors flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Add Locker
-              </button>
-            </div>
-
-            {standaloneLockers.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground bg-muted/30 border border-dashed border-border rounded-xl">
-                No standalone lockers added. Students won't see an optional locker dropdown.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {standaloneLockers.map((locker, idx) => (
-                  <div key={locker.id} className="flex gap-4 items-center bg-background p-3 rounded-xl border border-border">
-                    <div className="font-bold text-muted-foreground w-8 text-center">{idx + 1}</div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Locker Name/Number</label>
-                      <input 
-                        type="text" 
-                        value={locker.name} 
-                        onChange={(e) => updateStandaloneLocker(locker.id, 'name', e.target.value)}
-                        placeholder="e.g. L1"
-                        className="w-full p-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Monthly Price (₹)</label>
-                      <input 
-                        type="number" 
-                        value={locker.price} 
-                        onChange={(e) => updateStandaloneLocker(locker.id, 'price', e.target.value)}
-                        placeholder="e.g. 50"
-                        className="w-full p-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
-                      />
-                    </div>
-                    <button onClick={() => removeStandaloneLocker(locker.id)} className="mt-5 p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
         </div>
+      </div>
+
+      {/* Standalone Lockers Manager */}
+      <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="font-bold text-foreground text-xl">Standalone Lockers</h2>
+            <p className="text-sm text-muted-foreground">Add lockers that aren't attached to any specific seat.</p>
+          </div>
+          <button onClick={addStandaloneLocker} className="bg-muted text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted/80 transition-colors flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Locker
+          </button>
+        </div>
+
+        {standaloneLockers.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground bg-muted/30 border border-dashed border-border rounded-xl">
+            No standalone lockers added. Students won't see an optional locker dropdown.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {standaloneLockers.map((locker, idx) => (
+              <div key={locker.id} className="flex gap-4 items-center bg-background p-3 rounded-xl border border-border">
+                <div className="font-bold text-muted-foreground w-8 text-center">{idx + 1}</div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Locker Name/Number</label>
+                  <input 
+                    type="text" 
+                    value={locker.name} 
+                    onChange={(e) => updateStandaloneLocker(locker.id, 'name', e.target.value)}
+                    placeholder="e.g. L1"
+                    className="w-full p-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Monthly Price (₹)</label>
+                  <input 
+                    type="number" 
+                    value={locker.price} 
+                    onChange={(e) => updateStandaloneLocker(locker.id, 'price', e.target.value)}
+                    placeholder="e.g. 50"
+                    className="w-full p-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                  />
+                </div>
+                <button onClick={() => removeStandaloneLocker(locker.id)} className="mt-5 p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* Preview Modal Overlay */}
