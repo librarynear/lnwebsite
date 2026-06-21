@@ -186,7 +186,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       ? selectedPlan.price - (selectedPlan.price * selectedPlan.discount / 100) 
       : selectedPlan.price;
       
-    const lockerMonths = Math.max(1, Math.round(selectedPlan.validityDays / 30));
+    const lockerMonths = Math.max(1, Math.round(selectedPlan.validityDays / 28));
 
     if (seatHasMandatoryLocker) {
       hasLockerIncluded = true;

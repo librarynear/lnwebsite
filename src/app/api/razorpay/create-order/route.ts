@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       : plan.price;
 
     let lockerCost = 0;
-    const lockerMonths = Math.max(1, Math.round(plan.validityDays / 30));
+    const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28));
 
     if (hasLocker && seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
