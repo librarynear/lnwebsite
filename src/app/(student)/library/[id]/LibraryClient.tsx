@@ -9,6 +9,8 @@ import { InquiryForm } from "./InquiryForm";
 import dynamic from "next/dynamic"
 import { auth } from "@/lib/firebase/clientApp"
 
+import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
+import { toast } from "react-hot-toast"
 // Seat map pulls in react-zoom-pan-pinch; load it only when the section renders
 // so it stays out of the initial library-page bundle.
 const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
@@ -19,7 +21,6 @@ const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
     </div>
   ),
 })
-import { toast } from "react-hot-toast"
 export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds, studentId: initialStudentId, currentPlanEndDate: initialCurrentPlanEndDate, studentPhone: initialStudentPhone, studentEmail: initialStudentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
   const router = useRouter();
   const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
@@ -27,6 +28,8 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   const [planFilter, setPlanFilter] = useState<number | null | "ALL">("ALL");
   
   const [selectedStandaloneLockerId, setSelectedStandaloneLockerId] = useState<string>("");
+  
+  const realtimeOccupiedSeatIds = useRealtimeSeats(library.id, initialOccupiedSeatIds);
   
   const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION">("ONLINE");
   
@@ -569,7 +572,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                 <div className="mt-2">
                   <LiveSeatMap 
                     library={library}
-                    occupiedSeatIds={dynamicState.occupiedSeatIds}
+                    occupiedSeatIds={realtimeOccupiedSeatIds}
                     interactive={true}
                     selectedSeat={selectedSeat}
                     compactMode={true}

@@ -122,6 +122,7 @@ export async function getSeatLayoutAndLockers() {
   if (!library) return { seats: [], standaloneLockers: [], compactSeatMap: false };
 
   return {
+    libraryId: library.id,
     seats: library.seats.map(s => ({
       id: s.name,
       x: s.gridX,

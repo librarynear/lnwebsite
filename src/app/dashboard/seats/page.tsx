@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Grip, Plus, Trash2, Save, Undo2, Loader2, Lock, X } from "lucide-react";
 import { saveSeatLayoutAndLockers, getSeatLayoutAndLockers } from "@/app/actions/seat-actions";
 import LiveSeatMap from "@/components/LiveSeatMap";
+import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 
 export default function SeatsManagerPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +17,12 @@ export default function SeatsManagerPage() {
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
   const [previewMode, setPreviewMode] = useState(false);
+  const [popupSeatId, setPopupSeatId] = useState<string | null>(null);
+  const [popupData, setPopupData] = useState<any>(null);
+  const [isPopupLoading, setIsPopupLoading] = useState(false);
+  const [libraryId, setLibraryId] = useState<string>("");
+  const [initialOccupied, setInitialOccupied] = useState<string[]>([]);
+  const realtimeOccupiedSeatIds = useRealtimeSeats(libraryId, initialOccupied);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -54,12 +61,45 @@ export default function SeatsManagerPage() {
     }
   };
 
+  const handlePreviewSeatClick = async (seat: any) => {
+    if (!realtimeOccupiedSeatIds.includes(seat.id)) return; // Only fetch if occupied
+
+    setPopupSeatId(seat.id);
+    setIsPopupLoading(true);
+    setPopupData(null);
+
+    try {
+      const res = await fetch(`/api/library/seat-details?libraryId=${libraryId}&seatId=${seat.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPopupData(data.booking);
+      } else {
+        setPopupData(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setPopupData(null);
+    } finally {
+      setIsPopupLoading(false);
+    }
+  };
+
   useEffect(() => {
     async function load() {
-      const data = await getSeatLayoutAndLockers();
+      try {
+        const data = await getSeatLayoutAndLockers();
+        if (data.libraryId) {
+          setLibraryId(data.libraryId);
+          // Fetch initial occupied seats
+          const res = await fetch(`/api/student/live-seats?libraryId=${data.libraryId}`);
+          if (res.ok) {
+            const liveData = await res.json();
+            setInitialOccupied(liveData.occupiedSeatIds || []);
+          }
+        }
       
-      let finalRows = 5;
-      let finalCols = 8;
+        let finalRows = 5;
+        let finalCols = 8;
       
       // Calculate dimensions from existing seats if any
       if (data.seats && data.seats.length > 0) {
@@ -94,7 +134,11 @@ export default function SeatsManagerPage() {
       const lockers = data.standaloneLockers || [];
       // Assuming lockers have createdAt or we just reverse to put newer at top
       setStandaloneLockers(lockers.reverse());
-      setIsLoading(false);
+      } catch (e) {
+        console.error("Failed to load seats", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, []);
@@ -194,7 +238,7 @@ export default function SeatsManagerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         {/* Left Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-6 sticky top-24 self-start">
           
           {/* Seat Properties Panel */}
           <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
@@ -438,13 +482,62 @@ export default function SeatsManagerPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto bg-muted/10">
+            <div className="p-6 overflow-y-auto bg-muted/10 relative">
               <LiveSeatMap 
                 library={{ seats: seats.map(s => ({ ...s, gridX: s.x, gridY: s.y, name: s.id })) }} 
-                occupiedSeatIds={[]} 
+                occupiedSeatIds={realtimeOccupiedSeatIds} 
                 compactMode={true}
                 interactive={true}
+                onSeatSelect={handlePreviewSeatClick}
               />
+
+              {popupSeatId && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card border border-border shadow-2xl rounded-2xl p-6 min-w-[300px] animate-in zoom-in-95 duration-200">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="font-bold text-lg text-foreground">Seat {popupSeatId}</h3>
+                    <button onClick={() => setPopupSeatId(null)} className="p-1 hover:bg-muted rounded-full">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                  
+                  {isPopupLoading ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : popupData ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 bg-muted/50 p-3 rounded-xl border border-border/50">
+                        {popupData.student.profilePhotoUrl ? (
+                          <img src={popupData.student.profilePhotoUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-border" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {popupData.student.name.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{popupData.student.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{popupData.student.phone}</p>
+                        </div>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p><span className="text-muted-foreground">Plan:</span> {popupData.plan?.name || "Custom"}</p>
+                        <p><span className="text-muted-foreground">Valid Until:</span> {new Date(popupData.endTime).toLocaleDateString()} {new Date(popupData.endTime).toLocaleTimeString()}</p>
+                      </div>
+                      <a 
+                        href={`/dashboard/students/${popupData.student.id}`} 
+                        className="block w-full text-center py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                        target="_blank"
+                      >
+                        View Profile
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="text-center text-sm text-muted-foreground py-4">
+                      Seat is currently vacant.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
