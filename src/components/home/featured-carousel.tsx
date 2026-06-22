@@ -4,8 +4,11 @@ import { motion } from "framer-motion"
 import { ArrowRight, Heart, Star, MapPin } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export function FeaturedCarousel({ libraries }: { libraries: any[] }) {
+  const router = useRouter();
+
   if (!libraries || libraries.length === 0) return null;
 
   return (
@@ -49,7 +52,9 @@ export function FeaturedCarousel({ libraries }: { libraries: any[] }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {libraries.map((lib, idx) => {
-            const minPrice = lib.plans?.length > 0 ? Math.min(...lib.plans.map((p: any) => p.price)) : 500;
+            const monthlyPlans = lib.plans?.filter((p: any) => p.validityDays >= 28) || [];
+            const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : (lib.plans || []);
+            const minPrice = plansToUse.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 500;
             const image = lib.photos?.[0] || "https://images.unsplash.com/photo-1568667256549-094345857637?w=800&q=80";
             
             return (
@@ -59,7 +64,8 @@ export function FeaturedCarousel({ libraries }: { libraries: any[] }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.15 }}
-                className="group flex flex-col gap-4 bg-white rounded-3xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 border border-border"
+                onClick={() => router.push(`/library/${lib.id}`)}
+                className="group flex flex-col gap-4 bg-white rounded-3xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 border border-border cursor-pointer"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted">
                   <Image

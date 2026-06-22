@@ -14,7 +14,8 @@ export default async function ManageStudentsPage() {
     where: { libraryId: library.id },
     include: {
       student: true,
-      plan: true
+      plan: true,
+      standaloneLocker: true
     },
     orderBy: { createdAt: 'desc' },
     take: 200 // TODO: cursor pagination in StudentsClient for very large libraries

@@ -776,10 +776,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                   const hStart = new Date(hist.startTime);
                                   const hEnd = new Date(hist.endTime);
                                   const hIsExpired = hEnd < today;
+
+                                  let displayAmount = 0;
+                                  if (hist.plan) {
+                                    const basePrice = hist.plan.discount ? (hist.plan.price - (hist.plan.price * hist.plan.discount / 100)) : hist.plan.price;
+                                    const lockerMonths = Math.max(1, Math.round(hist.plan.validityDays / 28));
+                                    let lockerCost = 0;
+                                    if (hist.seatId && hist.hasLocker) {
+                                      const seat = seats.find(s => s.id === hist.seatId);
+                                      if (seat && seat.lockerPriceMonthly) {
+                                        lockerCost = seat.lockerPriceMonthly * lockerMonths;
+                                      }
+                                    } else if (hist.standaloneLocker) {
+                                      lockerCost = hist.standaloneLocker.price * lockerMonths;
+                                    }
+                                    displayAmount = Math.round(basePrice + lockerCost);
+                                  }
+
                                   return (
                                     <div key={hist.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background shadow-sm text-sm">
                                       <div>
-                                        <div className="font-bold">{hist.plan?.name} <span className="text-xs font-normal text-muted-foreground ml-2">₹{hist.totalAmount}</span></div>
+                                        <div className="font-bold">{hist.plan?.name} <span className="text-xs font-normal text-muted-foreground ml-2">₹{displayAmount}</span></div>
                                         <div className="text-xs text-muted-foreground mt-0.5">
                                           {hStart.toLocaleDateString()} - {hEnd.toLocaleDateString()}
                                         </div>

@@ -826,14 +826,16 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       {/* Sticky Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border p-4 z-40 flex justify-between items-center shadow-[0_-4px_20px_-1px_rgba(0,0,0,0.1)]">
         <div>
-          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Starting from</div>
+          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            {selectedPlan ? "Total Price" : "Starting from"}
+          </div>
           <div className="text-lg font-black text-foreground">
-            ₹{(() => {
+            ₹{selectedPlan ? totalPrice : (() => {
               const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
               const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
               return plansToUse?.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 0;
             })()} 
-            <span className="text-sm font-medium text-muted-foreground font-sans"> / month</span>
+            {!selectedPlan && <span className="text-sm font-medium text-muted-foreground font-sans"> / month</span>}
           </div>
         </div>
         {!selectedPlan ? (
