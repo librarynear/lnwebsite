@@ -143,6 +143,35 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     }
   };
 
+  useEffect(() => {
+    try {
+      const savedCheckout = sessionStorage.getItem(`checkout_${library.id}`);
+      if (savedCheckout) {
+        const parsed = JSON.parse(savedCheckout);
+        
+        if (parsed.planId) {
+          const plan = library.plans.find((p: any) => p.id === parsed.planId);
+          if (plan) setSelectedPlan(plan);
+        }
+        
+        if (parsed.seatId) {
+          const seat = library.seats.find((s: any) => s.id === parsed.seatId);
+          if (seat) setSelectedSeat(seat);
+        }
+        
+        if (parsed.standaloneLockerId) {
+          setSelectedStandaloneLockerId(parsed.standaloneLockerId);
+        }
+
+        if (parsed.paymentMode) {
+          setPaymentMode(parsed.paymentMode);
+        }
+        
+        sessionStorage.removeItem(`checkout_${library.id}`);
+      }
+    } catch (e) {}
+  }, [library.id, library.plans, library.seats]);
+
   const handleSave = () => {
     try {
       let savedLibraries = JSON.parse(localStorage.getItem('savedLibraries') || '[]');
@@ -291,6 +320,15 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     
     const user = auth.currentUser;
     if (!dynamicState.studentId && !user) {
+      try {
+        sessionStorage.setItem(`checkout_${library.id}`, JSON.stringify({
+          planId: selectedPlan?.id,
+          seatId: selectedSeat?.id,
+          standaloneLockerId: selectedStandaloneLockerId,
+          paymentMode: paymentMode
+        }));
+      } catch (e) {}
+
       const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
       if (isEmbed) {
         // Use popup for iframes to bypass third-party cookie blocking
