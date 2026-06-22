@@ -830,7 +830,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             {selectedPlan ? "Total Price" : "Starting from"}
           </div>
           <div className="text-lg font-black text-foreground">
-            ₹{selectedPlan ? totalPrice : (() => {
+            ₹{selectedPlan ? totalAmount : (() => {
               const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
               const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
               return plansToUse?.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 0;
