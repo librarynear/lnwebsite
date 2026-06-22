@@ -3,8 +3,11 @@ import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
 
 export async function GET(request: Request) {
+  // Call getSession (which uses cookies()) outside the try-catch block 
+  // so Next.js can correctly throw its internal bailout error during static prerendering.
+  const session = await getSession();
+
   try {
-    const session = await getSession();
     if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

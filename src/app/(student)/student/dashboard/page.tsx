@@ -8,6 +8,7 @@ import PauseResumeButton from "./PauseResumeButton";
 import BookingSuccessToast from "./BookingSuccessToast";
 import LocateSeatModal from "./LocateSeatModal";
 import ExtendPlanModal from "./ExtendPlanModal";
+import { AccessQRModal } from "@/components/AccessQRModal";
 
 const formatDate = (date: Date) => date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' });
 const formatDateTime = (date: Date) => date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -44,7 +45,7 @@ export default async function StudentDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <Suspense><BookingSuccessToast /></Suspense>
+      <Suspense fallback={null}><BookingSuccessToast /></Suspense>
       <h1 className="text-4xl font-heading font-bold text-foreground mb-8">My Dashboard</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -177,8 +178,8 @@ export default async function StudentDashboardPage() {
                     </div>
 
                     {/* Action Footer */}
-                    <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} pausedAt={booking.pausedAt} />
+                    <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} />
                       <ExtendPlanModal 
                         libraryId={booking.libraryId}
                         planId={booking.planId}
@@ -193,6 +194,7 @@ export default async function StudentDashboardPage() {
                         targetSeatId={booking.seatId} 
                         isFlexible={booking.plan.type === "FLEXIBLE"} 
                       />
+                      <AccessQRModal libraryId={booking.libraryId} />
                     </div>
                   </div>
                 ))}

@@ -2,6 +2,7 @@
 
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Grid, Lock } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 interface LiveSeatMapProps {
   library: any;
@@ -9,6 +10,7 @@ interface LiveSeatMapProps {
   targetSeatId?: string | null; // Highlight specific seat
   isFlexible?: boolean; // Highlight all available seats
   interactive?: boolean; // Whether seats can be clicked
+  adminMode?: boolean; // If true, all seats are clickable to view details
   selectedSeat?: any;
   onSeatSelect?: (seat: any) => void;
   compactMode?: boolean;
@@ -20,6 +22,7 @@ export default function LiveSeatMap({
   targetSeatId,
   isFlexible,
   interactive = false,
+  adminMode = false,
   selectedSeat,
   onSeatSelect,
   compactMode = false
@@ -41,16 +44,16 @@ export default function LiveSeatMap({
     if (!interactive) {
       if (isTarget) {
         seatClass = "bg-primary border-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.5)] scale-110 z-10 ring-4 ring-primary/30";
-      } else if (isFlexible && !isOccupied && seat.type !== 'NON_RESERVABLE') {
-        seatClass = "bg-success border-success text-success-foreground shadow-sm ring-2 ring-success/30";
-      } else if (isOccupied || seat.type === 'NON_RESERVABLE') {
-        seatClass = "bg-muted border-border/50 text-muted-foreground opacity-30";
+      } else if (isFlexible && !isOccupied && seat.type !== 'NON_RESERVABLE' && !seat.hasLocker) {
+        seatClass = "bg-success border-success text-success-foreground shadow-sm ring-2 ring-success/30 cursor-pointer";
+      } else if (isOccupied || seat.type === 'NON_RESERVABLE' || (isFlexible && seat.hasLocker)) {
+        seatClass = "bg-muted border-border/50 text-muted-foreground opacity-30 cursor-pointer";
       } else {
-        seatClass = "bg-background border-border text-foreground opacity-50";
+        seatClass = "bg-background border-border text-foreground opacity-50 cursor-pointer";
       }
     } else {
       // Interactive mode (booking flow)
-      const isDisabled = isOccupied || seat.type === 'NON_RESERVABLE';
+      const isDisabled = !adminMode && (isOccupied || seat.type === 'NON_RESERVABLE');
       if (isDisabled) {
         seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed shadow-none";
       } else if (isSelected) {
@@ -64,8 +67,25 @@ export default function LiveSeatMap({
       <div 
         key={seat.id} 
         onClick={() => {
-          if (interactive && onSeatSelect && !isOccupied && seat.type !== 'NON_RESERVABLE') {
+          if (adminMode && onSeatSelect) {
             onSeatSelect(seat);
+          } else if (interactive && !isOccupied && seat.type !== 'NON_RESERVABLE') {
+            if (onSeatSelect) onSeatSelect(seat);
+          } else {
+            // Show toast notifications for seat status on click
+            if (isTarget) {
+              toast(`This is your reserved seat (${seat.name})`, { icon: '🎯' });
+            } else if (isOccupied) {
+              toast(`Seat ${seat.name} is currently occupied by a student`, { icon: '👤' });
+            } else if (seat.type === 'NON_RESERVABLE') {
+              toast(`Seat ${seat.name} is not reservable`, { icon: '🚫' });
+            } else if (isFlexible && seat.hasLocker) {
+              toast(`Seat ${seat.name} has an attached locker, so it's unavailable for flexible plans.`, { icon: '🔒' });
+            } else if (isFlexible && !seat.hasLocker) {
+              toast.success(`Seat ${seat.name} is available for you to use!`);
+            } else {
+              toast.success(`Seat ${seat.name} is available`);
+            }
           }
         }}
         className={`relative w-12 h-12 rounded-lg border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 shrink-0 ${seatClass}`}

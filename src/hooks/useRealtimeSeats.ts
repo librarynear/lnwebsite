@@ -20,8 +20,11 @@ export function useRealtimeSeats(libraryId: string, initialOccupiedSeatIds: stri
   useEffect(() => {
     if (!supabase || !libraryId) return;
 
+    // Generate a unique channel name so multiple instances on the same page don't collide
+    const uniqueChannelId = `seats-${libraryId}-${Math.random().toString(36).substring(7)}`;
+
     const channel = supabase
-      .channel(`seats-${libraryId}`)
+      .channel(uniqueChannelId)
       .on(
         'postgres_changes',
         {

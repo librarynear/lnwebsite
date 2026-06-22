@@ -488,6 +488,7 @@ export default function SeatsManagerPage() {
                 occupiedSeatIds={realtimeOccupiedSeatIds} 
                 compactMode={true}
                 interactive={true}
+                adminMode={true}
                 onSeatSelect={handlePreviewSeatClick}
               />
 
