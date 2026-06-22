@@ -15,7 +15,7 @@ export default async function PlansManagerPage() {
   if (!library) redirect("/onboarding");
 
   // Fetch plans from live Supabase DB
-  const plans = await prisma.plan.findMany({ where: { libraryId: library.id } });
+  const plans = await prisma.plan.findMany({ where: { libraryId: library.id, isActive: true } });
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

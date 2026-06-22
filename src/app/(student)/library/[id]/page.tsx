@@ -14,7 +14,7 @@ async function getCachedLibrary(id: string) {
   return await prisma.library.findUnique({
     where: { id },
     include: {
-      plans: true,
+      plans: { where: { isActive: true } },
       seats: true,
       standaloneLockers: true
     }

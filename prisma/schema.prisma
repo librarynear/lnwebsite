@@ -148,6 +148,7 @@ model Plan {
   validityDays  Int      // 1 for daily, 30 for monthly, etc.
   price         Float
   discount      Float?
+  isActive      Boolean  @default(true)
   
   bookings      Booking[]
 

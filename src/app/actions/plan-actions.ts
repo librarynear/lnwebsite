@@ -93,8 +93,9 @@ export async function deletePlan(planId: string) {
   const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (!library) throw new Error("No library found");
 
-  await prisma.plan.deleteMany({
-    where: { id: planId, libraryId: library.id }
+  await prisma.plan.updateMany({
+    where: { id: planId, libraryId: library.id },
+    data: { isActive: false }
   });
 
   await redis.del(`library:${library.id}`);
