@@ -76,7 +76,7 @@ async function LibraryList({ city, displayCity, searchParamsPromise, paramsCity 
         } : {})
       },
       include: {
-        plans: true,
+        plans: { where: { isActive: true } },
       },
       take: 60,
       orderBy: { createdAt: 'desc' }

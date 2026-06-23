@@ -21,30 +21,41 @@ export default async function LibrarianDashboardPage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   // Fetch all necessary data securely
+  const now = new Date();
   const [
     studentGroup,
     totalSeatsCount,
-    bookedSeats,
+    occupiedSeatRows,
     pendingQueries,
     recentBookings,
     checkinLogs,
     allBookings,
     pendingApprovals
   ] = await Promise.all([
+    // Active students = distinct students with a CONFIRMED plan that hasn't expired yet.
     prisma.booking.groupBy({
       by: ['studentId'],
-      where: { libraryId: library.id, status: 'CONFIRMED' }
+      where: { libraryId: library.id, status: 'CONFIRMED', endTime: { gte: now } }
     }),
     prisma.seat.count({ where: { libraryId: library.id } }),
-    prisma.booking.count({ 
-      where: { 
-        libraryId: library.id, 
+    // Occupancy = distinct seats actually held right now (excludes seatless
+    // FLEXIBLE plans and paused bookings; distinct avoids double-counting a
+    // seat that was renewed early and has two overlapping CONFIRMED rows).
+    prisma.booking.findMany({
+      where: {
+        libraryId: library.id,
         status: 'CONFIRMED',
-        startTime: { lte: new Date() },
-        endTime: { gte: new Date() }
-      } 
+        isPaused: false,
+        seatId: { not: null },
+        startTime: { lte: now },
+        endTime: { gte: now }
+      },
+      select: { seatId: true },
+      distinct: ['seatId']
     }),
-    prisma.query.count({ where: { libraryId: library.id } }),
+    // New queries in the last 7 days (the Query model has no resolve workflow,
+    // so we scope to a recent window instead of counting all-time forever).
+    prisma.query.count({ where: { libraryId: library.id, createdAt: { gte: sevenDaysAgo } } }),
     prisma.booking.findMany({
       where: { libraryId: library.id },
       include: { student: true, plan: true, seat: true },
@@ -70,7 +81,8 @@ export default async function LibrarianDashboardPage() {
 
   const studentCount = studentGroup.length;
   const totalSeats = totalSeatsCount || library.seatsAvailable || 1;
-  const occupancyPercentage = Math.round((bookedSeats / totalSeats) * 100);
+  const bookedSeats = occupiedSeatRows.length;
+  const occupancyPercentage = Math.min(100, Math.round((bookedSeats / totalSeats) * 100));
 
   const expiringBookings = allBookings.filter(b => {
     const diff = new Date(b.endTime).getTime() - new Date().getTime();
@@ -144,12 +156,12 @@ export default async function LibrarianDashboardPage() {
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Pending Queries</p>
+              <p className="text-sm font-medium text-muted-foreground">New Queries (7d)</p>
               <h3 className="text-2xl font-bold text-foreground">{pendingQueries}</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-destructive">
-            Requires immediate attention
+            Reviews &amp; complaints this week
           </div>
         </Link>
       </div>

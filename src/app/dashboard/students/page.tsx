@@ -22,7 +22,7 @@ export default async function ManageStudentsPage() {
   });
 
   const plans = await prisma.plan.findMany({
-    where: { libraryId: library.id }
+    where: { libraryId: library.id, isActive: true }
   });
 
   const logs = await prisma.checkinLog.findMany({

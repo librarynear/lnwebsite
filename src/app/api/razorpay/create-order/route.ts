@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     const plan = await prisma.plan.findUnique({ where: { id: planId } });
-    if (!plan) {
+    if (!plan || !plan.isActive) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 

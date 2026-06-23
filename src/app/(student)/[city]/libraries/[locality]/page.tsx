@@ -91,7 +91,7 @@ async function LibraryList({ city, displayCity, locality, displayLocality, searc
         } : {})
       },
       include: {
-        plans: true,
+        plans: { where: { isActive: true } },
       },
       take: 60,
       orderBy: { createdAt: 'desc' }

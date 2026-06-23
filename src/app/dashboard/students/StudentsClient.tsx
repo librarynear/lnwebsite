@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from "react"
+import { useRouter } from "next/navigation"
 import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
@@ -40,6 +41,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 
 export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [] }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[] }) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -130,6 +132,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       return;
     }
     if (addingStudent) return;
+    const chosenPlan = plans.find(p => p.id === selectedPlanId);
+    const chosenSeat = formData.get("seatId");
+    if (chosenPlan?.type === 'FIXED' && (!chosenSeat || chosenSeat === "NONE")) {
+      toast.error("Please select a seat for this reserved (fixed-seat) plan.");
+      return;
+    }
     setAddingStudent(true);
     try {
       const result = await addStudentWithBooking(formData)
@@ -140,6 +148,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       toast.success("Student enrolled successfully");
       setIsOpen(false)
       setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+      router.refresh();
     } catch (e: any) {
       toast.error(e.message || "Failed to enroll student");
     } finally {
@@ -154,6 +163,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       await updateBookingSeat(seatChangeBookingId, selectedNewSeatId === "NONE" ? null : selectedNewSeatId);
       toast.success("Seat updated successfully");
       setSeatChangeBookingId(null);
+      router.refresh();
     } catch(e: any) {
       toast.error(e.message || "Failed to update seat");
     } finally {
@@ -338,18 +348,18 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
               {plans.find(p => p.id === selectedPlanId)?.type === 'FIXED' && (
                 <div className="space-y-2">
-                  <Label htmlFor="seatId">Assign Seat (Optional)</Label>
+                  <Label htmlFor="seatId">Assign Seat *</Label>
                   <Select name="seatId">
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="No seat specified (Random/Any)" />
+                      <SelectValue placeholder="Select a seat" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NONE">No Seat</SelectItem>
                       {seats.map(s => (
                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
                 </div>
               )}
 
@@ -589,6 +599,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               setLoadingId(booking.student.id);
                               await assignUniqueIdToStudent(booking.student.id);
                               setLoadingId(null);
+                              router.refresh();
                             }}
                           >
                             {loadingId === booking.student.id ? "Generating..." : "Generate ID"}
@@ -672,7 +683,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                         } else {
                                           toast.success(`Plan resumed! Pause duration was < 7 days, so plan was not extended.`);
                                         }
-                                        window.location.reload();
+                                        router.refresh();
                                       } catch (e: any) {
                                         toast.error(e.message || "Failed to resume");
                                       }
@@ -689,7 +700,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                       try {
                                         await pauseBooking(booking.id);
                                         toast.success("Plan paused successfully");
-                                        window.location.reload();
+                                        router.refresh();
                                       } catch (e: any) {
                                         toast.error(e.message || "Failed to pause");
                                       }
@@ -744,7 +755,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                       try {
                                         await unrevokeBooking(booking.id);
                                         toast.success("Student un-revoked successfully");
-                                        window.location.reload();
+                                        router.refresh();
                                       } catch (e: any) {
                                         toast.error(e.message || "Failed to un-revoke");
                                       }
@@ -882,21 +893,21 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           </DialogHeader>
           <div className="py-4 space-y-4">
             <Label>Select New Seat</Label>
-            <Select value={selectedNewSeatId || "NONE"} onValueChange={setSelectedNewSeatId}>
+            <Select value={selectedNewSeatId && selectedNewSeatId !== "NONE" ? selectedNewSeatId : undefined} onValueChange={setSelectedNewSeatId}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a seat" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NONE">No Seat (Unassigned)</SelectItem>
                 {seats.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">Reserved (fixed-seat) plans require a seat.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSeatChangeBookingId(null)}>Cancel</Button>
-            <Button onClick={handleSeatChange} disabled={loadingId === seatChangeBookingId}>
+            <Button onClick={handleSeatChange} disabled={loadingId === seatChangeBookingId || !selectedNewSeatId || selectedNewSeatId === "NONE"}>
               {loadingId === seatChangeBookingId ? "Updating..." : "Update Seat"}
             </Button>
           </DialogFooter>
@@ -921,6 +932,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     await approveReceptionPayment(paymentApprovalId, "CASH");
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
+                    router.refresh();
                   } catch (e: any) {
                     toast.error(e.message || "Failed to approve payment");
                   } finally {
@@ -941,6 +953,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     await approveReceptionPayment(paymentApprovalId, "ONLINE");
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
+                    router.refresh();
                   } catch (e: any) {
                     toast.error(e.message || "Failed to approve payment");
                   } finally {
@@ -1208,7 +1221,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 try {
                   await revokeBooking(revokeBookingId!, revokeReason.trim());
                   toast.success("Access revoked");
-                  window.location.reload();
+                  router.refresh();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to revoke");
                 }
@@ -1324,20 +1337,20 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               </div>
             )}
 
-            {plans.find(p => p.id === renewSelectedPlanId)?.type === 'FIXED' && (
+            {renewTargetPlan?.type === 'FIXED' && (
               <div className="space-y-2">
-                <Label>Assign Seat (Optional)</Label>
-                <Select value={renewSelectedSeatId || "NONE"} onValueChange={(val) => setRenewSelectedSeatId(val)}>
+                <Label>Assign Seat *</Label>
+                <Select value={renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined} onValueChange={(val) => setRenewSelectedSeatId(val)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="No seat specified" />
+                    <SelectValue placeholder="Select a seat" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NONE">No Seat (Unassigned)</SelectItem>
                     {seats.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
               </div>
             )}
           </div>
@@ -1346,16 +1359,21 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <Button 
               onClick={async () => {
                 if (!renewModalBookingId) return;
+                if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
+                  toast.error("Please select a seat for this reserved (fixed-seat) plan.");
+                  return;
+                }
                 setRenewLoadingMethod('CASH');
                 try {
                   await renewPlan(
                     renewModalBookingId, 
                     "CASH", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
-                    renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
+                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined
                   );
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
-                  window.location.reload();
+                  setRenewModalBookingId(null);
+                  router.refresh();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to renew");
                 } finally {
@@ -1370,16 +1388,21 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <Button 
               onClick={async () => {
                 if (!renewModalBookingId) return;
+                if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
+                  toast.error("Please select a seat for this reserved (fixed-seat) plan.");
+                  return;
+                }
                 setRenewLoadingMethod('ONLINE');
                 try {
                   await renewPlan(
                     renewModalBookingId, 
                     "ONLINE", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
-                    renewPlanMode === 'CHANGE' ? renewSelectedSeatId! : undefined
+                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined
                   );
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
-                  window.location.reload();
+                  setRenewModalBookingId(null);
+                  router.refresh();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to renew");
                 } finally {

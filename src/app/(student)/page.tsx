@@ -21,7 +21,7 @@ async function getFeaturedLibraries() {
       kycStatus: "APPROVED",
     },
     include: {
-      plans: true,
+      plans: { where: { isActive: true } },
     },
     orderBy: {
       createdAt: 'desc'

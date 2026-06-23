@@ -93,10 +93,19 @@ export async function deletePlan(planId: string) {
   const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (!library) throw new Error("No library found");
 
-  await prisma.plan.updateMany({
-    where: { id: planId, libraryId: library.id },
-    data: { isActive: false }
-  });
+  // Only operate on a plan that belongs to this library.
+  const plan = await prisma.plan.findFirst({ where: { id: planId, libraryId: library.id } });
+  if (!plan) throw new Error("Plan not found");
+
+  // Hard-deleting a plan that has bookings would violate the Booking->Plan
+  // foreign key and erase financial history, so soft-delete it (hidden from new
+  // bookings, row kept). Plans that were never booked are safe to remove fully.
+  const bookingCount = await prisma.booking.count({ where: { planId } });
+  if (bookingCount > 0) {
+    await prisma.plan.update({ where: { id: planId }, data: { isActive: false } });
+  } else {
+    await prisma.plan.delete({ where: { id: planId } });
+  }
 
   await redis.del(`library:${library.id}`);
   updateTag(`library:${library.id}`);

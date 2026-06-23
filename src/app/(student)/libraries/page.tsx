@@ -39,7 +39,7 @@ export default async function LibrariesPage(props: any) {
         } : {})
       },
       include: {
-        plans: true,
+        plans: { where: { isActive: true } },
       },
       take: 60,
       orderBy: { createdAt: 'desc' }

@@ -95,7 +95,7 @@ export async function updateBookingSeat(bookingId: string, seatId: string | null
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
-    include: { library: true }
+    include: { library: true, plan: true }
   })
 
   if (!booking) throw new Error("Booking not found")
@@ -104,10 +104,40 @@ export async function updateBookingSeat(bookingId: string, seatId: string | null
     throw new Error("Unauthorized")
   }
 
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data: { seatId }
-  })
+  // Reserved (fixed-seat) plans must always have a seat.
+  if (booking.plan.type !== 'FLEXIBLE' && !seatId) {
+    throw new Error("A seat is required for reserved (fixed-seat) plans.")
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (seatId) {
+        // The target seat must belong to this booking's library.
+        const seat = await tx.seat.findFirst({ where: { id: seatId, libraryId: booking.libraryId } })
+        if (!seat) throw new Error("Invalid seat")
+
+        // Reject moving onto a seat already held for an overlapping period.
+        const clash = await tx.booking.findFirst({
+          where: {
+            seatId,
+            id: { not: bookingId },
+            status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+            startTime: { lt: booking.endTime },
+            endTime: { gt: booking.startTime },
+          },
+        })
+        if (clash) throw new Error("SEAT_TAKEN")
+      }
+
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: { seatId },
+      })
+    }, { isolationLevel: 'Serializable' })
+  } catch (e: any) {
+    if (e.message === 'SEAT_TAKEN') throw new Error("That seat is already booked for this period.")
+    throw e
+  }
 
   revalidatePath("/dashboard/students")
   return { success: true }
