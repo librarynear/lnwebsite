@@ -13,6 +13,7 @@ import { LibraryGridSkeleton } from "@/components/library-listing-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSiteUrl } from "@/lib/site-url";
 import { sanitizeSearchTerm } from "@/lib/postgrest";
+import { EmergencyGuidesHero } from "@/components/emergency-guides-hero";
 
 export const revalidate = 120;
 
@@ -223,18 +224,7 @@ async function HomeContent() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
       />
 
-      {/* HERO — H1 with primary keyword */}
-      <section className="border-b border-border/50 bg-white">
-        <div className="container mx-auto px-6 py-10 md:px-10 md:py-14">
-          <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-black md:text-4xl">
-            Find the Best Study Libraries Near You in Delhi
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-            Compare verified study libraries by locality, metro station, amenities, and monthly fees.
-            Shortlist your ideal study space in minutes.
-          </p>
-        </div>
-      </section>
+      <EmergencyGuidesHero />
 
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2 md:py-3">
