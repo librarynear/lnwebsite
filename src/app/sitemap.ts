@@ -1,6 +1,7 @@
 import { supabaseServer } from "@/lib/supabase-server";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
+import { client } from "@/sanity/lib/client";
 
 export const revalidate = 86400; // Regenerate once per day
 
@@ -10,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static routes
   const statics: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: "daily", priority: 1 },
+    { url: `${base}/blog`, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/for-owners`, changeFrequency: "weekly", priority: 0.7 },
@@ -53,5 +55,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  return [...statics, ...cityPages, ...libraryPages, ...localityPages];
+  // Blog pages
+  const posts = await client.fetch(
+    `*[_type == "post" && defined(slug.current)] { slug, _updatedAt, publishedAt }`
+  );
+  
+  const blogPages: MetadataRoute.Sitemap = posts.map((post: any) => ({
+    url: `${base}/blog/${post.slug.current}`,
+    lastModified: new Date(post.publishedAt || post._updatedAt),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...statics, ...cityPages, ...libraryPages, ...localityPages, ...blogPages];
 }
