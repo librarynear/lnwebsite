@@ -29,8 +29,8 @@ export function AccessQRModal({ libraryId }: { libraryId: string }) {
         const res = await generateEntryQR(libraryId);
         if (res.error) {
           setError(res.error);
-        } else if (res.qrData) {
-          setQrData(res.qrData);
+        } else if (res.qrPayload) {
+          setQrData(res.qrPayload);
         }
       } catch (err) {
         setError("Failed to generate secure QR");
