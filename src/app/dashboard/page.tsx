@@ -29,9 +29,10 @@ export default async function LibrarianDashboardPage() {
     occupiedSeatRows,
     pendingQueries,
     recentBookings,
-    checkinLogs,
+    checkinLogsRaw,
     allBookings,
-    pendingApprovals
+    pendingApprovals,
+    entryLogs
   ] = await Promise.all([
     // Active students = distinct students with a CONFIRMED plan that hasn't expired yet.
     prisma.booking.groupBy({
@@ -77,8 +78,28 @@ export default async function LibrarianDashboardPage() {
       where: { libraryId: library.id, status: 'PENDING_PAYMENT' },
       include: { student: true, plan: true, seat: true },
       orderBy: { createdAt: 'desc' }
+    }),
+    prisma.entryLog.findMany({
+      where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo }, status: "SUCCESS" },
+      include: { user: { select: { name: true, phone: true } } },
+      orderBy: { timestamp: 'desc' }
     })
   ]);
+
+  const checkinLogs = [
+    ...checkinLogsRaw.map(log => ({
+      id: log.id,
+      student: log.student,
+      status: log.status,
+      timestamp: log.timestamp
+    })),
+    ...entryLogs.map(log => ({
+      id: log.id,
+      student: log.user || { name: 'Unknown', phone: '' },
+      status: 'CHECK_IN' as const,
+      timestamp: log.timestamp
+    }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const studentCount = studentGroup.length;
   const totalSeats = totalSeatsCount || library.seatsAvailable || 1;

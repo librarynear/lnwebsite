@@ -25,12 +25,46 @@ export default async function ManageStudentsPage() {
     where: { libraryId: library.id, isActive: true }
   });
 
-  const logs = await prisma.checkinLog.findMany({
+  const checkinLogsRaw = await prisma.checkinLog.findMany({
     where: { libraryId: library.id },
     include: { student: true, relay: true },
     orderBy: { timestamp: 'desc' },
     take: 50
   });
+
+  const entryLogsRaw = await prisma.entryLog.findMany({
+    where: { libraryId: library.id, status: 'SUCCESS' },
+    include: { user: true },
+    orderBy: { timestamp: 'desc' },
+    take: 50
+  });
+
+  const logs = [
+    ...checkinLogsRaw.map(log => ({
+      id: log.id,
+      studentId: log.studentId,
+      libraryId: log.libraryId,
+      relayId: log.relayId,
+      status: log.status,
+      timestamp: log.timestamp,
+      isOfflineSync: log.isOfflineSync,
+      createdAt: log.createdAt,
+      student: log.student,
+      relay: log.relay
+    })),
+    ...entryLogsRaw.map(log => ({
+      id: log.id,
+      studentId: log.userId || '',
+      libraryId: log.libraryId,
+      relayId: log.doorId,
+      status: 'CHECK_IN' as const,
+      timestamp: log.timestamp,
+      isOfflineSync: false,
+      createdAt: log.createdAt,
+      student: log.user || { id: '', name: 'Unknown', email: '', phone: '', authId: '', role: 'STUDENT' as const, employerLibraryId: null, isKycVerified: false, kycStatus: 'PENDING', createdAt: log.timestamp, updatedAt: log.timestamp },
+      relay: null
+    }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 50);
 
   const relays = await prisma.relay.findMany({
     where: { libraryId: library.id }
