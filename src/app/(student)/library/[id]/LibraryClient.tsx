@@ -536,14 +536,19 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                     >
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-bold text-foreground">{plan.name}</span>
-                        <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
+                        <div className="flex items-center gap-2">
+                          {plan.discount > 0 ? (
+                            <span className="text-xs text-muted-foreground line-through">₹{plan.price.toFixed(0)}</span>
+                          ) : null}
+                          <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">{plan.validityDays} Days • {plan.durationHours ? `${plan.durationHours} hr access` : 'Full Day access'}</div>
-                      {plan.discount && plan.discount > 0 && (
+                      {plan.discount > 0 ? (
                         <div className="mt-2 text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded w-max">
                           {plan.discount}% OFF
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )
                 })}
@@ -583,14 +588,19 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                         >
                           <div className="flex justify-between items-center mb-1">
                             <span className="font-bold text-foreground">{plan.name}</span>
-                            <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
+                            <div className="flex items-center gap-2">
+                              {plan.discount > 0 ? (
+                                <span className="text-xs text-muted-foreground line-through">₹{plan.price.toFixed(0)}</span>
+                              ) : null}
+                              <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
+                            </div>
                           </div>
                           <div className="text-xs text-muted-foreground">{plan.validityDays} Days • {plan.durationHours ? `${plan.durationHours} hr access` : 'Full Day access'}</div>
-                          {plan.discount && plan.discount > 0 && (
+                          {plan.discount > 0 ? (
                             <div className="mt-2 text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded w-max">
                               {plan.discount}% OFF
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       )
                     })}
