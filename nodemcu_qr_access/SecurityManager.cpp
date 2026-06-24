@@ -123,11 +123,30 @@ struct PemDecodeCtx {
     bool in_pkey;
 };
 
-void pem_push(void *dest_ctx, const void *src, size_t len) {
-    PemDecodeCtx *ctx = (PemDecodeCtx *)dest_ctx;
-    if (ctx->in_pkey) {
-        br_skey_decoder_push(&(ctx->skey_ctx), src, len);
+size_t decodeBase64(const char* input, unsigned char* output) {
+    static const unsigned char b64_table[256] = {
+        0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+        0,0,0,0, 0,0,0,0, 0,0,0,62,0,0,0,63,52,53,54,55,56,57,58,59,60,61,0,0,
+        0,0,0,0, 0,0,1,2, 3,4,5,6, 7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,
+        23,24,25,0,0,0,0,0, 0,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,
+        43,44,45,46,47,48,49,50,51,0,0,0,0,0
+    };
+    
+    size_t in_len = strlen(input);
+    size_t out_len = 0;
+    int val = 0, valb = -8;
+    for (size_t i = 0; i < in_len; i++) {
+        unsigned char c = input[i];
+        if (c == '=') break;
+        if (c < 43 || c > 122) continue;
+        val = (val << 6) + b64_table[c];
+        valb += 6;
+        if (valb >= 0) {
+            output[out_len++] = (val >> valb) & 0xFF;
+            valb -= 8;
+        }
     }
+    return out_len;
 }
 
 bool SecurityManager::verifyECDSASignature(const String& payloadStr, const String& signatureBase64) {
@@ -139,8 +158,9 @@ bool SecurityManager::verifyECDSASignature(const String& payloadStr, const Strin
     br_sha256_out(&hash_ctx, hash);
 
     // 2. Decode the Base64 signature
-    String decodedSig = base64::decode(signatureBase64);
-    if (decodedSig.length() == 0) {
+    unsigned char decodedSig[128];
+    size_t decodedSigLen = decodeBase64(signatureBase64.c_str(), decodedSig);
+    if (decodedSigLen == 0) {
         Serial.println("Failed to decode base64 signature");
         return false;
     }
@@ -160,9 +180,9 @@ bool SecurityManager::verifyECDSASignature(const String& payloadStr, const Strin
         return false;
     }
 
-    // 4. Verify signature
+    // 4. Verify signature using i15 implementation
     const br_ec_impl* ec_impl = br_ec_get_default();
-    int verify_result = br_ecdsa_vrfy_asn1(ec_impl, hash, sizeof(hash), ec_key, (const void*)decodedSig.c_str(), decodedSig.length());
+    int verify_result = br_ecdsa_i15_vrfy_asn1(ec_impl, hash, sizeof(hash), ec_key, decodedSig, decodedSigLen);
 
     delete pubKey;
     return verify_result == 1;
