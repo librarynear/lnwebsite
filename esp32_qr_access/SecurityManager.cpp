@@ -16,6 +16,7 @@ void SecurityManager::init() {
 QRPayload SecurityManager::processQR(const String& rawJson) {
     QRPayload result;
     result.isValid = false;
+    result.failReason = "Unknown Error";
 
     // 1. Parse JSON
     StaticJsonDocument<512> doc;
@@ -24,11 +25,15 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     if (error) {
         Serial.print("JSON parse failed: ");
         Serial.println(error.c_str());
+        result.failReason = "Invalid JSON";
+        result.uid = "UNKNOWN";
         return result;
     }
 
     if (!doc.containsKey("uid") || !doc.containsKey("iat") || !doc.containsKey("qid") || !doc.containsKey("sig")) {
         Serial.println("Missing required QR fields");
+        result.failReason = "Missing Fields";
+        result.uid = doc.containsKey("uid") ? doc["uid"].as<String>() : "UNKNOWN";
         return result;
     }
 
@@ -37,6 +42,12 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     result.qid = doc["qid"].as<String>();
     result.doorId = doc.containsKey("door") ? doc["door"].as<String>() : String(DOOR_ID);
     result.sig = doc["sig"].as<String>();
+    
+    // Optional provisioning fields
+    if (doc.containsKey("cmd")) result.cmd = doc["cmd"].as<String>();
+    if (doc.containsKey("ssid")) result.ssid = doc["ssid"].as<String>();
+    if (doc.containsKey("pass")) result.pass = doc["pass"].as<String>();
+    if (doc.containsKey("libId")) result.libId = doc["libId"].as<String>();
 
     // 2. Verify Time validity
     time_t now;
@@ -45,20 +56,32 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     // Check if QR is too old (or from the future by a large margin)
     if (now > result.iat + QR_VALIDITY_SECONDS) {
         Serial.println("QR Code Expired!");
+        result.failReason = "Expired QR";
         return result;
     }
     
     if (now < result.iat - 60) {
         // NTP drift allowance
         Serial.println("QR Code is from the future? Check NTP sync.");
+        result.failReason = "Future Timestamp (NTP Out of Sync?)";
         return result;
     }
 
     // 3. Verify ECDSA Signature
-    // Payload to verify: uid + iat + qid
     String payloadStr = result.uid + String(result.iat) + result.qid;
+    
+    // If it's a provisioning command, the signature covers the extra fields
+    if (doc.containsKey("cmd") && doc["cmd"].as<String>() == "PROVISION") {
+        if (!doc.containsKey("ssid") || !doc.containsKey("pass") || !doc.containsKey("libId")) {
+            result.failReason = "Provisioning QR Missing Fields";
+            return result;
+        }
+        payloadStr += doc["ssid"].as<String>() + doc["pass"].as<String>() + doc["libId"].as<String>();
+    }
+
     if (!verifyECDSASignature(payloadStr, result.sig)) {
         Serial.println("Signature verification failed!");
+        result.failReason = "Invalid Signature (Forged/Tampered)";
         return result;
     }
 
@@ -66,10 +89,12 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     time_t expiry = result.iat + QR_VALIDITY_SECONDS;
     if (!checkReplay(result.qid, expiry)) {
         Serial.println("Replay attack detected!");
+        result.failReason = "Replay Attack (Already Scanned)";
         return result;
     }
 
     result.isValid = true;
+    result.failReason = ""; // Clear error on success
     return result;
 }
 

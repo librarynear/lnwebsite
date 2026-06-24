@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include <WiFiManager.h>
+#include <WiFi.h>
+#include <Preferences.h>
 #include "config.h"
 #include "SecurityManager.h"
 #include "LogManager.h"
@@ -11,6 +12,7 @@ HardwareSerial ScannerSerial(2);
 SecurityManager securityManager;
 LogManager logManager;
 HardwareController hwController;
+Preferences preferences;
 
 String qrBuffer = "";
 unsigned long lastCachePurge = 0;
@@ -28,30 +30,46 @@ void setup() {
     // Initialize Scanner Serial
     ScannerSerial.begin(9600, SERIAL_8N1, QR_RX_PIN, QR_TX_PIN);
 
-    // Connect to WiFi using WiFiManager
-    WiFiManager wm;
-    // Set a timeout so it doesn't block forever if power is lost and router is down
-    wm.setConfigPortalTimeout(180); 
-    
-    Serial.println("Connecting to WiFi...");
-    bool connected = wm.autoConnect("FocusDesk_Door_AP");
-    
-    if (!connected) {
-        Serial.println("Failed to connect to WiFi and hit timeout. Operating in OFFLINE mode.");
+    // Read WiFi credentials from NVS
+    preferences.begin("library-app", false);
+    String ssid = preferences.getString("ssid", "");
+    String password = preferences.getString("password", "");
+    String libId = preferences.getString("libId", "");
+    preferences.end();
+
+    if (ssid == "") {
+        Serial.println("No WiFi credentials found in NVS. Waiting for Provisioning QR...");
     } else {
-        Serial.println("Connected to WiFi!");
-        Serial.print("IP Address: ");
-        Serial.println(WiFi.localIP());
+        Serial.print("Connecting to WiFi: ");
+        Serial.println(ssid);
         
-        // Sync NTP Time if connected
-        Serial.println("Syncing NTP Time...");
-        configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+        WiFi.begin(ssid.c_str(), password.c_str());
         
-        struct tm timeinfo;
-        if(!getLocalTime(&timeinfo)){
-            Serial.println("Failed to obtain time");
+        // Wait up to 30 seconds for connection
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+            delay(1000);
+            Serial.print(".");
+            attempts++;
+        }
+        
+        if (WiFi.status() != WL_CONNECTED) {
+            Serial.println("\nFailed to connect to WiFi. Operating in OFFLINE mode.");
         } else {
-            Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
+            Serial.println("\nConnected to WiFi!");
+            Serial.print("IP Address: ");
+            Serial.println(WiFi.localIP());
+            
+            // Sync NTP Time if connected
+            Serial.println("Syncing NTP Time...");
+            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+            
+            struct tm timeinfo;
+            if(!getLocalTime(&timeinfo)){
+                Serial.println("Failed to obtain time");
+            } else {
+                Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
+            }
         }
     }
 }
@@ -72,13 +90,33 @@ void loop() {
                 QRPayload result = securityManager.processQR(qrBuffer);
                 
                 if (result.isValid) {
-                    Serial.println("QR Valid -> Access Granted");
-                    hwController.unlockDoor();
-                    
-                    // Add to log queue (handles offline automatically)
-                    logManager.addLog(result.uid, result.doorId, result.iat);
+                    if (result.cmd == "PROVISION") {
+                        Serial.println("PROVISION COMMAND RECEIVED.");
+                        
+                        preferences.begin("library-app", false);
+                        preferences.putString("ssid", result.ssid);
+                        preferences.putString("password", result.pass);
+                        preferences.putString("libId", result.libId);
+                        preferences.end();
+                        
+                        Serial.println("Credentials saved to NVS. Restarting...");
+                        delay(1000);
+                        ESP.restart();
+                    } else {
+                        Serial.println("QR Valid -> Access Granted");
+                        hwController.unlockDoor();
+                        
+                        // Add to log queue
+                        logManager.addLog(result.uid, result.doorId, result.iat, "SUCCESS", "");
+                    }
                 } else {
-                    Serial.println("QR Invalid -> Access Denied");
+                    Serial.print("QR Invalid -> Access Denied. Reason: ");
+                    Serial.println(result.failReason);
+                    
+                    if (result.uid != "UNKNOWN") {
+                        // Log the failure to backend so dashboard can flag it
+                        logManager.addLog(result.uid, result.doorId, result.iat, "DENIED", result.failReason);
+                    }
                 }
                 
                 qrBuffer = ""; // Reset buffer

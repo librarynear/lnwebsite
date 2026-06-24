@@ -16,6 +16,13 @@ struct QRPayload {
     String doorId;
     String sig;
     bool isValid;
+    String failReason;
+    
+    // Provisioning fields
+    String cmd;
+    String ssid;
+    String pass;
+    String libId;
 };
 
 class SecurityManager {

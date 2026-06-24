@@ -13,27 +13,23 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 type LiveLog = {
   id: string;
-  userId: string;
+  userId: string | null;
   libraryId: string;
   doorId: string;
   timestamp: string;
-  userName?: string; // We'll hydrate this if needed
+  status: string;
+  reason?: string | null;
 };
 
 export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
   const [recentLogs, setRecentLogs] = useState<LiveLog[]>([]);
+  const [failureCounts, setFailureCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseKey) {
       console.warn("Supabase Realtime not configured. Missing ENV vars.");
       return;
     }
-
-    // Fetch initial logs (optional, or just wait for new ones)
-    const fetchInitialLogs = async () => {
-      // In a real app, you might fetch the last 5 logs from your Next.js API here
-    };
-    fetchInitialLogs();
 
     // Subscribe to INSERT events on the EntryLog table
     const channel = supabase
@@ -48,7 +44,20 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
         },
         (payload) => {
           const newLog = payload.new as LiveLog;
-          setRecentLogs((prev) => [newLog, ...prev].slice(0, 10)); // Keep last 10
+          
+          setRecentLogs((prev) => [newLog, ...prev].slice(0, 15)); // Keep last 15
+
+          // Update failure counts for flagging
+          if (newLog.userId) {
+            setFailureCounts((prev) => {
+              const currentCount = prev[newLog.userId!] || 0;
+              if (newLog.status === "DENIED") {
+                return { ...prev, [newLog.userId!]: currentCount + 1 };
+              } else {
+                return { ...prev, [newLog.userId!]: 0 }; // Reset on success
+              }
+            });
+          }
         }
       )
       .subscribe();
@@ -75,19 +84,40 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
         <p className="text-sm text-muted-foreground italic">Waiting for new door scans...</p>
       ) : (
         <ul className="space-y-3">
-          {recentLogs.map((log) => (
-            <li key={log.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border/50 transition-all duration-300 animate-in fade-in slide-in-from-top-2">
-              <div className="flex flex-col">
-                <span className="font-medium text-sm text-foreground">
-                  User ID: <span className="font-mono text-xs">{log.userId}</span>
+          {recentLogs.map((log) => {
+            const isDenied = log.status === "DENIED";
+            const consecutiveFailures = log.userId ? (failureCounts[log.userId] || 0) : 0;
+            const showWarning = consecutiveFailures >= 3;
+
+            return (
+              <li key={log.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${isDenied ? 'bg-destructive/10 border-destructive/20' : 'bg-success/10 border-success/20'}`}>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-foreground">
+                      User: <span className="font-mono text-xs">{log.userId || "UNKNOWN"}</span>
+                    </span>
+                    {isDenied && (
+                      <span className="text-[10px] uppercase font-black tracking-widest bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded">
+                        Denied
+                      </span>
+                    )}
+                    {showWarning && isDenied && (
+                      <span className="text-[10px] uppercase font-black tracking-widest bg-warning text-warning-foreground px-1.5 py-0.5 rounded animate-pulse">
+                        Continuous Failures ({consecutiveFailures})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-0.5">
+                    Door: {log.doorId || "Main Gate"}
+                    {isDenied && log.reason && ` • Reason: ${log.reason}`}
+                  </span>
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-md ${isDenied ? 'text-destructive' : 'text-success'}`}>
+                  {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
-                <span className="text-xs text-muted-foreground">Door: {log.doorId || "Main Gate"}</span>
-              </div>
-              <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-md">
-                {new Date(log.timestamp).toLocaleTimeString()}
-              </span>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

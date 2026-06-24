@@ -18,11 +18,12 @@ export async function POST(request: Request) {
 
     // Parse the logs. The ESP32 sends: [{ uid: "...", doorId: "...", timestamp: 1718790000 }]
     const insertData = logs.map((log: any) => ({
-      userId: log.uid,
-      libraryId: libraryId,
-      doorId: log.doorId,
-      // Convert Unix epoch to ISO-8601 Date
-      timestamp: new Date(log.timestamp * 1000)
+      libraryId: body.libraryId,
+      userId: log.uid !== "UNKNOWN" && log.uid ? log.uid : null,
+      doorId: log.doorId || "MAIN_GATE",
+      timestamp: new Date(log.timestamp * 1000),
+      status: log.status || "SUCCESS",
+      reason: log.reason || null
     }));
 
     // Bulk insert the logs

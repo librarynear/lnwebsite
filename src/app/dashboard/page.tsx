@@ -8,6 +8,7 @@ import { DashboardAttendance } from "./DashboardAttendance";
 import { DashboardPendingApprovals } from "./DashboardPendingApprovals";
 
 import { LiveEntryLogs } from "@/components/LiveEntryLogs";
+import { StudentsInsideWidget } from "@/components/StudentsInsideWidget";
 
 export default async function LibrarianDashboardPage() {
   const session = await getSession();
@@ -89,6 +90,22 @@ export default async function LibrarianDashboardPage() {
     return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000 && b.status === 'CONFIRMED';
   });
 
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const todayEntryLogs = await prisma.entryLog.findMany({
+    where: { libraryId: library.id, timestamp: { gte: startOfDay }, status: "SUCCESS" },
+    include: { user: true }
+  });
+
+  const studentsInsideMap = new Map();
+  todayEntryLogs.forEach(log => {
+    if (log.user) {
+      studentsInsideMap.set(log.userId, log.user);
+    }
+  });
+  const studentsInside = Array.from(studentsInsideMap.values());
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -104,7 +121,9 @@ export default async function LibrarianDashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StudentsInsideWidget students={studentsInside} />
+
         <Link href="/dashboard/students" className="bg-card p-6 rounded-2xl border border-border shadow-sm block hover:border-primary/50 transition-colors">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-primary/10 rounded-xl text-primary">

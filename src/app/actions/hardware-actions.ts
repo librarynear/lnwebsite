@@ -73,10 +73,70 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       sig: signature
     };
 
-    return { success: true, qrData: JSON.stringify(qrData) };
+    return { success: true, qrPayload: JSON.stringify(qrData) };
 
   } catch (error: any) {
     console.error("Error signing QR:", error);
     return { error: "Failed to generate secure QR code" };
+  }
+}
+
+export async function generateProvisioningQR(libraryId: string, ssid: string, pass: string) {
+  const session = await getSession();
+  if (!session || !session.userId) {
+    return { error: "Unauthorized" };
+  }
+
+  // Verify the user is the librarian or admin of this library
+  const library = await prisma.library.findFirst({
+    where: {
+      id: libraryId,
+      OR: [
+        { librarianId: session.userId },
+        { staff: { some: { id: session.userId } } }
+      ]
+    }
+  });
+
+  if (!library) {
+    return { error: "Unauthorized: You do not have permission to provision hardware for this library." };
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const qid = crypto.randomUUID();
+  const uid = "PROVISION";
+
+  // The signature must cover the WiFi credentials and library ID to prevent tampering
+  const payloadToSign = `${uid}${timestamp}${qid}${ssid}${pass}${libraryId}`;
+
+  const privateKeyBase64 = process.env.ECDSA_PRIVATE_KEY;
+  if (!privateKeyBase64) {
+    console.error("Missing ECDSA_PRIVATE_KEY in environment");
+    return { error: "Server configuration error" };
+  }
+
+  try {
+    const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+    const sign = crypto.createSign('SHA256');
+    sign.update(payloadToSign);
+    sign.end();
+    
+    const signature = sign.sign(privateKey, 'base64');
+
+    const payload = {
+      cmd: "PROVISION",
+      uid,
+      iat: timestamp,
+      qid,
+      sig: signature,
+      ssid,
+      pass,
+      libId: libraryId
+    };
+
+    return { success: true, qrPayload: JSON.stringify(payload) };
+  } catch (error) {
+    console.error("Failed to sign Provisioning QR payload:", error);
+    return { error: "Signature generation failed" };
   }
 }

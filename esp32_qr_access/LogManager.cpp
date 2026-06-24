@@ -4,6 +4,7 @@
 #include <HTTPClient.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 const char* OFFLINE_LOG_FILE = "/offline_logs.txt";
 
@@ -16,8 +17,8 @@ void LogManager::init() {
     }
 }
 
-void LogManager::addLog(const String& uid, const String& doorId, time_t timestamp) {
-    ramLogs.push_back({uid, doorId, timestamp});
+void LogManager::addLog(const String& uid, const String& doorId, time_t timestamp, const String& status, const String& reason) {
+    ramLogs.push_back({uid, doorId, timestamp, status, reason});
     
     // Attempt upload immediately if connected
     if (WiFi.status() == WL_CONNECTED) {
@@ -76,9 +77,14 @@ bool LogManager::uploadBatch(const String& jsonPayload) {
 bool LogManager::uploadRamLogs() {
     if (ramLogs.empty()) return true;
 
+    Preferences prefs;
+    prefs.begin("library-app", true);
+    String libId = prefs.getString("libId", LIBRARY_ID);
+    prefs.end();
+
     // Create JSON Payload
     DynamicJsonDocument doc(4096);
-    doc["libraryId"] = LIBRARY_ID;
+    doc["libraryId"] = libId;
     JsonArray logsArray = doc.createNestedArray("logs");
     
     for (const auto& entry : ramLogs) {
@@ -86,6 +92,10 @@ bool LogManager::uploadRamLogs() {
         logObj["uid"] = entry.uid;
         logObj["doorId"] = entry.doorId;
         logObj["timestamp"] = entry.timestamp;
+        logObj["status"] = entry.status;
+        if (entry.reason.length() > 0) {
+            logObj["reason"] = entry.reason;
+        }
     }
 
     String requestBody;
@@ -111,6 +121,10 @@ void LogManager::saveToFlash() {
         logObj["uid"] = entry.uid;
         logObj["doorId"] = entry.doorId;
         logObj["timestamp"] = entry.timestamp;
+        logObj["status"] = entry.status;
+        if (entry.reason.length() > 0) {
+            logObj["reason"] = entry.reason;
+        }
     }
     
     File file = LittleFS.open(OFFLINE_LOG_FILE, FILE_APPEND);
@@ -132,6 +146,11 @@ bool LogManager::uploadFlashLogs() {
         return false;
     }
 
+    Preferences prefs;
+    prefs.begin("library-app", true);
+    String libId = prefs.getString("libId", LIBRARY_ID);
+    prefs.end();
+
     bool allUploaded = true;
     String newFileContent = "";
 
@@ -148,7 +167,7 @@ bool LogManager::uploadFlashLogs() {
         if (!error) {
             // We need to wrap it with libraryId for the API payload
             DynamicJsonDocument wrapper(4096);
-            wrapper["libraryId"] = LIBRARY_ID;
+            wrapper["libraryId"] = libId;
             wrapper["logs"] = doc.as<JsonArray>();
             
             String requestBody;

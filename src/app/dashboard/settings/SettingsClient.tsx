@@ -6,6 +6,7 @@ import { updateLibrarySettings } from "@/app/actions/library-actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageKitProvider, IKUpload } from "imagekitio-next"
+import { HardwareProvisioningCard } from "./HardwareProvisioningCard"
 
 const authenticator = async () => {
   try {
@@ -314,6 +315,8 @@ export function SettingsClient({ library }: { library: any }) {
             Note: Automated Razorpay KYC verification is coming soon!
           </p>
         </div>
+
+        <HardwareProvisioningCard libraryId={library.id} />
 
         <div className="flex justify-end sticky bottom-4">
           <button 
