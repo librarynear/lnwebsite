@@ -232,7 +232,10 @@ bool SecurityManager::verifyECDSASignature(const String& payloadStr, const Strin
 
     // BearSSL::PublicKey strips the 0x04 prefix from the public key, but br_ecdsa_vrfy_asn1 EXPECTS IT!
     // We must manually prepend the 0x04 byte to create a valid uncompressed point representation.
-    unsigned char fullQ[65];
+    // Ensure 32-bit alignment for BearSSL internals to prevent Exception (28) LoadProhibited on ESP8266
+    uint32_t alignedQ[17]; // 68 bytes, guaranteed 4-byte aligned
+    unsigned char* fullQ = (unsigned char*)alignedQ;
+    
     fullQ[0] = 0x04; // Uncompressed point indicator
     if (ecKey->qlen == 64) {
         memcpy(fullQ + 1, ecKey->q, 64);
