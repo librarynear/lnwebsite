@@ -3,39 +3,102 @@
 #include <ArduinoJson.h>
 #include <time.h>
 #include <BearSSLHelpers.h>
-#include <PolledTimeout.h>
-#include <base64.h>
-
-// BearSSL
-#include "bearssl/bearssl_hash.h"
-#include "bearssl/bearssl_ec.h"
-#include "bearssl/bearssl_pem.h"
 
 SecurityManager::SecurityManager() {}
 
 void SecurityManager::init() {
+    // Initialization if required
+}
+
+String SecurityManager::detectQRType(const String& rawJson) {
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, rawJson);
+    
+    if (error) {
+        return "unknown";
+    }
+    
+    if (doc.containsKey("type")) {
+        return doc["type"].as<String>();
+    }
+    
+    // No "type" field = access QR (backward compatible)
+    return "access";
+}
+
+WiFiConfigPayload SecurityManager::processWiFiQR(const String& rawJson) {
+    WiFiConfigPayload result;
+    result.isValid = false;
+
+    // 1. Parse JSON
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, rawJson);
+
+    if (error) {
+        Serial.print("[WiFi QR] JSON parse failed: ");
+        Serial.println(error.c_str());
+        return result;
+    }
+
+    if (!doc.containsKey("ssid") || !doc.containsKey("pass") || 
+        !doc.containsKey("iat") || !doc.containsKey("qid") || !doc.containsKey("sig")) {
+        Serial.println("[WiFi QR] Missing required fields");
+        return result;
+    }
+
+    result.ssid = doc["ssid"].as<String>();
+    result.pass = doc["pass"].as<String>();
+    result.iat  = doc["iat"].as<time_t>();
+    result.qid  = doc["qid"].as<String>();
+    result.sig  = doc["sig"].as<String>();
+
+    // 2. Verify Time validity (3-minute window)
+    time_t now = time(nullptr);
+    
+    if (now > result.iat + WIFI_QR_VALIDITY_SECONDS) {
+        Serial.println("[WiFi QR] QR Code Expired!");
+        return result;
+    }
+    
+    if (now < result.iat - 60) {
+        Serial.println("[WiFi QR] QR Code is from the future? Check NTP sync.");
+        return result;
+    }
+
+    // 3. Verify ECDSA Signature (payload = ssid + pass + iat + qid)
+    String payloadStr = result.ssid + result.pass + String((unsigned long)result.iat) + result.qid;
+    if (!verifyECDSASignature(payloadStr, result.sig)) {
+        Serial.println("[WiFi QR] Signature verification failed!");
+        return result;
+    }
+
+    // 4. Check Replay Attack
+    time_t expiry = result.iat + WIFI_QR_VALIDITY_SECONDS;
+    if (!checkReplay(result.qid, expiry)) {
+        Serial.println("[WiFi QR] Replay attack detected!");
+        return result;
+    }
+
+    result.isValid = true;
+    return result;
 }
 
 QRPayload SecurityManager::processQR(const String& rawJson) {
     QRPayload result;
     result.isValid = false;
-    result.failReason = "Unknown Error";
 
+    // 1. Parse JSON
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson(doc, rawJson);
 
     if (error) {
         Serial.print("JSON parse failed: ");
         Serial.println(error.c_str());
-        result.failReason = "Invalid JSON";
-        result.uid = "UNKNOWN";
         return result;
     }
 
     if (!doc.containsKey("uid") || !doc.containsKey("iat") || !doc.containsKey("qid") || !doc.containsKey("sig")) {
         Serial.println("Missing required QR fields");
-        result.failReason = "Missing Fields";
-        result.uid = doc.containsKey("uid") ? doc["uid"].as<String>() : "UNKNOWN";
         return result;
     }
 
@@ -44,68 +107,52 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     result.qid = doc["qid"].as<String>();
     result.doorId = doc.containsKey("door") ? doc["door"].as<String>() : String(DOOR_ID);
     result.sig = doc["sig"].as<String>();
-    
-    if (doc.containsKey("cmd")) result.cmd = doc["cmd"].as<String>();
-    if (doc.containsKey("ssid")) result.ssid = doc["ssid"].as<String>();
-    if (doc.containsKey("pass")) result.pass = doc["pass"].as<String>();
-    if (doc.containsKey("libId")) result.libId = doc["libId"].as<String>();
 
-    time_t now;
-    time(&now);
+    // 2. Verify Time validity
+    time_t now = time(nullptr);
     
     if (now > result.iat + QR_VALIDITY_SECONDS) {
         Serial.println("QR Code Expired!");
-        result.failReason = "Expired QR";
         return result;
     }
     
     if (now < result.iat - 60) {
         Serial.println("QR Code is from the future? Check NTP sync.");
-        result.failReason = "Future Timestamp (NTP Out of Sync?)";
         return result;
     }
 
-    String payloadStr = result.uid + String(result.iat) + result.qid;
-    
-    if (doc.containsKey("cmd") && doc["cmd"].as<String>() == "PROVISION") {
-        if (!doc.containsKey("ssid") || !doc.containsKey("pass") || !doc.containsKey("libId")) {
-            result.failReason = "Provisioning QR Missing Fields";
-            return result;
-        }
-        payloadStr += doc["ssid"].as<String>() + doc["pass"].as<String>() + doc["libId"].as<String>();
-    }
-
+    // 3. Verify ECDSA Signature (payload = uid + iat + qid)
+    String payloadStr = result.uid + String((unsigned long)result.iat) + result.qid;
     if (!verifyECDSASignature(payloadStr, result.sig)) {
         Serial.println("Signature verification failed!");
-        result.failReason = "Invalid Signature (Forged/Tampered)";
         return result;
     }
 
+    // 4. Check Replay Attack
     time_t expiry = result.iat + QR_VALIDITY_SECONDS;
     if (!checkReplay(result.qid, expiry)) {
         Serial.println("Replay attack detected!");
-        result.failReason = "Replay Attack (Already Scanned)";
         return result;
     }
 
     result.isValid = true;
-    result.failReason = "";
     return result;
 }
 
 bool SecurityManager::checkReplay(const String& qid, time_t expiry) {
+    // Check if already used
     for (const auto& entry : replayCache) {
         if (entry.qid == qid) {
-            return false;
+            return false; // Used!
         }
     }
+    // Valid, add to cache
     replayCache.push_back({qid, expiry});
     return true;
 }
 
 void SecurityManager::purgeReplayCache() {
-    time_t now;
-    time(&now);
+    time_t now = time(nullptr);
     
     for (auto it = replayCache.begin(); it != replayCache.end(); ) {
         if (now > it->expiry) {
@@ -116,74 +163,132 @@ void SecurityManager::purgeReplayCache() {
     }
 }
 
-// Helper context for PEM decoding
-struct PemDecodeCtx {
-    br_x509_pkey* pkey;
-    br_skey_decoder_context skey_ctx;
-    bool in_pkey;
-};
+// =====================================================
+// ECDSA P-256 Signature Verification using BearSSL
+// (Replaces mbedtls on ESP32)
+// DEBUG VERSION — verbose output for troubleshooting
+// =====================================================
+bool SecurityManager::verifyECDSASignature(const String& payloadStr, const String& signatureBase64) {
+    Serial.println("[ECDSA] ========== VERIFICATION DEBUG (TESTING V2) ==========");
 
-size_t decodeBase64(const char* input, unsigned char* output) {
-    static const unsigned char b64_table[256] = {
-        0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-        0,0,0,0, 0,0,0,0, 0,0,0,62,0,0,0,63,52,53,54,55,56,57,58,59,60,61,0,0,
-        0,0,0,0, 0,0,1,2, 3,4,5,6, 7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,
-        23,24,25,0,0,0,0,0, 0,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,
-        43,44,45,46,47,48,49,50,51,0,0,0,0,0
-    };
-    
-    size_t in_len = strlen(input);
-    size_t out_len = 0;
-    int val = 0, valb = -8;
-    for (size_t i = 0; i < in_len; i++) {
-        unsigned char c = input[i];
-        if (c == '=') break;
-        if (c < 43 || c > 122) continue;
-        val = (val << 6) + b64_table[c];
-        valb += 6;
-        if (valb >= 0) {
-            output[out_len++] = (val >> valb) & 0xFF;
-            valb -= 8;
-        }
+    // --- Step 1: Print payload ---
+    Serial.println("[ECDSA] Payload: " + payloadStr);
+    Serial.println("[ECDSA] Payload length: " + String(payloadStr.length()));
+
+    // --- Step 2: Parse the PEM public key ---
+    BearSSL::PublicKey pubKey(ECDSA_PUBLIC_KEY);
+    const br_ec_public_key* ecKey = pubKey.getEC();
+    if (!ecKey) {
+        Serial.println("[ECDSA] FAIL: Could not parse EC public key from PEM");
+        return false;
     }
-    return out_len;
+    Serial.printf("[ECDSA] EC Key — curve: %d (23=P256), qlen: %u\n", ecKey->curve, (unsigned)ecKey->qlen);
+    Serial.print("[ECDSA] EC Key Q: ");
+    for (size_t i = 0; i < ecKey->qlen; i++) {
+        Serial.printf("%02X", ecKey->q[i]);
+    }
+    Serial.println();
+
+    // --- Step 3: SHA-256 hash of the payload ---
+    br_sha256_context sha256ctx;
+    br_sha256_init(&sha256ctx);
+    br_sha256_update(&sha256ctx, payloadStr.c_str(), payloadStr.length());
+    unsigned char hash[br_sha256_SIZE];
+    br_sha256_out(&sha256ctx, hash);
+
+    Serial.print("[ECDSA] SHA-256: ");
+    for (int i = 0; i < br_sha256_SIZE; i++) {
+        Serial.printf("%02X", hash[i]);
+    }
+    Serial.println();
+
+    // --- Step 4: Decode Base64 signature ---
+    Serial.println("[ECDSA] Sig B64: " + signatureBase64);
+    unsigned char sigBuf[128];
+    int sigLen = base64Decode(signatureBase64.c_str(), signatureBase64.length(), sigBuf, sizeof(sigBuf));
+    if (sigLen <= 0) {
+        Serial.println("[ECDSA] FAIL: Base64 decode returned " + String(sigLen));
+        return false;
+    }
+    Serial.printf("[ECDSA] Sig DER (%d bytes): ", sigLen);
+    for (int i = 0; i < sigLen; i++) {
+        Serial.printf("%02X", sigBuf[i]);
+    }
+    Serial.println();
+
+    // --- Step 5: Verify ECDSA signature ---
+    const br_ec_impl* ecImpl = br_ec_get_default();
+    br_ecdsa_vrfy vrfy = br_ecdsa_vrfy_asn1_get_default();
+    
+    if (!vrfy) {
+        Serial.println("[ECDSA] FAIL: br_ecdsa_vrfy_asn1_get_default returned NULL");
+        return false;
+    }
+
+    if (!ecImpl) {
+        Serial.println("[ECDSA] FAIL: br_ec_get_default returned NULL");
+        return false;
+    }
+
+    // BearSSL::PublicKey strips the 0x04 prefix from the public key, but br_ecdsa_vrfy_asn1 EXPECTS IT!
+    // We must manually prepend the 0x04 byte to create a valid uncompressed point representation.
+    unsigned char fullQ[65];
+    fullQ[0] = 0x04; // Uncompressed point indicator
+    if (ecKey->qlen == 64) {
+        memcpy(fullQ + 1, ecKey->q, 64);
+    } else {
+        Serial.println("[ECDSA] FAIL: Unexpected qlen (not 64)");
+        return false;
+    }
+
+    br_ec_public_key rawKey;
+    rawKey.curve = ecKey->curve;
+    rawKey.q = fullQ;
+    rawKey.qlen = 65;
+
+    uint32_t result = vrfy(ecImpl, hash, br_sha256_SIZE, &rawKey, sigBuf, (size_t)sigLen);
+    Serial.printf("[ECDSA] Verify result: %u (1=OK, 0=FAIL)\n", result);
+    Serial.println("[ECDSA] ============================================");
+
+    if (result != 1) {
+        Serial.println("Signature mismatch");
+        return false;
+    }
+
+    return true;
 }
 
-bool SecurityManager::verifyECDSASignature(const String& payloadStr, const String& signatureBase64) {
-    // 1. Hash the payload with SHA256
-    br_sha256_context hash_ctx;
-    br_sha256_init(&hash_ctx);
-    br_sha256_update(&hash_ctx, payloadStr.c_str(), payloadStr.length());
-    unsigned char hash[32];
-    br_sha256_out(&hash_ctx, hash);
+// =====================================================
+// Self-contained Base64 Decoder
+// (Replaces mbedtls_base64_decode)
+// =====================================================
+int SecurityManager::base64Decode(const char* input, size_t inputLen,
+                                   unsigned char* output, size_t outputMaxLen) {
+    size_t outLen = 0;
+    uint32_t accum = 0;
+    int bits = 0;
 
-    // 2. Decode the Base64 signature
-    unsigned char decodedSig[128];
-    size_t decodedSigLen = decodeBase64(signatureBase64.c_str(), decodedSig);
-    if (decodedSigLen == 0) {
-        Serial.println("Failed to decode base64 signature");
-        return false;
+    for (size_t i = 0; i < inputLen; i++) {
+        char c = input[i];
+        int val = -1;
+
+        if (c >= 'A' && c <= 'Z')      val = c - 'A';
+        else if (c >= 'a' && c <= 'z')  val = c - 'a' + 26;
+        else if (c >= '0' && c <= '9')  val = c - '0' + 52;
+        else if (c == '+')              val = 62;
+        else if (c == '/')              val = 63;
+        else if (c == '=')             continue; // Padding
+        else                           continue; // Skip whitespace / newlines
+
+        accum = (accum << 6) | (uint32_t)val;
+        bits += 6;
+
+        if (bits >= 8) {
+            bits -= 8;
+            if (outLen >= outputMaxLen) return -1; // Buffer overflow
+            output[outLen++] = (unsigned char)((accum >> bits) & 0xFF);
+        }
     }
 
-    // 3. Decode the PEM Public Key using BearSSL
-    BearSSL::PublicKey* pubKey = new BearSSL::PublicKey(ECDSA_PUBLIC_KEY);
-    if (!pubKey->isEC()) {
-        Serial.println("Public key is not EC");
-        delete pubKey;
-        return false;
-    }
-    
-    const br_ec_public_key* ec_key = pubKey->getEC();
-    if (ec_key == nullptr) {
-        Serial.println("Failed to get EC public key");
-        delete pubKey;
-        return false;
-    }
-
-    // 4. Verify signature using i15 implementation
-    const br_ec_impl* ec_impl = br_ec_get_default();
-    int verify_result = br_ecdsa_i15_vrfy_asn1(ec_impl, hash, sizeof(hash), ec_key, decodedSig, decodedSigLen);
-
-    delete pubKey;
-    return verify_result == 1;
+    return (int)outLen;
 }

@@ -2,39 +2,23 @@
 #include "config.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 
 const char* OFFLINE_LOG_FILE = "/offline_logs.txt";
-const char* PREFS_FILE = "/prefs.json";
 
 LogManager::LogManager() {}
 
 void LogManager::init() {
     if (!LittleFS.begin()) {
-        Serial.println("LittleFS Mount Failed");
+        Serial.println("LittleFS Mount Failed!");
         return;
     }
 }
 
-String LogManager::getLibId() {
-    if (LittleFS.exists(PREFS_FILE)) {
-        File f = LittleFS.open(PREFS_FILE, "r");
-        if (f) {
-            StaticJsonDocument<512> doc;
-            DeserializationError error = deserializeJson(doc, f);
-            f.close();
-            if (!error && doc.containsKey("libId")) {
-                return doc["libId"].as<String>();
-            }
-        }
-    }
-    return String(LIBRARY_ID);
-}
-
-void LogManager::addLog(const String& uid, const String& doorId, time_t timestamp, const String& status, const String& reason) {
-    ramLogs.push_back({uid, doorId, timestamp, status, reason});
+void LogManager::addLog(const String& uid, const String& doorId, time_t timestamp) {
+    ramLogs.push_back({uid, doorId, timestamp});
     
     // Attempt upload immediately if connected
     if (WiFi.status() == WL_CONNECTED) {
@@ -43,6 +27,7 @@ void LogManager::addLog(const String& uid, const String& doorId, time_t timestam
         }
     }
     
+    // If we reach here, upload failed or offline.
     Serial.println("Log buffered in RAM.");
     
     // If RAM buffer is too large, save to flash to prevent data loss on reset
@@ -70,11 +55,12 @@ void LogManager::sync() {
 }
 
 bool LogManager::uploadBatch(const String& jsonPayload) {
-    WiFiClientSecure client;
-    client.setInsecure(); // Do not verify SSL cert for simplicity
+    // ESP8266 HTTPS requires BearSSL::WiFiClientSecure
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure(); // Skip certificate verification (same as testing mode)
     
     HTTPClient http;
-    http.begin(client, API_LOG_ENDPOINT);
+    http.begin(*client, API_LOG_ENDPOINT);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", API_HARDWARE_KEY);
     
@@ -95,10 +81,9 @@ bool LogManager::uploadBatch(const String& jsonPayload) {
 bool LogManager::uploadRamLogs() {
     if (ramLogs.empty()) return true;
 
-    String libId = getLibId();
-
+    // Create JSON Payload
     DynamicJsonDocument doc(4096);
-    doc["libraryId"] = libId;
+    doc["libraryId"] = LIBRARY_ID;
     JsonArray logsArray = doc.createNestedArray("logs");
     
     for (const auto& entry : ramLogs) {
@@ -106,84 +91,94 @@ bool LogManager::uploadRamLogs() {
         logObj["uid"] = entry.uid;
         logObj["doorId"] = entry.doorId;
         logObj["timestamp"] = entry.timestamp;
-        logObj["status"] = entry.status;
-        if (entry.reason.length() > 0) {
-            logObj["reason"] = entry.reason;
-        }
     }
 
-    String jsonPayload;
-    serializeJson(doc, jsonPayload);
+    String requestBody;
+    serializeJson(doc, requestBody);
 
-    if (uploadBatch(jsonPayload)) {
+    if (uploadBatch(requestBody)) {
+        Serial.println("RAM logs uploaded successfully.");
         ramLogs.clear();
         return true;
     }
+    
     return false;
 }
 
 void LogManager::saveToFlash() {
-    if (ramLogs.empty()) return;
+    Serial.println("Saving RAM logs to Flash backup.");
     
+    DynamicJsonDocument doc(4096);
+    JsonArray logsArray = doc.to<JsonArray>();
+    
+    for (const auto& entry : ramLogs) {
+        JsonObject logObj = logsArray.createNestedObject();
+        logObj["uid"] = entry.uid;
+        logObj["doorId"] = entry.doorId;
+        logObj["timestamp"] = entry.timestamp;
+    }
+    
+    // ESP8266 LittleFS uses string file modes: "a" for append
     File file = LittleFS.open(OFFLINE_LOG_FILE, "a");
     if (!file) {
         Serial.println("Failed to open file for appending");
         return;
     }
-
-    for (const auto& entry : ramLogs) {
-        DynamicJsonDocument doc(512);
-        doc["uid"] = entry.uid;
-        doc["doorId"] = entry.doorId;
-        doc["timestamp"] = entry.timestamp;
-        doc["status"] = entry.status;
-        if (entry.reason.length() > 0) doc["reason"] = entry.reason;
-        
-        String output;
-        serializeJson(doc, output);
-        file.println(output);
-    }
+    
+    serializeJson(doc, file);
+    file.println(); // newline separator for batches
     file.close();
     
-    ramLogs.clear();
-    Serial.println("Flushed RAM logs to LittleFS");
+    ramLogs.clear(); // Clear RAM after saving to flash
 }
 
 bool LogManager::uploadFlashLogs() {
     File file = LittleFS.open(OFFLINE_LOG_FILE, "r");
-    if (!file) return true; // Nothing to upload
+    if (!file) {
+        return false;
+    }
 
-    String libId = getLibId();
-    DynamicJsonDocument doc(4096);
-    doc["libraryId"] = libId;
-    JsonArray logsArray = doc.createNestedArray("logs");
-    
-    int count = 0;
-    while (file.available() && count < 30) {
+    bool allUploaded = true;
+    String newFileContent = "";
+
+    // Read line by line (each line is a batch of max 30 logs)
+    while (file.available()) {
         String line = file.readStringUntil('\n');
-        if (line.length() > 5) {
-            StaticJsonDocument<512> lineDoc;
-            if (!deserializeJson(lineDoc, line)) {
-                logsArray.add(lineDoc);
-                count++;
+        line.trim();
+        if (line.length() == 0) continue;
+
+        // Parse the stored array
+        DynamicJsonDocument doc(4096);
+        DeserializationError error = deserializeJson(doc, line);
+        
+        if (!error) {
+            // Wrap with libraryId for the API payload
+            DynamicJsonDocument wrapper(4096);
+            wrapper["libraryId"] = LIBRARY_ID;
+            wrapper["logs"] = doc.as<JsonArray>();
+            
+            String requestBody;
+            serializeJson(wrapper, requestBody);
+            
+            if (uploadBatch(requestBody)) {
+                Serial.println("Flash log batch uploaded!");
+            } else {
+                allUploaded = false;
+                newFileContent += line + "\n"; // Keep failed batch
             }
         }
     }
     file.close();
 
-    if (count == 0) {
+    // If some batches failed, rewrite the file with only the failed ones
+    if (allUploaded) {
         LittleFS.remove(OFFLINE_LOG_FILE);
-        return true;
+    } else {
+        // ESP8266 LittleFS uses "w" for write (truncate)
+        File fileWrite = LittleFS.open(OFFLINE_LOG_FILE, "w");
+        fileWrite.print(newFileContent);
+        fileWrite.close();
     }
 
-    String jsonPayload;
-    serializeJson(doc, jsonPayload);
-
-    if (uploadBatch(jsonPayload)) {
-        // Remove the file if successful (Note: if >30 logs, we delete all for simplicity, 
-        // to be robust we should rewrite un-uploaded logs, but keeping simple here)
-        LittleFS.remove(OFFLINE_LOG_FILE);
-        return true;
-    }
-    return false;
+    return allUploaded;
 }

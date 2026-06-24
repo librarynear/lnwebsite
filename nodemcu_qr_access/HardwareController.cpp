@@ -1,28 +1,40 @@
 #include "HardwareController.h"
 #include "config.h"
 
-HardwareController::HardwareController() : unlockTime(0), isUnlocked(false) {}
+HardwareController::HardwareController() {}
 
 void HardwareController::init() {
     pinMode(RELAY_PIN, OUTPUT);
-    lockDoor(); // Ensure locked on boot
+    digitalWrite(RELAY_PIN, LOW); // Assume active HIGH relay
 }
 
 void HardwareController::unlockDoor() {
-    digitalWrite(RELAY_PIN, LOW); // Active Low Relay
-    isUnlocked = true;
-    unlockTime = millis();
-    Serial.println("[DOOR] Unlocked");
-}
-
-void HardwareController::lockDoor() {
+    Serial.println("Unlocking Door!");
     digitalWrite(RELAY_PIN, HIGH);
-    isUnlocked = false;
-    Serial.println("[DOOR] Locked");
+    isDoorUnlocked = true;
+    justLockedFlag = false;
+    unlockStartTime = millis();
 }
 
-void HardwareController::update() {
-    if (isUnlocked && (millis() - unlockTime >= DOOR_UNLOCK_TIME_MS)) {
-        lockDoor();
+void HardwareController::process() {
+    if (isDoorUnlocked) {
+        if (millis() - unlockStartTime >= (unsigned long)DOOR_UNLOCK_TIME_MS) {
+            Serial.println("Locking Door.");
+            digitalWrite(RELAY_PIN, LOW);
+            isDoorUnlocked = false;
+            justLockedFlag = true;
+        }
     }
+}
+
+bool HardwareController::isUnlocked() {
+    return isDoorUnlocked;
+}
+
+bool HardwareController::checkJustLocked() {
+    if (justLockedFlag) {
+        justLockedFlag = false;
+        return true;
+    }
+    return false;
 }

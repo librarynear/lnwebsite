@@ -8,8 +8,6 @@ struct LogEntry {
     String uid;
     String doorId;
     time_t timestamp;
-    String status;
-    String reason;
 };
 
 class LogManager {
@@ -18,7 +16,7 @@ public:
     void init();
     
     // Add log to RAM buffer, attempts upload if online. If fails, stays in RAM/Flash.
-    void addLog(const String& uid, const String& doorId, time_t timestamp, const String& status = "SUCCESS", const String& reason = "");
+    void addLog(const String& uid, const String& doorId, time_t timestamp);
     
     // Periodic sync function (call from loop)
     void sync();
@@ -31,7 +29,6 @@ private:
     bool uploadBatch(const String& jsonPayload);
     bool uploadRamLogs();
     bool uploadFlashLogs();
-    String getLibId();
 };
 
 #endif // LOG_MANAGER_H
