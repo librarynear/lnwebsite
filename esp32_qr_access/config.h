@@ -27,8 +27,8 @@ const int QR_VALIDITY_SECONDS = 30;
 // ECDSA P-256 Public Key (Embed the generated key here)
 const char* ECDSA_PUBLIC_KEY = 
 "-----BEGIN PUBLIC KEY-----\n"
-"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEC85xxeLkVs63ZhRsQhw1qY+Dg1oC\n"
-"9vywPPmk6HS/QM6n9asB4qrMdfXDuHqEYcM5PN/q2Ndjk7qe/CVwHmHHEQ==\n"
+"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEW/PFKOgkA5hCa8UX9Hvvd2zhwBZw\n"
+"dEUzSEUpsDMlhztFicJt02ZPe/nH5wiRFhG3bKlwEFk9ejlEJ9By7/w5YQ==\n"
 "-----END PUBLIC KEY-----\n";
 
 // ==========================================
