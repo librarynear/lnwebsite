@@ -1,3 +1,4 @@
+import { formatStandardDate } from "@/lib/date-utils";
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -192,7 +193,7 @@ export default async function FinancialsPage({
                   <div key={exp.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
                     <div>
                       <p className="font-semibold text-sm">{exp.name}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(exp.date).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">{formatStandardDate(exp.date)}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="font-bold text-destructive">₹{exp.amount.toLocaleString()}</span>
@@ -244,7 +245,7 @@ export default async function FinancialsPage({
                     <span className="font-bold text-destructive bg-destructive/10 px-3 py-1 rounded-full text-xs">
                       Revoked {diffInDays > 0 ? `${diffInDays} days ` : ''}{hoursDiff} hours late
                     </span>
-                    <span className="text-xs text-muted-foreground">{b.updatedAt.toLocaleDateString()}</span>
+                    <span className="text-xs text-muted-foreground">{formatStandardDate(b.updatedAt)}</span>
                   </div>
                 </div>
               );
@@ -289,7 +290,7 @@ export default async function FinancialsPage({
                   return (
                     <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 whitespace-nowrap">
-                        <div className="text-sm font-bold">{b.createdAt.toLocaleDateString()}</div>
+                        <div className="text-sm font-bold">{formatStandardDate(b.createdAt)}</div>
                         <div className="text-xs text-muted-foreground">{b.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
                       <td className="p-4">

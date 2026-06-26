@@ -43,6 +43,7 @@ model User {
   checkins  CheckinLog[] @relation("StudentCheckins")
   entryLogs EntryLog[]
   platformFeedbacks PlatformFeedback[] @relation("SubmitterPlatformFeedback")
+  notifications Notification[]
   
   // Hardware Access Tracking
   consecutiveFailures Int @default(0)
@@ -115,6 +116,7 @@ enum KycStatus {
 enum SeatType {
   RESERVED
   NORMAL
+  PREMIUM
   NON_RESERVABLE
 }
 
@@ -142,6 +144,11 @@ enum PlanType {
   FLEXIBLE
 }
 
+enum PlanSeatCategory {
+  GENERAL
+  PREMIUM
+}
+
 model Plan {
   id            String   @id @default(uuid())
   libraryId     String
@@ -153,6 +160,7 @@ model Plan {
   price         Float
   discount      Float?
   isActive      Boolean  @default(true)
+  seatCategory  PlanSeatCategory @default(GENERAL)
   
   bookings      Booking[]
 
@@ -356,4 +364,16 @@ model EntryLog {
   @@index([userId])
   @@index([libraryId])
   @@index([timestamp])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id])
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
 }

@@ -22,7 +22,7 @@ export default async function ApprovalsPage() {
       seat: true,
       standaloneLocker: true
     },
-    orderBy: { createdAt: "asc" }
+    orderBy: { createdAt: "desc" }
   });
 
   return (

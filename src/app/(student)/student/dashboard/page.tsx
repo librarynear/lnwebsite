@@ -10,8 +10,10 @@ import LocateSeatModal from "./LocateSeatModal";
 import ExtendPlanModal from "./ExtendPlanModal";
 import { AccessQRModal } from "@/components/AccessQRModal";
 
-const formatDate = (date: Date) => date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' });
-const formatDateTime = (date: Date) => date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+import { formatStandardDate, formatStandardDateTime } from "@/lib/date-utils";
+
+const formatDate = (date: Date) => formatStandardDate(date);
+const formatDateTime = (date: Date) => formatStandardDateTime(date);
 
 export default async function StudentDashboardPage() {
   // Consumer page: any logged-in user can view their own bookings, including
@@ -134,7 +136,7 @@ export default async function StudentDashboardPage() {
                         <div className="space-y-4">
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Plan details</p>
-                            <p className="text-base font-bold text-foreground">{booking.plan.name} <span className="text-muted-foreground font-normal mx-1">•</span> <span className="text-primary">₹{booking.plan.price}</span></p>
+                            <p className="text-base font-bold text-foreground">{booking.plan.name} <span className="text-muted-foreground font-normal mx-1">•</span> <span className="text-primary">₹{(booking.plan.discount ? booking.plan.price - (booking.plan.price * booking.plan.discount / 100) : booking.plan.price) + (booking.standaloneLocker?.price || 0)}</span></p>
                           </div>
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
@@ -217,7 +219,7 @@ export default async function StudentDashboardPage() {
                           <Calendar className="w-3.5 h-3.5" /> Expired {formatDate(booking.endTime)}
                         </span>
                         <span className="text-muted-foreground flex items-center gap-1">
-                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{booking.plan.price}
+                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{booking.totalAmount}
                         </span>
                       </div>
                     </div>

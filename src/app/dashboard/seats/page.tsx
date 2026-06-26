@@ -258,7 +258,8 @@ export default function SeatsManagerPage() {
                     onChange={(e) => updateSelectedSeat('type', e.target.value)}
                     className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                   >
-                    <option value="NORMAL">Reservable</option>
+                    <option value="NORMAL">Reservable (General)</option>
+                    <option value="PREMIUM">Premium Seat</option>
                     <option value="NON_RESERVABLE">Non-Reservable (Wall/Path)</option>
                     <option value="EMPTY">Empty Space (Hidden)</option>
                   </select>
@@ -522,7 +523,7 @@ export default function SeatsManagerPage() {
                       </div>
                       <div className="text-sm space-y-1">
                         <p><span className="text-muted-foreground">Plan:</span> {popupData.plan?.name || "Custom"}</p>
-                        <p><span className="text-muted-foreground">Valid Until:</span> {new Date(popupData.endTime).toLocaleDateString()} {new Date(popupData.endTime).toLocaleTimeString()}</p>
+                        <p><span className="text-muted-foreground">Valid Until:</span> {formatStandardDate(popupData.endTime)} {new Date(popupData.endTime).toLocaleTimeString()}</p>
                       </div>
                       <a 
                         href={`/dashboard/students/${popupData.student.id}`} 

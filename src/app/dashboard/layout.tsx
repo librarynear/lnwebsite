@@ -1,3 +1,4 @@
+import { NavItem } from "./NavItem";
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode } from "react";
@@ -28,49 +29,49 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <Link href="/dashboard" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          <NavItem href="/dashboard">
             Overview
-          </Link>
-          <Link href="/dashboard/students" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          </NavItem>
+          <NavItem href="/dashboard/students">
             Students
-          </Link>
-          <Link href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          </NavItem>
+          <NavItem href="/dashboard/queries">
             Queries
-          </Link>
-          <Link href="/dashboard/inquiries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          </NavItem>
+          <NavItem href="/dashboard/inquiries">
             Inquiries
-          </Link>
+          </NavItem>
           {session.role !== 'RECEPTIONIST' && (
             <>
-              <Link href="/dashboard/financials" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              <NavItem href="/dashboard/financials">
                 Financials
-              </Link>
-              <Link href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem href="/dashboard/seats">
                 Manage Seats
-              </Link>
-              <Link href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem href="/dashboard/plans">
                 Manage Plans
-              </Link>
+              </NavItem>
             </>
           )}
-          <Link href="/dashboard/approvals" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          <NavItem href="/dashboard/approvals">
             Pending Approvals
-          </Link>
+          </NavItem>
         </nav>
 
         <div className="p-4 border-t border-sidebar-border mt-auto">
 
           {session.role !== 'RECEPTIONIST' && (
             <>
-              <Link href="/dashboard/staff" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              <NavItem href="/dashboard/staff">
                 Staff & Roles
-              </Link>
-              <Link href="/dashboard/widgets" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem href="/dashboard/widgets">
                 Widgets
-              </Link>
-              <Link href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem href="/dashboard/settings">
                 Settings
-              </Link>
+              </NavItem>
             </>
           )}
           <form action={logout}>

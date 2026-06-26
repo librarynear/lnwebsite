@@ -1,7 +1,37 @@
 'use client'
+import { formatStandardDate } from "@/lib/date-utils";
 
 import { MessageSquare, Star, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { sendNotification } from "@/app/actions/notification-actions"
+
 export function QueriesClient({ queries }: { queries: any[] }) {
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleReplyClick = (query: any) => {
+    setReplyingTo(query);
+    setReplyMessage("");
+    setReplyOpen(true);
+  };
+
+  const submitReply = async () => {
+    if (!replyingTo || !replyMessage.trim()) return;
+    setSending(true);
+    await sendNotification(
+      replyingTo.studentId,
+      "Reply to your Query/Feedback",
+      replyMessage
+    );
+    setSending(false);
+    setReplyOpen(false);
+    alert("Reply sent as an in-app notification!");
+  };
 
   return (
     <>
@@ -31,7 +61,7 @@ export function QueriesClient({ queries }: { queries: any[] }) {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-foreground">#{index + 1}. {query.student.name}</h3>
-                  <span className="text-muted-foreground text-sm">• {new Date(query.createdAt).toLocaleDateString()}</span>
+                  <span className="text-muted-foreground text-sm">• {formatStandardDate(query.createdAt)}</span>
                 </div>
               </div>
               
@@ -49,13 +79,37 @@ export function QueriesClient({ queries }: { queries: any[] }) {
             </div>
             
             <div className="flex flex-row sm:flex-col gap-2 shrink-0 w-full sm:w-auto mt-4 sm:mt-0">
-              <a href={`mailto:${query.student.email}?subject=Reply to your query&body=Hi ${query.student.name},`} className="flex-1 sm:flex-none bg-background border border-border text-foreground hover:bg-muted font-semibold px-4 py-2 rounded-lg text-sm transition-colors text-center inline-block">
+              <button onClick={() => handleReplyClick(query)} className="flex-1 sm:flex-none bg-background border border-border text-foreground hover:bg-muted font-semibold px-4 py-2 rounded-lg text-sm transition-colors text-center inline-block">
                 Reply
-              </a>
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reply to {replyingTo?.student?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-2 font-semibold">Their message:</p>
+            <p className="text-sm bg-muted/30 p-3 rounded-lg border border-border mb-4 italic">"{replyingTo?.content}"</p>
+            <Textarea
+              placeholder="Type your reply here. They will receive it as an in-app notification..."
+              value={replyMessage}
+              onChange={(e) => setReplyMessage(e.target.value)}
+              className="min-h-[120px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyOpen(false)}>Cancel</Button>
+            <Button onClick={submitReply} disabled={sending || !replyMessage.trim()}>
+              {sending ? "Sending..." : "Send Reply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

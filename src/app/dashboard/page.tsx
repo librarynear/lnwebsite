@@ -1,3 +1,4 @@
+import { formatStandardDate } from "@/lib/date-utils";
 import { Users, BookOpen, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { getSession } from "@/app/actions/auth-actions";
@@ -234,7 +235,7 @@ export default async function LibrarianDashboardPage() {
                         {booking.seat ? `Booked Seat ${booking.seat.name}` : 'No seat assigned'} • {booking.plan?.name || 'Custom Plan'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1 font-mono">
-                        {booking.createdAt.toLocaleDateString()}
+                        {formatStandardDate(booking.createdAt)}
                       </p>
                     </div>
                   </div>

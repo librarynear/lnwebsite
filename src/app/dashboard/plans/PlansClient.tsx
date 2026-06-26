@@ -42,6 +42,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
   const [basePlanName, setBasePlanName] = useState("")
   const [monthlyPrice, setMonthlyPrice] = useState("")
   const [planType, setPlanType] = useState<"FIXED" | "FLEXIBLE">("FIXED")
+  const [seatCategory, setSeatCategory] = useState<"GENERAL" | "PREMIUM">("GENERAL")
   
   const [hour6, setHour6] = useState(false)
   const [hour8, setHour8] = useState(false)
@@ -102,6 +103,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
   // Edit State
   const [editName, setEditName] = useState("")
   const [editType, setEditType] = useState<"FIXED" | "FLEXIBLE">("FIXED")
+  const [editSeatCategory, setEditSeatCategory] = useState<"GENERAL" | "PREMIUM">("GENERAL")
   const [editPrice, setEditPrice] = useState("")
   const [editDiscount, setEditDiscount] = useState("")
   const [editValidity, setEditValidity] = useState("")
@@ -137,7 +139,8 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
         validityDays: r.days,
         durationHours: r.hours,
         price: calculatedTotal,
-        discount: discountPercent
+        discount: discountPercent,
+        seatCategory: seatCategory
       };
     }).filter(p => p.price > 0);
 
@@ -164,6 +167,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
     setBasePlanName("");
     setMonthlyPrice("");
     setPlanType("FIXED");
+    setSeatCategory("GENERAL");
     setFullDay(true);
     setHour6(false);
     setHour8(false);
@@ -177,6 +181,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
     setEditingPlan(plan);
     setEditName(plan.name);
     setEditType(plan.type);
+    setEditSeatCategory(plan.seatCategory || "GENERAL");
     setEditPrice(plan.price.toString());
     setEditDiscount(plan.discount?.toString() || "");
     setEditValidity(plan.validityDays.toString());
@@ -216,6 +221,16 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                       <SelectContent>
                         <SelectItem value="FIXED">Fixed Seat</SelectItem>
                         <SelectItem value="FLEXIBLE">Flexible Seat</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Seat Category</Label>
+                    <Select name="seatCategory" value={editSeatCategory} onValueChange={(v:any) => setEditSeatCategory(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GENERAL">General</SelectItem>
+                        <SelectItem value="PREMIUM">Premium</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -266,6 +281,16 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                         <SelectContent>
                           <SelectItem value="FIXED">Fixed Seat</SelectItem>
                           <SelectItem value="FLEXIBLE">Flexible Seat</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Seat Category</Label>
+                      <Select value={seatCategory} onValueChange={(v:any) => setSeatCategory(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GENERAL">General</SelectItem>
+                          <SelectItem value="PREMIUM">Premium</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

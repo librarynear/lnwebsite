@@ -1,3 +1,4 @@
+import { formatStandardDate } from "@/lib/date-utils";
 import prisma from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { updateLibraryDetails } from "@/app/actions/admin-actions";
@@ -125,7 +126,7 @@ export default async function AdminEditLibraryPage(props: { params: Promise<{ id
           </div>
 
           <div className="pt-4 mt-6 border-t border-border text-sm text-muted-foreground">
-            Created At: {library.createdAt.toLocaleDateString()}
+            Created At: {formatStandardDate(library.createdAt)}
           </div>
 
           <div className="flex justify-end pt-4">

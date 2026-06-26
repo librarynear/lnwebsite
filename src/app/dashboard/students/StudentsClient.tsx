@@ -1,4 +1,5 @@
 'use client'
+import { formatStandardDate } from "@/lib/date-utils";
 
 import { useState, useEffect, Fragment } from "react"
 import { useRouter } from "next/navigation"
@@ -72,7 +73,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
   // Tabs & Sorting
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE' | 'REVOKED'>('ACTIVE')
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING'>('ACTIVE')
   const [sortMethod, setSortMethod] = useState<'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
@@ -188,8 +189,22 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const latestBookingsMap = new Map();
   for (const b of searchedBookings) {
     const existing = latestBookingsMap.get(b.studentId);
-    if (!existing || new Date(b.endTime).getTime() > new Date(existing.endTime).getTime()) {
+    if (!existing) {
       latestBookingsMap.set(b.studentId, b);
+      continue;
+    }
+    
+    const bIsActiveConf = b.status === 'CONFIRMED' && new Date(b.endTime) >= now;
+    const exIsActiveConf = existing.status === 'CONFIRMED' && new Date(existing.endTime) >= now;
+    
+    if (bIsActiveConf && !exIsActiveConf) {
+      latestBookingsMap.set(b.studentId, b);
+    } else if (!bIsActiveConf && exIsActiveConf) {
+      // keep existing
+    } else {
+      if (new Date(b.endTime).getTime() > new Date(existing.endTime).getTime()) {
+         latestBookingsMap.set(b.studentId, b);
+      }
     }
   }
   const uniqueSearchedBookings = Array.from(latestBookingsMap.values());
@@ -198,6 +213,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     return b.status === 'CONFIRMED' && end >= now;
+  });
+  const expiringBookings = uniqueSearchedBookings.filter((b: any) => {
+    const end = new Date(b.endTime);
+    end.setHours(0,0,0,0);
+    const sevenDaysFromNow = new Date(now);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    return b.status === 'CONFIRMED' && end >= now && end <= sevenDaysFromNow;
   });
   const inactiveBookings = uniqueSearchedBookings.filter((b: any) => {
     const end = new Date(b.endTime);
@@ -209,6 +231,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const getFilteredBookings = () => {
     let list = [];
     if (activeTab === 'ACTIVE') list = activeBookings;
+    else if (activeTab === 'EXPIRING') list = expiringBookings;
     else if (activeTab === 'INACTIVE') list = inactiveBookings;
     else list = revokedBookings;
 
@@ -243,7 +266,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     renewAddedDays = renewTargetPlan.validityDays;
     const futureEnd = new Date(baseDate);
     futureEnd.setDate(futureEnd.getDate() + renewAddedDays - (end > n ? 0 : 1));
-    renewNewExpiryStr = futureEnd.toLocaleDateString();
+    renewNewExpiryStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(futureEnd);
   }
 
   return (
@@ -475,21 +498,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             </div>
           </div>
 
-          <div className="flex space-x-1 border-b border-border/50">
+          <div className="flex space-x-1 border-b border-border/50 overflow-x-auto">
             <button
-              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'ACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('ACTIVE')}
             >
               Active ({activeBookings.length})
             </button>
             <button
-              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'INACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'EXPIRING' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setActiveTab('EXPIRING')}
+            >
+              Expiring Soon ({expiringBookings.length})
+            </button>
+            <button
+              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'INACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('INACTIVE')}
             >
               Inactive/Expired ({inactiveBookings.length})
             </button>
             <button
-              className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'REVOKED' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'REVOKED' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               onClick={() => setActiveTab('REVOKED')}
             >
               Revoked ({revokedBookings.length})
@@ -615,7 +644,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           {booking.plan?.name}
                         </div>
                         <div className="text-[11px] text-muted-foreground mt-1 flex flex-col gap-0.5">
-                          <span>{new Date(booking.startTime).toLocaleDateString()} - {endOfDay.toLocaleDateString()}</span>
+                          <span>{formatStandardDate(booking.startTime)} - {formatStandardDate(endOfDay)}</span>
                           {activeTab === 'ACTIVE' && !booking.isPaused && (
                             <span className={daysLeft <= 3 ? 'text-destructive font-bold' : daysLeft <= 7 ? 'text-warning font-bold' : ''}>
                               {daysLeft} days remaining
@@ -809,7 +838,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                       <div>
                                         <div className="font-bold">{hist.plan?.name} <span className="text-xs font-normal text-muted-foreground ml-2">₹{displayAmount}</span></div>
                                         <div className="text-xs text-muted-foreground mt-0.5">
-                                          {hStart.toLocaleDateString()} - {hEnd.toLocaleDateString()}
+                                          {formatStandardDate(hStart)} - {formatStandardDate(hEnd)}
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-3">
@@ -1011,7 +1040,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 </div>
                 <div>
                   <span className="text-muted-foreground font-medium block mb-1">Date of Birth</span>
-                  <span className="font-bold text-foreground">{profileStudent.dob ? new Date(profileStudent.dob).toLocaleDateString() : "N/A"}</span>
+                  <span className="font-bold text-foreground">{profileStudent.dob ? formatStandardDate(profileStudent.dob) : "N/A"}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground font-medium block mb-1">Gender</span>
@@ -1061,7 +1090,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           <div className="flex items-center text-sm text-foreground">
                             <CalendarClock className="w-4 h-4 text-muted-foreground mr-2" />
                             <span className="font-medium text-muted-foreground mr-1">Booked Dates:</span> 
-                            {new Date(b.startTime).toLocaleDateString()} - {new Date(b.endTime).toLocaleDateString()}
+                            {formatStandardDate(b.startTime)} - {formatStandardDate(b.endTime)}
                           </div>
                           <div className="flex items-center text-sm text-foreground">
                             <Clock className="w-4 h-4 text-muted-foreground mr-2" />
@@ -1289,7 +1318,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   {new Date(renewBookingData.endTime) < new Date() ? (
                     <span className="font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded text-xs">Expired</span>
                   ) : (
-                    <span className="font-medium text-foreground">{new Date(renewBookingData.endTime).toLocaleDateString()}</span>
+                    <span className="font-medium text-foreground">{formatStandardDate(renewBookingData.endTime)}</span>
                   )}
                 </div>
                 <div className="flex justify-between items-center text-sm pt-1">

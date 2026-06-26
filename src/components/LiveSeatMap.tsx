@@ -12,6 +12,7 @@ interface LiveSeatMapProps {
   interactive?: boolean; // Whether seats can be clicked
   adminMode?: boolean; // If true, all seats are clickable to view details
   selectedSeat?: any;
+  selectedPlan?: any;
   onSeatSelect?: (seat: any) => void;
   compactMode?: boolean;
 }
@@ -24,6 +25,7 @@ export default function LiveSeatMap({
   interactive = false,
   adminMode = false,
   selectedSeat,
+  selectedPlan,
   onSeatSelect,
   compactMode = false
 }: LiveSeatMapProps) {
@@ -53,7 +55,10 @@ export default function LiveSeatMap({
       }
     } else {
       // Interactive mode (booking flow)
-      const isDisabled = !adminMode && (isOccupied || seat.type === 'NON_RESERVABLE');
+      const isPremiumMismatch = seat.type === 'PREMIUM' && selectedPlan?.seatCategory !== 'PREMIUM';
+      const isGeneralMismatch = seat.type === 'NORMAL' && selectedPlan?.seatCategory === 'PREMIUM';
+      const isDisabled = !adminMode && (isOccupied || seat.type === 'NON_RESERVABLE' || isPremiumMismatch || isGeneralMismatch);
+      
       if (isDisabled) {
         seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed shadow-none";
       } else if (isSelected) {
@@ -73,12 +78,19 @@ export default function LiveSeatMap({
             if (onSeatSelect) onSeatSelect(seat);
           } else {
             // Show toast notifications for seat status on click
+            const isPremiumMismatch = seat.type === 'PREMIUM' && selectedPlan?.seatCategory !== 'PREMIUM';
+            const isGeneralMismatch = seat.type === 'NORMAL' && selectedPlan?.seatCategory === 'PREMIUM';
+            
             if (isTarget) {
               toast(`This is your reserved seat (${seat.name})`, { icon: '🎯' });
             } else if (isOccupied) {
               toast(`Seat ${seat.name} is currently occupied by a student`, { icon: '👤' });
             } else if (seat.type === 'NON_RESERVABLE') {
               toast(`Seat ${seat.name} is not reservable`, { icon: '🚫' });
+            } else if (isPremiumMismatch) {
+              toast.error(`Seat ${seat.name} is a Premium Seat. You must select a Premium Plan.`, { icon: '🌟' });
+            } else if (isGeneralMismatch) {
+              toast.error(`Seat ${seat.name} is a General Seat. You have selected a Premium Plan.`, { icon: '🚫' });
             } else if (isFlexible && seat.hasLocker) {
               toast(`Seat ${seat.name} has an attached locker, so it's unavailable for flexible plans.`, { icon: '🔒' });
             } else if (isFlexible && !seat.hasLocker) {

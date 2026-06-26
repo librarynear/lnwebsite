@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import Link from "next/link"
+import { NavItem } from "./NavItem"
 import { Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
@@ -20,47 +20,47 @@ export function MobileNav({ role }: { role: string }) {
           <SheetTitle>Mobile Navigation</SheetTitle>
         </VisuallyHidden>
         <nav className="flex-1 px-4 space-y-2">
-          <Link onClick={() => setOpen(false)} href="/dashboard" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          <NavItem onClick={() => setOpen(false)} href="/dashboard">
             Overview
-          </Link>
+          </NavItem>
           {role !== 'RECEPTIONIST' && (
             <>
-              <Link onClick={() => setOpen(false)} href="/dashboard/seats" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              <NavItem onClick={() => setOpen(false)} href="/dashboard/seats">
                 Manage Seats
-              </Link>
-              <Link onClick={() => setOpen(false)} href="/dashboard/plans" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem onClick={() => setOpen(false)} href="/dashboard/plans">
                 Manage Plans
-              </Link>
+              </NavItem>
             </>
           )}
-          <Link onClick={() => setOpen(false)} href="/dashboard/students" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          <NavItem onClick={() => setOpen(false)} href="/dashboard/students">
             Students
-          </Link>
-          <Link onClick={() => setOpen(false)} href="/dashboard/queries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          </NavItem>
+          <NavItem onClick={() => setOpen(false)} href="/dashboard/queries">
             Queries
-          </Link>
-          <Link onClick={() => setOpen(false)} href="/dashboard/inquiries" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+          </NavItem>
+          <NavItem onClick={() => setOpen(false)} href="/dashboard/inquiries">
             Inquiries
-          </Link>
+          </NavItem>
           {role !== 'RECEPTIONIST' && (
-            <Link onClick={() => setOpen(false)} href="/dashboard/financials" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+            <NavItem onClick={() => setOpen(false)} href="/dashboard/financials">
               Financials
-            </Link>
+            </NavItem>
           )}
         </nav>
         
         <div className="p-4 border-t border-sidebar-border mt-auto">
           {role !== 'RECEPTIONIST' && (
             <>
-              <Link onClick={() => setOpen(false)} href="/dashboard/staff" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              <NavItem onClick={() => setOpen(false)} href="/dashboard/staff">
                 Staff & Roles
-              </Link>
-              <Link onClick={() => setOpen(false)} href="/dashboard/widgets" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem onClick={() => setOpen(false)} href="/dashboard/widgets">
                 Widgets
-              </Link>
-              <Link onClick={() => setOpen(false)} href="/dashboard/settings" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+              </NavItem>
+              <NavItem onClick={() => setOpen(false)} href="/dashboard/settings">
                 Settings
-              </Link>
+              </NavItem>
             </>
           )}
           <form action={logout}>

@@ -24,7 +24,7 @@ export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprova
           <span className="w-3 h-3 rounded-full bg-warning animate-pulse" />
           Pending Approvals
         </h2>
-        <Link href="/dashboard/students" className="text-primary text-sm font-medium hover:underline">View All</Link>
+        <Link href="/dashboard/approvals" className="text-primary text-sm font-medium hover:underline">View All</Link>
       </div>
       <div className="p-6 flex-1 overflow-y-auto max-h-[350px]">
         <div className="space-y-4">

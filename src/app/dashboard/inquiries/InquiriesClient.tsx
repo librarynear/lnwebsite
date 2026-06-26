@@ -1,4 +1,5 @@
 "use client"
+import { formatStandardDate } from "@/lib/date-utils";
 
 import { useState } from "react"
 import { updateInquiryStatus, submitInquiry } from "@/app/actions/inquiry-actions"
@@ -114,7 +115,7 @@ export function InquiriesClient({ initialInquiries, libraryId }: { initialInquir
             <p className="text-sm font-medium text-foreground"><a href={`tel:${inq.phone}`} className="hover:underline">{inq.phone}</a></p>
             {inq.message && <p className="text-sm text-muted-foreground mt-2 italic">"{inq.message}"</p>}
             <p className="text-xs text-muted-foreground mt-2">
-              Submitted on {new Date(inq.createdAt).toLocaleDateString()} at {new Date(inq.createdAt).toLocaleTimeString()}
+              Submitted on {formatStandardDate(inq.createdAt)} at {new Date(inq.createdAt).toLocaleTimeString()}
             </p>
           </div>
           

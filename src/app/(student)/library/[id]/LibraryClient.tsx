@@ -11,6 +11,7 @@ import { auth } from "@/lib/firebase/clientApp"
 
 import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 import { toast } from "react-hot-toast"
+import { formatStandardDate } from "@/lib/date-utils"
 // Seat map pulls in react-zoom-pan-pinch; load it only when the section renders
 // so it stays out of the initial library-page bundle.
 const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
@@ -116,7 +117,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
 
   // Derive recommended plans based on the selected plan's duration
   const recommendedPlans = selectedPlan 
-    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id)
+    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id).sort((a: any, b: any) => b.validityDays - a.validityDays)
     : [];
 
   useEffect(() => {
@@ -364,7 +365,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       return a - b;
     });
 
-  const filteredPlans = library.plans.filter((p:any) => planFilter === "ALL" || p.durationHours === planFilter);
+  const filteredPlans = library.plans
+    .filter((p:any) => planFilter === "ALL" || p.durationHours === planFilter)
+    .sort((a:any, b:any) => b.validityDays - a.validityDays);
 
   const maxX = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridX)) : 0;
   const maxY = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridY)) : 0;
@@ -623,6 +626,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                     occupiedSeatIds={realtimeOccupiedSeatIds}
                     interactive={true}
                     selectedSeat={selectedSeat}
+                    selectedPlan={selectedPlan}
                     compactMode={true}
                     onSeatSelect={(seat) => {
                       setSelectedSeat(seat);
@@ -705,11 +709,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               <div className="flex justify-between items-center text-sm font-medium mt-4 bg-muted/30 p-4 rounded-xl border border-border">
                 <div className="flex flex-col">
                   <span className="text-foreground/70 text-xs uppercase tracking-wider font-bold mb-1">Valid From</span>
-                  <span className="text-foreground">{startDate.toLocaleDateString()}</span>
+                  <span className="text-foreground">{formatStandardDate(startDate)}</span>
                 </div>
                 <div className="flex flex-col text-right">
                   <span className="text-muted-foreground text-xs uppercase tracking-wider font-bold mb-1">Valid Till</span>
-                  <span className="text-foreground">{endDate.toLocaleDateString()}</span>
+                  <span className="text-foreground">{formatStandardDate(endDate)}</span>
                 </div>
               </div>
             )}
