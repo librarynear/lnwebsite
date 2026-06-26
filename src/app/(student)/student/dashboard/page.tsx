@@ -219,7 +219,7 @@ export default async function StudentDashboardPage() {
                           <Calendar className="w-3.5 h-3.5" /> Expired {formatDate(booking.endTime)}
                         </span>
                         <span className="text-muted-foreground flex items-center gap-1">
-                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{booking.totalAmount}
+                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{(booking.plan.discount ? booking.plan.price - (booking.plan.price * booking.plan.discount / 100) : booking.plan.price) + (booking.standaloneLocker?.price || 0)}
                         </span>
                       </div>
                     </div>
