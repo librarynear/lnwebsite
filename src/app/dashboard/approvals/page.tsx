@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ApprovalActions from "./ApprovalActions";
 import { Clock } from "lucide-react";
+import { formatStandardDate } from "@/lib/date-utils";
 
 export default async function ApprovalsPage() {
   const session = await getSession();
@@ -65,6 +66,11 @@ export default async function ApprovalsPage() {
                     <td className="p-4">
                       <div className="font-medium text-foreground">{b.plan.name}</div>
                       <div className="text-xs text-muted-foreground">{b.plan.validityDays} Days • {b.plan.type}</div>
+                      {b.startTime && b.endTime && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatStandardDate(b.startTime)} - {formatStandardDate(b.endTime)}
+                        </div>
+                      )}
                     </td>
                     <td className="p-4">
                       {b.seat ? (

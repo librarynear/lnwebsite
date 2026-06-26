@@ -27,6 +27,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
   const [planFilter, setPlanFilter] = useState<number | null | "ALL">("ALL");
+  const [monthFilter, setMonthFilter] = useState<number | null | "ALL">("ALL");
   
   const [selectedStandaloneLockerId, setSelectedStandaloneLockerId] = useState<string>("");
   
@@ -365,8 +366,12 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       return a - b;
     });
 
+  const availableMonths = Array.from(new Set(library.plans.map((p:any) => Math.max(1, Math.round(p.validityDays / 30)))))
+    .sort((a:any, b:any) => a - b);
+
   const filteredPlans = library.plans
     .filter((p:any) => planFilter === "ALL" || p.durationHours === planFilter)
+    .filter((p:any) => monthFilter === "ALL" || Math.max(1, Math.round(p.validityDays / 30)) === monthFilter)
     .sort((a:any, b:any) => b.validityDays - a.validityDays);
 
   const maxX = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridX)) : 0;
@@ -500,7 +505,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                   onClick={() => setPlanFilter("ALL")}
                   className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${planFilter === "ALL" ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 >
-                  All Plans
+                  All Hours
                 </button>
                 {availableHours.map((hr: any) => (
                   <button 
@@ -509,6 +514,23 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                     className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${planFilter === hr ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                   >
                     {hr === null ? "Full Day" : `${hr} hr`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none">
+                <button 
+                  onClick={() => setMonthFilter("ALL")}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${monthFilter === "ALL" ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  All Months
+                </button>
+                {availableMonths.map((m: any) => (
+                  <button 
+                    key={m}
+                    onClick={() => setMonthFilter(m)}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${monthFilter === m ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                  >
+                    {m} Month{m > 1 ? 's' : ''}
                   </button>
                 ))}
               </div>
@@ -546,7 +568,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           <span className="font-bold text-foreground">₹{finalPrice.toFixed(0)}</span>
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{plan.validityDays} Days • {plan.durationHours ? `${plan.durationHours} hr access` : 'Full Day access'}</div>
+                      <div className="text-xs text-muted-foreground">{plan.validityDays} Days • {plan.durationHours ? `${plan.durationHours} hr access` : 'Full Day access'} • ₹{(finalPrice / Math.max(1, Math.round(plan.validityDays / 30))).toFixed(0)}/mo</div>
                       {plan.discount > 0 ? (
                         <div className="mt-2 text-[10px] font-bold text-success bg-success/10 px-2 py-1 rounded w-max">
                           {plan.discount}% OFF
@@ -930,7 +952,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg flex items-center gap-2 disabled:opacity-50"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {isProcessing ? "Processing..." : "Pay Now"}
+            {isProcessing ? "Processing..." : (paymentMode === "ONLINE" ? "Pay Now" : "Book Now")}
           </button>
         )}
       </div>
