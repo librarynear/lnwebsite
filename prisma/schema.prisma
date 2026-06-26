@@ -44,6 +44,10 @@ model User {
   entryLogs EntryLog[]
   platformFeedbacks PlatformFeedback[] @relation("SubmitterPlatformFeedback")
   
+  // Hardware Access Tracking
+  consecutiveFailures Int @default(0)
+  failureReasons String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
