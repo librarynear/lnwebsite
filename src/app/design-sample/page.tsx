@@ -436,13 +436,13 @@ export default function DesignSamplePage() {
                         </div>
                       </div>
                       
-                      {/* Details row */}
-                      <div className="flex flex-row items-center gap-x-2 mt-2.5 overflow-hidden">
-                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                      {/* Details list */}
+                      <div className="flex flex-col gap-y-1 mt-2.5">
+                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                           <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                           {plan.validityDays} Days
                         </div>
-                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                           <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                           {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
                         </div>
@@ -465,10 +465,10 @@ export default function DesignSamplePage() {
                         <span className={`text-[30px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
                         <span className="text-[11px] font-bold text-slate-500">/mo</span>
                       </div>
-                      <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap">
-                        Total ₹{finalPrice.toFixed(0)} 
+                      <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap flex flex-col items-end">
+                        <span>Total ₹{finalPrice.toFixed(0)}</span>
                         {plan.discount > 0 && (
-                          <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
+                          <span className="line-through opacity-60">₹{plan.price.toFixed(0)}</span>
                         )}
                       </div>
                     </div>
