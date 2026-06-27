@@ -401,6 +401,8 @@ export default function DesignSamplePage() {
               const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
               const months = Math.max(1, Math.round(plan.validityDays / 30));
               const perMonth = (finalPrice / months).toFixed(0);
+              const isFullDay = plan.durationHours === null;
+
               return (
                 <div key={`stacked-${plan.id}`} className="flex flex-row bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 active:scale-[0.99] active:bg-slate-50/50 transition-all duration-200 cursor-pointer overflow-hidden group relative">
                   
