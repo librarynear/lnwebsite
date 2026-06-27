@@ -554,86 +554,85 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                             const widget = document.getElementById('payment-section');
                             if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
                           }, 100);
-                <div 
-                  key={plan.id} 
-                  onClick={() => {
-                    setSelectedPlan(plan);
-                    if (plan.type === "FLEXIBLE") {
-                      setSelectedSeat(null);
-                    }
-                  }}
-                  className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400'}`}
-                >
-                  
-                  {/* Subtle thin color line on left */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isSelected ? 'bg-blue-500' : (isFullDay ? 'bg-blue-500' : 'bg-slate-300')}`}></div>
+                        } else {
+                          setTimeout(() => {
+                            const widget = document.getElementById('seat-section');
+                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                          }, 100);
+                        }
+                      }}
+                      className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400'}`}
+                    >
+                      
+                      {/* Subtle thin color line on left */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isSelected ? 'bg-blue-500' : (isFullDay ? 'bg-blue-500' : 'bg-slate-300')}`}></div>
 
-                  {/* Left Side: Clean Typography */}
-                  <div className="flex-1 py-3 pr-2 pl-4 flex flex-col justify-center relative min-w-0">
-                    {/* Subtle hover gradient */}
-                    <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}></div>
-                    
-                    <div className="relative z-10">
-                      {/* Super Title */}
-                      <div className={`text-[10px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
-                        {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
-                        {plan.discount > 0 && (
-                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
-                            {plan.discount}% OFF
-                          </span>
-                        )}
+                      {/* Left Side: Clean Typography */}
+                      <div className="flex-1 py-3 pr-2 pl-4 flex flex-col justify-center relative min-w-0">
+                        {/* Subtle hover gradient */}
+                        <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}></div>
+                        
+                        <div className="relative z-10">
+                          {/* Super Title */}
+                          <div className={`text-[10px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
+                            {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
+                            {plan.discount > 0 && (
+                              <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
+                                {plan.discount}% OFF
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Stacked Title & Subtitle */}
+                          <div className="mb-2">
+                            <h3 className={`text-[20px] font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-950'}`}>
+                              {months} Month{months > 1 ? 's' : ''}
+                            </h3>
+                            <div className="text-[11px] font-medium text-slate-500 mt-1 whitespace-nowrap">
+                              {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
+                            </div>
+                          </div>
+                          
+                          {/* Details row */}
+                          <div className="flex flex-row items-center gap-x-2 mt-2 overflow-hidden">
+                            <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                              <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
+                              {plan.validityDays} Days
+                            </div>
+                            <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                              <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
+                              {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Divider (Ticket Style) */}
+                      <div className={`border-l-[1.5px] border-dashed my-3 transition-colors relative ${isSelected ? 'border-blue-300' : 'border-slate-200 group-hover:border-blue-200'}`}>
+                        {/* Ticket notches */}
+                        <div className="absolute -top-3 -left-1.5 w-3 h-3 bg-white border-b-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
+                        <div className="absolute -bottom-3 -left-1.5 w-3 h-3 bg-white border-t-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
+                      </div>
+
+                      {/* Right Side: Price Block */}
+                      <div className={`py-3 pr-4 pl-3 w-[120px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
+                        <div className="text-right">
+                          <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
+                            <span className={`text-[13px] font-bold ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>₹</span>
+                            <span className={`text-[26px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
+                            <span className="text-[10px] font-bold text-slate-500">/mo</span>
+                          </div>
+                          <div className="text-[10px] font-semibold text-slate-400 leading-tight whitespace-nowrap">
+                            Total ₹{finalPrice.toFixed(0)} 
+                            {plan.discount > 0 && (
+                              <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       
-                      {/* Stacked Title & Subtitle */}
-                      <div className="mb-2">
-                        <h3 className={`text-[20px] font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-950'}`}>
-                          {months} Month{months > 1 ? 's' : ''}
-                        </h3>
-                        <div className="text-[11px] font-medium text-slate-500 mt-1 whitespace-nowrap">
-                          {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
-                        </div>
-                      </div>
-                      
-                      {/* Details row */}
-                      <div className="flex flex-row items-center gap-x-2 mt-2 overflow-hidden">
-                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
-                          <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
-                          {plan.validityDays} Days
-                        </div>
-                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
-                          <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
-                          {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
-                        </div>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Divider (Ticket Style) */}
-                  <div className={`border-l-[1.5px] border-dashed my-3 transition-colors relative ${isSelected ? 'border-blue-300' : 'border-slate-200 group-hover:border-blue-200'}`}>
-                    {/* Ticket notches */}
-                    <div className="absolute -top-3 -left-1.5 w-3 h-3 bg-white border-b-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
-                    <div className="absolute -bottom-3 -left-1.5 w-3 h-3 bg-white border-t-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
-                  </div>
-
-                  {/* Right Side: Price Block */}
-                  <div className={`py-3 pr-4 pl-3 w-[120px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
-                    <div className="text-right">
-                      <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                        <span className={`text-[13px] font-bold ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>₹</span>
-                        <span className={`text-[26px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
-                        <span className="text-[10px] font-bold text-slate-500">/mo</span>
-                      </div>
-                      <div className="text-[10px] font-semibold text-slate-400 leading-tight whitespace-nowrap">
-                        Total ₹{finalPrice.toFixed(0)} 
-                        {plan.discount > 0 && (
-                          <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                </div>
-              );
+                  );
                   
                 })}
                 {filteredPlans.length === 0 && (
