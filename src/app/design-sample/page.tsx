@@ -402,6 +402,7 @@ export default function DesignSamplePage() {
               const months = Math.max(1, Math.round(plan.validityDays / 30));
               const perMonth = (finalPrice / months).toFixed(0);
               const isFullDay = plan.durationHours === null;
+              const isSelected = false; // Mock state
 
               return (
                 <div key={`stacked-${plan.id}`} className="flex flex-row bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 active:scale-[0.99] active:bg-slate-50/50 transition-all duration-200 cursor-pointer overflow-hidden group relative">
@@ -410,16 +411,16 @@ export default function DesignSamplePage() {
                   <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
 
                   {/* Left Side: Clean Typography */}
-                  <div className="flex-1 py-3 pr-2 pl-4 flex flex-col justify-center relative min-w-0">
+                  <div className="flex-1 py-4 pr-3 pl-5 flex flex-col justify-center relative min-w-0">
                     {/* Subtle hover gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}></div>
                     
                     <div className="relative z-10">
                       {/* Super Title */}
-                      <div className={`text-[10px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
+                      <div className={`text-[11px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
                         {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
                         {plan.discount > 0 && (
-                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
+                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[10px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
                             {plan.discount}% OFF
                           </span>
                         )}
@@ -427,21 +428,21 @@ export default function DesignSamplePage() {
                       
                       {/* Stacked Title & Subtitle */}
                       <div className="mb-2">
-                        <h3 className="text-[20px] font-black tracking-tight text-slate-900 leading-none group-hover:text-blue-950 transition-colors whitespace-nowrap">
+                        <h3 className={`text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-950'}`}>
                           {months} Month{months > 1 ? 's' : ''}
                         </h3>
-                        <div className="text-[11px] font-medium text-slate-500 mt-1 whitespace-nowrap">
+                        <div className="text-[12px] font-medium text-slate-500 mt-1.5 whitespace-nowrap">
                           {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                         </div>
                       </div>
                       
                       {/* Details row */}
-                      <div className="flex flex-row items-center gap-x-2 mt-2 overflow-hidden">
-                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                      <div className="flex flex-row items-center gap-x-2 mt-2.5 overflow-hidden">
+                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
                           <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                           {plan.validityDays} Days
                         </div>
-                        <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
+                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1 whitespace-nowrap">
                           <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                           {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
                         </div>
@@ -457,14 +458,14 @@ export default function DesignSamplePage() {
                   </div>
 
                   {/* Right Side: Price Block */}
-                  <div className="py-3 pr-4 pl-3 w-[120px] bg-slate-50/50 flex flex-col justify-center items-end relative z-10 group-active:bg-slate-100/50 transition-colors flex-shrink-0">
+                  <div className={`py-4 pr-5 pl-4 w-[135px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
                     <div className="text-right">
                       <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                        <span className="text-[13px] font-bold text-slate-900">₹</span>
-                        <span className="text-[26px] font-black tracking-tighter text-slate-900">{perMonth}</span>
-                        <span className="text-[10px] font-bold text-slate-500">/mo</span>
+                        <span className={`text-[15px] font-bold ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>₹</span>
+                        <span className={`text-[30px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
+                        <span className="text-[11px] font-bold text-slate-500">/mo</span>
                       </div>
-                      <div className="text-[10px] font-semibold text-slate-400 leading-tight whitespace-nowrap">
+                      <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap">
                         Total ₹{finalPrice.toFixed(0)} 
                         {plan.discount > 0 && (
                           <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
