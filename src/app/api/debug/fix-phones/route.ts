@@ -20,6 +20,9 @@ export async function GET() {
 
     for (const user of usersToFix) {
       if (!user.authId) continue;
+      if (!adminAuth) {
+        return NextResponse.json({ error: "Firebase Admin Auth not initialized" }, { status: 500 });
+      }
       try {
         const firebaseUser = await adminAuth.getUser(user.authId);
         if (firebaseUser.phoneNumber) {
