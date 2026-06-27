@@ -208,6 +208,9 @@ export async function addStudentWithBooking(formData: FormData) {
       where: { id: student.id },
       data: {
         name,
+        email: email || student.email,
+        phone: phone || student.phone,
+        authId: authId || student.authId,
         dob: dobStr ? new Date(dobStr) : student.dob,
         gender: gender || student.gender,
         address: address || student.address

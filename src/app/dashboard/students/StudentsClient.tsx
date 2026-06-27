@@ -307,7 +307,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)} 
                       placeholder="+91 98765 43210" 
-                      disabled={!!verifiedAuthId || step === 2} 
+                      readOnly={!!verifiedAuthId || step === 2} 
+                      className={!!verifiedAuthId || step === 2 ? "bg-muted cursor-not-allowed opacity-50" : ""}
                       required 
                     />
                     {!verifiedAuthId && step === 1 && (
