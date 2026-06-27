@@ -118,7 +118,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
 
   // Derive recommended plans based on the selected plan's duration
   const recommendedPlans = selectedPlan 
-    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id).sort((a: any, b: any) => b.validityDays - a.validityDays)
+    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id).sort((a: any, b: any) => {
+      const priceA = a.discount ? a.price - (a.price * a.discount / 100) : a.price;
+      const priceB = b.discount ? b.price - (b.price * b.discount / 100) : b.price;
+      return priceA - priceB;
+    })
     : [];
 
   useEffect(() => {
@@ -372,7 +376,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   const filteredPlans = library.plans
     .filter((p:any) => planFilter === "ALL" || p.durationHours === planFilter)
     .filter((p:any) => monthFilter === "ALL" || Math.max(1, Math.round(p.validityDays / 30)) === monthFilter)
-    .sort((a:any, b:any) => b.validityDays - a.validityDays);
+    .sort((a:any, b:any) => {
+      const priceA = a.discount ? a.price - (a.price * a.discount / 100) : a.price;
+      const priceB = b.discount ? b.price - (b.price * b.discount / 100) : b.price;
+      return priceA - priceB;
+    });
 
   const maxX = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridX)) : 0;
   const maxY = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridY)) : 0;

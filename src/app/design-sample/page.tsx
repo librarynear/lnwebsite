@@ -3,11 +3,11 @@ import { Check, Star, Zap, Clock } from "lucide-react";
 
 const mockPlans = [
   {
-    id: "plan-1",
-    name: "Reserve Seat - 12 Months - Full Day",
-    price: 14400,
-    discount: 30,
-    validityDays: 360,
+    id: "plan-3",
+    name: "Reserve Seat - 1 Month - Full Day",
+    price: 1500,
+    discount: 0,
+    validityDays: 30,
     durationHours: null,
   },
   {
@@ -19,11 +19,11 @@ const mockPlans = [
     durationHours: 12,
   },
   {
-    id: "plan-3",
-    name: "Reserve Seat - 1 Month - Full Day",
-    price: 1500,
-    discount: 0,
-    validityDays: 30,
+    id: "plan-1",
+    name: "Reserve Seat - 12 Months - Full Day",
+    price: 14400,
+    discount: 30,
+    validityDays: 360,
     durationHours: null,
   }
 ];
