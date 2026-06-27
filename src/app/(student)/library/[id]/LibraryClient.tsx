@@ -585,10 +585,10 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           
                           {/* Stacked Title & Subtitle */}
                           <div className="mb-2">
-                            <h3 className={`text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-950'}`}>
+                            <h3 className="text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap text-slate-900 group-hover:text-blue-950">
                               {months} Month{months > 1 ? 's' : ''}
                             </h3>
-                            <div className="text-[12px] font-medium text-slate-500 mt-1.5 whitespace-nowrap">
+                            <div className="text-[12px] font-semibold text-slate-700 mt-1.5 whitespace-nowrap">
                               {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                             </div>
                           </div>
@@ -598,10 +598,6 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                             <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                               <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                               {plan.validityDays} Days
-                            </div>
-                            <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                              <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
-                              {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
                             </div>
                           </div>
                         </div>
@@ -618,8 +614,8 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                       <div className={`py-4 pr-5 pl-4 w-[135px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
                         <div className="text-right">
                           <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                            <span className={`text-[15px] font-bold ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>₹</span>
-                            <span className={`text-[30px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
+                            <span className="text-[15px] font-bold text-slate-900">₹</span>
+                            <span className="text-[30px] font-black tracking-tighter text-slate-900">{perMonth}</span>
                             <span className="text-[11px] font-bold text-slate-500">/mo</span>
                           </div>
                           <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap flex flex-col items-end">
@@ -639,87 +635,6 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                   <div className="text-sm text-muted-foreground text-center py-4">No plans found.</div>
                 )}
               </div>
-              
-              {/* Recommendations */}
-              {selectedPlan && recommendedPlans.length > 0 && (
-                <div className="pt-4 border-t border-border mt-4">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 block">
-                    Recommended Upgrades ({selectedPlan.durationHours ? `${selectedPlan.durationHours} hr` : 'Full Day'})
-                  </label>
-                  <div className="space-y-3">
-                    {recommendedPlans.map((plan: any) => {
-                      const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
-                      const months = Math.max(1, Math.round(plan.validityDays / 30));
-                      const perMonth = (finalPrice / months).toFixed(0);
-                      const isFullDay = plan.durationHours === null;
-                      
-                      return (
-                        <div 
-                          key={plan.id} 
-                          onClick={() => {
-                            setSelectedPlan(plan);
-                            if (plan.type === "FLEXIBLE") {
-                              setSelectedSeat(null);
-                              setTimeout(() => {
-                                const widget = document.getElementById('payment-section');
-                                if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                              }, 100);
-                            } else {
-                              setTimeout(() => {
-                                const widget = document.getElementById('seat-section');
-                                if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                              }, 100);
-                            }
-                          }}
-                          className={`flex flex-row bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50`}
-                        >
-                          {/* Subtle thin color line on left */}
-                          <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
-
-                          {/* Left Side: Clean Typography */}
-                          <div className="flex-1 py-4 pr-3 pl-5 flex flex-col justify-center relative min-w-0">
-                            <div className="relative z-10">
-                              <div className={`text-[11px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
-                                {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
-                                {plan.discount > 0 && (
-                                  <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[10px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
-                                    {plan.discount}% OFF
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mb-1.5">
-                                <h3 className={`text-[22px] font-black tracking-tight leading-none text-slate-900 group-hover:text-blue-950 transition-colors whitespace-nowrap`}>
-                                  {months} Month{months > 1 ? 's' : ''}
-                                </h3>
-                                <div className="text-[12px] font-medium text-slate-500 mt-1.5 whitespace-nowrap">
-                                  {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right Side: Price Block */}
-                          <div className={`py-4 pr-5 pl-4 w-[135px] flex flex-col justify-center items-end relative z-10 bg-slate-50/50 group-active:bg-slate-100/50 transition-colors border-l border-dashed border-slate-200 group-hover:border-blue-200 flex-shrink-0`}>
-                            <div className="text-right">
-                              <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                                <span className="text-[15px] font-bold text-slate-900">₹</span>
-                                <span className="text-[30px] font-black tracking-tighter text-slate-900">{perMonth}</span>
-                                <span className="text-[11px] font-bold text-slate-500">/mo</span>
-                              </div>
-                              <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap flex flex-col items-end">
-                                <span>Total ₹{finalPrice.toFixed(0)}</span>
-                                {plan.discount > 0 && (
-                                  <span className="line-through opacity-60">₹{plan.price.toFixed(0)}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Seat Selection Inline */}

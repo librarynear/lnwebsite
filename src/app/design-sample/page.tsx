@@ -428,10 +428,10 @@ export default function DesignSamplePage() {
                       
                       {/* Stacked Title & Subtitle */}
                       <div className="mb-2">
-                        <h3 className={`text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-950'}`}>
+                        <h3 className="text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap text-slate-900 group-hover:text-blue-950">
                           {months} Month{months > 1 ? 's' : ''}
                         </h3>
-                        <div className="text-[12px] font-medium text-slate-500 mt-1.5 whitespace-nowrap">
+                        <div className="text-[12px] font-semibold text-slate-700 mt-1.5 whitespace-nowrap">
                           {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                         </div>
                       </div>
@@ -441,10 +441,6 @@ export default function DesignSamplePage() {
                         <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                           <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
                           {plan.validityDays} Days
-                        </div>
-                        <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                          <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
-                          {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
                         </div>
                       </div>
                     </div>
@@ -461,8 +457,8 @@ export default function DesignSamplePage() {
                   <div className={`py-4 pr-5 pl-4 w-[135px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
                     <div className="text-right">
                       <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                        <span className={`text-[15px] font-bold ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>₹</span>
-                        <span className={`text-[30px] font-black tracking-tighter ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{perMonth}</span>
+                        <span className="text-[15px] font-bold text-slate-900">₹</span>
+                        <span className="text-[30px] font-black tracking-tighter text-slate-900">{perMonth}</span>
                         <span className="text-[11px] font-bold text-slate-500">/mo</span>
                       </div>
                       <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap flex flex-col items-end">
