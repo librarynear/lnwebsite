@@ -543,91 +543,91 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                   const perMonth = (finalPrice / months).toFixed(0);
                   const isFullDay = plan.durationHours === null;
                   
-              return (
-                <div 
-                  key={plan.id} 
-                  onClick={() => {
-                    setSelectedPlan(plan);
-                    if (plan.type === "FLEXIBLE") {
-                      setSelectedSeat(null);
-                      setTimeout(() => {
-                        const widget = document.getElementById('payment-section');
-                        if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                      }, 100);
-                    } else {
-                      setTimeout(() => {
-                        const widget = document.getElementById('seat-section');
-                        if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                      }, 100);
-                    }
-                  }}
-                  className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400'}`}
-                >
-                  {/* Subtle thin color line on left */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
+                  return (
+                    <div 
+                      key={plan.id} 
+                      onClick={() => {
+                        setSelectedPlan(plan);
+                        if (plan.type === "FLEXIBLE") {
+                          setSelectedSeat(null);
+                          setTimeout(() => {
+                            const widget = document.getElementById('payment-section');
+                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                          }, 100);
+                        } else {
+                          setTimeout(() => {
+                            const widget = document.getElementById('seat-section');
+                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
+                          }, 100);
+                        }
+                      }}
+                      className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400'}`}
+                    >
+                      {/* Subtle thin color line on left */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
 
-                  {/* Left Side: Clean Typography */}
-                  <div className="flex-1 py-3 pr-3 pl-4 sm:py-5 sm:pr-5 sm:pl-6 flex flex-col justify-center relative min-w-0">
-                    {/* Subtle hover gradient */}
-                    <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent opacity-0 transition-opacity ${isSelected ? 'opacity-100' : 'group-hover:opacity-100'}`}></div>
-                    
-                    <div className="relative z-10">
-                      {/* Super Title */}
-                      <div className={`text-[10px] sm:text-xs font-semibold mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
-                        {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
-                        {plan.discount > 0 && (
-                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full tracking-wide">
-                            {plan.discount}% OFF
-                          </span>
-                        )}
+                      {/* Left Side: Clean Typography */}
+                      <div className="flex-1 py-2 pr-2 pl-3 sm:py-5 sm:pr-5 sm:pl-6 flex flex-col justify-center relative min-w-0">
+                        {/* Subtle hover gradient */}
+                        <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent opacity-0 transition-opacity ${isSelected ? 'opacity-100' : 'group-hover:opacity-100'}`}></div>
+                        
+                        <div className="relative z-10">
+                          {/* Super Title */}
+                          <div className={`text-[8px] sm:text-xs font-semibold mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
+                            {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
+                            {plan.discount > 0 && (
+                              <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[7px] sm:text-[10px] font-bold px-1 sm:px-2 py-0 sm:py-0.5 rounded-full tracking-wide">
+                                {plan.discount}% OFF
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Stacked Title & Subtitle */}
+                          <div className="mb-1.5 sm:mb-2">
+                            <h3 className={`text-base sm:text-2xl font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-700' : 'text-slate-900 group-hover:text-blue-950'}`}>
+                              {months} Month{months > 1 ? 's' : ''}
+                            </h3>
+                            <div className="text-[9px] sm:text-sm font-normal text-slate-500 mt-0.5 sm:mt-1.5 whitespace-nowrap">
+                              {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
+                            </div>
+                          </div>
+                          
+                          {/* Details row */}
+                          <div className="flex flex-row items-center gap-x-2 sm:gap-x-4 mt-1.5 sm:mt-2 overflow-hidden">
+                            <div className="text-[8px] sm:text-xs font-normal text-slate-500 flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
+                              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                              {plan.validityDays} Days
+                            </div>
+                            <div className="text-[8px] sm:text-xs font-normal text-slate-500 flex items-center gap-1 sm:gap-1.5 whitespace-nowrap">
+                              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                              {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      
-                      {/* Stacked Title & Subtitle */}
-                      <div className="mb-2">
-                        <h3 className={`text-xl sm:text-2xl font-black tracking-tight leading-none transition-colors whitespace-nowrap ${isSelected ? 'text-blue-700' : 'text-slate-900 group-hover:text-blue-950'}`}>
-                          {months} Month{months > 1 ? 's' : ''}
-                        </h3>
-                        <div className="text-[11px] sm:text-sm font-normal text-slate-500 mt-1 sm:mt-1.5 whitespace-nowrap">
-                          {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
+
+                      {/* Divider (Ticket Style) */}
+                      <div className={`border-l border-dashed my-2 sm:my-4 transition-colors ${isSelected ? 'border-blue-300' : 'border-slate-200 group-hover:border-blue-200'}`}></div>
+
+                      {/* Right Side: Price Block */}
+                      <div className={`py-2 pr-3 pl-2 sm:p-5 w-[80px] sm:w-[180px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
+                        <div className="text-right">
+                          <div className="flex items-baseline justify-end gap-0.5 sm:gap-1 mb-0.5 whitespace-nowrap">
+                            <span className="text-[10px] sm:text-lg font-semibold text-slate-900">₹</span>
+                            <span className="text-xl sm:text-3xl font-bold tracking-tighter text-slate-900">{perMonth}</span>
+                            <span className="text-[8px] sm:text-xs font-medium text-slate-500">/mo</span>
+                          </div>
+                          <div className="text-[7px] sm:text-[11px] font-medium text-slate-400 leading-tight whitespace-nowrap">
+                            Total ₹{finalPrice.toFixed(0)} 
+                            {plan.discount > 0 && (
+                              <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
-                      {/* Details row */}
-                      <div className="flex flex-row items-center gap-x-2 sm:gap-x-4 gap-y-2 mt-2 overflow-hidden">
-                        <div className="text-[10px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
-                          {plan.validityDays} Days
-                        </div>
-                        <div className="text-[10px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
-                          {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
-                        </div>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Divider (Ticket Style) */}
-                  <div className={`border-l border-dashed my-3 sm:my-4 transition-colors ${isSelected ? 'border-blue-300' : 'border-slate-200 group-hover:border-blue-200'}`}></div>
-
-                  {/* Right Side: Price Block */}
-                  <div className={`py-3 pr-4 pl-3 sm:p-5 w-[125px] sm:w-[180px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
-                    <div className="text-right">
-                      <div className="flex items-baseline justify-end gap-0.5 sm:gap-1 mb-0.5 whitespace-nowrap">
-                        <span className="text-sm sm:text-lg font-semibold text-slate-900">₹</span>
-                        <span className="text-2xl sm:text-3xl font-bold tracking-tighter text-slate-900">{perMonth}</span>
-                        <span className="text-[10px] sm:text-xs font-medium text-slate-500">/mo</span>
-                      </div>
-                      <div className="text-[9px] sm:text-[11px] font-medium text-slate-400 leading-tight whitespace-nowrap">
-                        Total ₹{finalPrice.toFixed(0)} 
-                        {plan.discount > 0 && (
-                          <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                </div>
-              )
+                  )
                 })}
                 {filteredPlans.length === 0 && (
                   <div className="text-sm text-muted-foreground text-center py-4">No plans found.</div>
@@ -671,21 +671,21 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
 
                           {/* Left Side: Clean Typography */}
-                          <div className="flex-1 py-2.5 pr-2.5 pl-3 sm:p-4 sm:pl-5 flex flex-col justify-center relative min-w-0">
+                          <div className="flex-1 py-1.5 pr-1.5 pl-2.5 sm:p-4 sm:pl-5 flex flex-col justify-center relative min-w-0">
                             <div className="relative z-10">
-                              <div className={`text-[9px] sm:text-[10px] font-semibold mb-1 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
+                              <div className={`text-[7px] sm:text-[10px] font-semibold mb-0.5 sm:mb-1 flex items-center gap-1 sm:gap-2 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
                                 {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
                                 {plan.discount > 0 && (
-                                  <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[8px] sm:text-[9px] font-bold px-1.5 py-0 rounded-full tracking-wide">
+                                  <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[6px] sm:text-[9px] font-bold px-1 py-0 rounded-full tracking-wide">
                                     {plan.discount}% OFF
                                   </span>
                                 )}
                               </div>
                               <div className="mb-0.5 sm:mb-1">
-                                <h3 className={`text-base sm:text-xl font-black tracking-tight leading-none text-slate-900 group-hover:text-blue-950 transition-colors whitespace-nowrap`}>
+                                <h3 className={`text-[14px] sm:text-xl font-black tracking-tight leading-none text-slate-900 group-hover:text-blue-950 transition-colors whitespace-nowrap`}>
                                   {months} Month{months > 1 ? 's' : ''}
                                 </h3>
-                                <div className="text-[10px] sm:text-xs font-normal text-slate-500 mt-1 whitespace-nowrap">
+                                <div className="text-[8px] sm:text-xs font-normal text-slate-500 mt-0.5 sm:mt-1 whitespace-nowrap">
                                   {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                                 </div>
                               </div>
@@ -693,14 +693,14 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           </div>
 
                           {/* Right Side: Price Block */}
-                          <div className={`py-2.5 pr-3 pl-2.5 sm:p-4 w-[100px] sm:w-[150px] flex flex-col justify-center items-end relative z-10 bg-slate-50/50 group-active:bg-slate-100/50 transition-colors border-l border-dashed border-slate-200 group-hover:border-blue-200 flex-shrink-0`}>
+                          <div className={`py-1.5 pr-2 pl-1.5 sm:p-4 w-[70px] sm:w-[150px] flex flex-col justify-center items-end relative z-10 bg-slate-50/50 group-active:bg-slate-100/50 transition-colors border-l border-dashed border-slate-200 group-hover:border-blue-200 flex-shrink-0`}>
                             <div className="text-right">
                               <div className="flex items-baseline justify-end gap-0.5 sm:gap-1 mb-0.5 whitespace-nowrap">
-                                <span className="text-xs sm:text-base font-semibold text-slate-900">₹</span>
-                                <span className="text-xl sm:text-2xl font-bold tracking-tighter text-slate-900">{perMonth}</span>
-                                <span className="text-[9px] sm:text-[10px] font-medium text-slate-500">/mo</span>
+                                <span className="text-[9px] sm:text-base font-semibold text-slate-900">₹</span>
+                                <span className="text-lg sm:text-2xl font-bold tracking-tighter text-slate-900">{perMonth}</span>
+                                <span className="text-[7px] sm:text-[10px] font-medium text-slate-500">/mo</span>
                               </div>
-                              <div className="text-[9px] sm:text-[10px] font-medium text-slate-400 leading-tight whitespace-nowrap">
+                              <div className="text-[6px] sm:text-[10px] font-medium text-slate-400 leading-tight whitespace-nowrap">
                                 Total ₹{finalPrice.toFixed(0)} 
                                 {plan.discount > 0 && (
                                   <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
