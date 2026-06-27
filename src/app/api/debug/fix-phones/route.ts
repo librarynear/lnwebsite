@@ -51,6 +51,8 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      adminProject: process.env.FIREBASE_PROJECT_ID,
+      publicProject: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       totalFound: usersToFix.length,
       totalFixed: fixedUsers.length,
       fixedUsers,
