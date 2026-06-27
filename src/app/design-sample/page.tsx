@@ -401,8 +401,6 @@ export default function DesignSamplePage() {
               const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
               const months = Math.max(1, Math.round(plan.validityDays / 30));
               const perMonth = (finalPrice / months).toFixed(0);
-              const isFullDay = plan.durationHours === null;
-
               return (
                 <div key={`stacked-${plan.id}`} className="flex flex-row bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400 active:scale-[0.99] active:bg-slate-50/50 transition-all duration-200 cursor-pointer overflow-hidden group relative">
                   
@@ -410,60 +408,60 @@ export default function DesignSamplePage() {
                   <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isFullDay ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
 
                   {/* Left Side: Clean Typography */}
-                  <div className="flex-1 p-3 sm:p-6 pl-4 sm:pl-8 flex flex-col justify-center relative">
+                  <div className="flex-1 p-4 sm:p-6 pl-5 sm:pl-8 flex flex-col justify-center relative min-w-0">
                     {/* Subtle hover gradient */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     
                     <div className="relative z-10">
                       {/* Super Title */}
-                      <div className={`text-[10px] sm:text-xs font-semibold mb-1.5 sm:mb-2 flex flex-wrap items-center gap-1.5 sm:gap-2 ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
+                      <div className={`text-[11px] sm:text-xs font-semibold mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
                         {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
                         {plan.discount > 0 && (
-                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full tracking-wide">
+                          <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full tracking-wide">
                             {plan.discount}% OFF
                           </span>
                         )}
                       </div>
                       
                       {/* Stacked Title & Subtitle */}
-                      <div className="mb-1.5 sm:mb-2.5">
-                        <h3 className="text-lg sm:text-3xl font-black tracking-tight text-slate-900 leading-none group-hover:text-blue-950 transition-colors">
+                      <div className="mb-2 sm:mb-2.5">
+                        <h3 className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 leading-none group-hover:text-blue-950 transition-colors whitespace-nowrap">
                           {months} Month{months > 1 ? 's' : ''}
                         </h3>
-                        <div className="text-[11px] sm:text-sm font-normal text-slate-500 mt-1 sm:mt-1.5">
+                        <div className="text-[13px] sm:text-sm font-normal text-slate-500 mt-1 sm:mt-1.5 whitespace-nowrap">
                           {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                         </div>
                       </div>
                       
                       {/* Details row */}
-                      <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-2 mt-2 sm:mt-3 hidden sm:flex">
-                        <div className="text-[10px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5">
-                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-slate-300"></div>
-                          {plan.validityDays} Days Validity
+                      <div className="flex flex-row items-center gap-x-3 sm:gap-x-4 gap-y-2 mt-2 sm:mt-3 overflow-hidden">
+                        <div className="text-[11px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                          {plan.validityDays} Days
                         </div>
-                        <div className="text-[10px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5">
-                          <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-slate-300"></div>
-                          {isFullDay ? 'Dedicated Desk' : 'Any Available Desk'}
+                        <div className="text-[11px] sm:text-xs font-normal text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                          {isFullDay ? 'Dedicated Desk' : 'Any Desk'}
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Divider (Ticket Style) */}
-                  <div className="border-l border-dashed my-3 sm:my-4 border-slate-200 group-hover:border-blue-200 transition-colors"></div>
+                  <div className="border-l border-dashed my-4 border-slate-200 group-hover:border-blue-200 transition-colors"></div>
 
                   {/* Right Side: Price Block */}
-                  <div className="p-3 sm:p-6 w-[110px] sm:w-[220px] bg-slate-50/50 flex flex-col justify-center items-end relative z-10 group-active:bg-slate-100/50 transition-colors">
+                  <div className="p-4 sm:p-6 min-w-[130px] sm:w-[220px] bg-slate-50/50 flex flex-col justify-center items-end relative z-10 group-active:bg-slate-100/50 transition-colors flex-shrink-0">
                     <div className="text-right">
-                      <div className="flex items-baseline justify-end gap-0.5 sm:gap-1 mb-0.5 sm:mb-1">
-                        <span className="text-sm sm:text-xl font-semibold text-slate-900">₹</span>
+                      <div className="flex items-baseline justify-end gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 whitespace-nowrap">
+                        <span className="text-base sm:text-xl font-semibold text-slate-900">₹</span>
                         <span className="text-2xl sm:text-4xl font-bold tracking-tighter text-slate-900">{perMonth}</span>
-                        <span className="text-[10px] sm:text-sm font-medium text-slate-500">/mo</span>
+                        <span className="text-[11px] sm:text-sm font-medium text-slate-500">/mo</span>
                       </div>
-                      <div className="text-[9px] sm:text-[12px] font-medium text-slate-400 leading-tight">
+                      <div className="text-[10px] sm:text-[12px] font-medium text-slate-400 leading-tight whitespace-nowrap">
                         Total ₹{finalPrice.toFixed(0)} 
                         {plan.discount > 0 && (
-                          <span className="line-through ml-1 opacity-60 block sm:inline">₹{plan.price.toFixed(0)}</span>
+                          <span className="line-through ml-1 opacity-60">₹{plan.price.toFixed(0)}</span>
                         )}
                       </div>
                     </div>
