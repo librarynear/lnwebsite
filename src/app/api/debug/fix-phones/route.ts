@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { adminAuth } from "@/lib/firebase/firebaseAdmin";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
