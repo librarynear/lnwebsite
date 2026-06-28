@@ -21,12 +21,77 @@ String SecurityManager::detectQRType(const String& rawJson) {
         return "unknown";
     }
     
+    if (doc.containsKey("cmd")) {
+        return doc["cmd"].as<String>();
+    }
+    
     if (doc.containsKey("type")) {
         return doc["type"].as<String>();
     }
     
     // No "type" field = access QR (backward compatible)
     return "access";
+}
+
+RFIDCommandPayload SecurityManager::processRFIDCommandQR(const String& rawJson) {
+    RFIDCommandPayload result;
+    result.isValid = false;
+
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, rawJson);
+
+    if (error) {
+        Serial.print("[RFID Command] JSON parse failed: ");
+        Serial.println(error.c_str());
+        return result;
+    }
+
+    if (!doc.containsKey("cmd") || !doc.containsKey("rfid") || !doc.containsKey("uid") || 
+        !doc.containsKey("iat") || !doc.containsKey("qid") || !doc.containsKey("sig")) {
+        Serial.println("[RFID Command] Missing required fields");
+        return result;
+    }
+
+    result.cmd = doc["cmd"].as<String>();
+    result.rfid = doc["rfid"].as<String>();
+    result.exp = doc.containsKey("exp") ? doc["exp"].as<time_t>() : 0;
+    result.uid = doc["uid"].as<String>();
+    result.iat = doc["iat"].as<time_t>();
+    result.qid = doc["qid"].as<String>();
+    result.doorId = doc.containsKey("doorId") ? doc["doorId"].as<String>() : String(DOOR_ID);
+    result.sig = doc["sig"].as<String>();
+
+    // Verify Time validity (5-minute window for the command QR itself)
+    time_t now;
+    time(&now);
+    
+    if (now > result.iat + 300) {
+        Serial.println("[RFID Command] QR Code Expired!");
+        return result;
+    }
+    
+    if (now < result.iat - 60) {
+        Serial.println("[RFID Command] QR Code is from the future? Check NTP sync.");
+        return result;
+    }
+
+    // Verify ECDSA Signature
+    // Payload to verify: cmd + rfid + exp + uid + iat + qid
+    String payloadStr = result.cmd + result.rfid + String((unsigned long)result.exp) + result.uid + String((unsigned long)result.iat) + result.qid;
+    if (!verifyECDSASignature(payloadStr, result.sig)) {
+        Serial.println("[RFID Command] Signature verification failed!");
+        return result;
+    }
+
+    // Check Replay Attack
+    time_t expiry = result.iat + 300;
+    if (!checkReplay(result.qid, expiry)) {
+        Serial.println("[RFID Command] Replay attack detected!");
+        return result;
+    }
+
+    result.isValid = true;
+    return result;
 }
 
 WiFiConfigPayload SecurityManager::processWiFiQR(const String& rawJson) {

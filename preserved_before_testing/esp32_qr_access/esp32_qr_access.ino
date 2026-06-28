@@ -120,35 +120,91 @@ void loop() {
                 Serial.print("Scanned: ");
                 Serial.println(qrBuffer);
                 
-                String type = securityManager.detectQRType(qrBuffer);
-                
-                if (type == "wifi") {
-                    WiFiConfigPayload res = securityManager.processWiFiQR(qrBuffer);
-                    if (res.isValid) {
-                        Serial.println("Re-provisioning WiFi...");
-                        preferences.begin("library-app", false);
-                        preferences.putString("ssid", res.ssid);
-                        preferences.putString("pass", res.pass);
-                        preferences.end();
-                        WiFi.disconnect();
-                        connectToWiFi(res.ssid.c_str(), res.pass.c_str());
+                if (qrBuffer.startsWith("{")) {
+                    String type = securityManager.detectQRType(qrBuffer);
+                    
+                    if (type == "wifi") {
+                        WiFiConfigPayload res = securityManager.processWiFiQR(qrBuffer);
+                        if (res.isValid) {
+                            Serial.println("Re-provisioning WiFi...");
+                            preferences.begin("library-app", false);
+                            preferences.putString("ssid", res.ssid);
+                            preferences.putString("pass", res.pass);
+                            preferences.end();
+                            WiFi.disconnect();
+                            connectToWiFi(res.ssid.c_str(), res.pass.c_str());
+                        } else {
+                            Serial.println("WiFi Provisioning Invalid!");
+                        }
+                    } else if (type == "ADD_RFID") {
+                        RFIDCommandPayload res = securityManager.processRFIDCommandQR(qrBuffer);
+                        if (res.isValid) {
+                            Serial.println("ADD_RFID Valid!");
+                            preferences.begin("rfid_tags", false);
+                            // value format: uid,exp
+                            String val = res.uid + "," + String((unsigned long)res.exp);
+                            preferences.putString(res.rfid.c_str(), val);
+                            preferences.end();
+                            Serial.println("RFID Assigned: " + res.rfid);
+                        } else {
+                            Serial.println("ADD_RFID Invalid!");
+                        }
+                    } else if (type == "REVOKE_RFID") {
+                        RFIDCommandPayload res = securityManager.processRFIDCommandQR(qrBuffer);
+                        if (res.isValid) {
+                            Serial.println("REVOKE_RFID Valid!");
+                            preferences.begin("rfid_tags", false);
+                            preferences.remove(res.rfid.c_str());
+                            preferences.end();
+                            Serial.println("RFID Revoked: " + res.rfid);
+                        } else {
+                            Serial.println("REVOKE_RFID Invalid!");
+                        }
                     } else {
-                        Serial.println("WiFi Provisioning Invalid!");
+                        // Normal Access QR
+                        QRPayload result = securityManager.processQR(qrBuffer);
+                        if (result.isValid) {
+                            Serial.println("QR Valid -> Access Granted");
+                            hwController.unlockDoor();
+                            logManager.addLog(result.uid, result.doorId, result.iat, "SUCCESS", "");
+                        } else {
+                            Serial.println("QR Invalid -> Access Denied");
+                            logManager.addLog(result.uid, result.doorId, result.iat, "DENIED", "Signature/Time/Replay Invalid");
+                        }
                     }
                 } else {
-                    // Normal Access QR
-                    QRPayload result = securityManager.processQR(qrBuffer);
-                    if (result.isValid) {
-                        Serial.println("QR Valid -> Access Granted");
-                        hwController.unlockDoor();
-                        // Add log (Success) - we will update addLog later to handle reason/status
-                        logManager.addLog(result.uid, result.doorId, result.iat, "SUCCESS", "");
+                    // Raw RFID Tag Scan
+                    qrBuffer.trim();
+                    Serial.println("RFID Tag Scanned: " + qrBuffer);
+                    
+                    preferences.begin("rfid_tags", true);
+                    String val = preferences.getString(qrBuffer.c_str(), "");
+                    preferences.end();
+                    
+                    time_t now;
+                    time(&now);
+
+                    if (val != "") {
+                        int commaIdx = val.indexOf(',');
+                        if (commaIdx > -1) {
+                            String uid = val.substring(0, commaIdx);
+                            time_t exp = (time_t)val.substring(commaIdx + 1).toInt();
+                            
+                            if (now < exp) {
+                                Serial.println("RFID Valid -> Access Granted. UID: " + uid);
+                                hwController.unlockDoor();
+                                logManager.addLog(uid, String(DOOR_ID), now, "SUCCESS", "");
+                            } else {
+                                Serial.println("RFID Expired -> Access Denied");
+                                logManager.addLog(uid, String(DOOR_ID), now, "DENIED", "RFID Plan Expired");
+                            }
+                        }
                     } else {
-                        Serial.println("QR Invalid -> Access Denied");
-                        // Add log (Failed) 
-                        logManager.addLog(result.uid, result.doorId, result.iat, "DENIED", "Signature/Time/Replay Invalid");
+                        Serial.println("Unregistered RFID -> Access Denied");
+                        logManager.addLog(qrBuffer, String(DOOR_ID), now, "DENIED", "Unregistered RFID");
                     }
                 }
+                
                 qrBuffer = "";
             }
         } else {

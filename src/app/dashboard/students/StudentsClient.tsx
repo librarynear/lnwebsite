@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
+import { generateRFIDCommandQR } from "@/app/actions/hardware-actions"
+import QRCode from "react-qr-code"
 import { initializeApp, getApps } from "firebase/app"
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { firebaseConfig } from "@/lib/firebase/clientApp"
@@ -76,6 +78,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING'>('ACTIVE')
   const [sortMethod, setSortMethod] = useState<'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
+
+  // RFID Modal States
+  const [rfidModalOpen, setRfidModalOpen] = useState(false);
+  const [rfidStudentId, setRfidStudentId] = useState<string | null>(null);
+  const [rfidTagInput, setRfidTagInput] = useState("");
+  const [rfidQrPayload, setRfidQrPayload] = useState<string | null>(null);
+  const [rfidLoading, setRfidLoading] = useState(false);
 
   // OTP Verification States
   const [step, setStep] = useState<1 | 2>(1)
@@ -699,6 +708,34 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                 >
                                   Change Seat
                                 </DropdownMenuItem>
+                              )}
+
+                              {booking.status !== 'CANCELLED' && (
+                                booking.student.rfidTag ? (
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setRfidStudentId(booking.student.id);
+                                      setRfidTagInput(booking.student.rfidTag || "");
+                                      setRfidQrPayload(null);
+                                      setRfidModalOpen(true);
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
+                                  >
+                                    Manage RFID
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setRfidStudentId(booking.student.id);
+                                      setRfidTagInput("");
+                                      setRfidQrPayload(null);
+                                      setRfidModalOpen(true);
+                                    }}
+                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
+                                  >
+                                    Assign RFID
+                                  </DropdownMenuItem>
+                                )
                               )}
                               
                               {booking.status === 'CONFIRMED' && (
@@ -1446,6 +1483,86 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               {renewLoadingMethod === 'ONLINE' ? "Renewing..." : "Pay via UPI/Card"}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rfidModalOpen} onOpenChange={setRfidModalOpen}>
+        <DialogContent className="max-w-sm sm:max-w-md w-[95vw] rounded-2xl p-6 border border-border bg-background shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">{rfidQrPayload ? "Scan this QR" : (rfidTagInput ? "Manage RFID" : "Assign RFID")}</DialogTitle>
+          </DialogHeader>
+
+          {rfidQrPayload ? (
+            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl">
+              <QRCode value={rfidQrPayload} size={256} />
+              <p className="mt-4 text-sm text-center text-muted-foreground">Scan this QR Code at the machine to program the RFID tag offline.</p>
+              <Button onClick={() => setRfidModalOpen(false)} className="mt-4 w-full">Done</Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label>RFID Tag ID (Hex)</Label>
+                <Input 
+                  value={rfidTagInput} 
+                  onChange={e => setRfidTagInput(e.target.value)} 
+                  placeholder="e.g. 1A2B3C4D" 
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  onClick={async () => {
+                    if (!rfidTagInput) { toast.error("Please enter an RFID tag"); return; }
+                    setRfidLoading(true);
+                    try {
+                      // Fetch the student's booking to get their expiry timestamp
+                      const booking = bookings.find(b => b.studentId === rfidStudentId);
+                      const exp = booking && booking.endTime ? Math.floor(new Date(booking.endTime).getTime() / 1000) : 0;
+
+                      const res = await generateRFIDCommandQR(rfidStudentId!, "ADD_RFID", rfidTagInput, exp);
+                      if (res.error) {
+                        toast.error(res.error);
+                      } else {
+                        setRfidQrPayload(res.qrPayload!);
+                        toast.success("QR Code Generated");
+                      }
+                    } catch(e: any) {
+                      toast.error("Error generating QR");
+                    }
+                    setRfidLoading(false);
+                  }}
+                  disabled={rfidLoading || !rfidTagInput}
+                  className="flex-1 bg-primary text-primary-foreground"
+                >
+                  {rfidLoading ? "Generating..." : "Generate Add QR"}
+                </Button>
+                
+                {rfidTagInput && (
+                  <Button 
+                    onClick={async () => {
+                      setRfidLoading(true);
+                      try {
+                        const res = await generateRFIDCommandQR(rfidStudentId!, "REVOKE_RFID", rfidTagInput, 0);
+                        if (res.error) {
+                          toast.error(res.error);
+                        } else {
+                          setRfidQrPayload(res.qrPayload!);
+                          toast.success("QR Code Generated");
+                        }
+                      } catch(e: any) {
+                        toast.error("Error generating QR");
+                      }
+                      setRfidLoading(false);
+                    }}
+                    disabled={rfidLoading}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    Generate Revoke QR
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

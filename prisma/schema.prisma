@@ -46,6 +46,7 @@ model User {
   notifications Notification[]
   
   // Hardware Access Tracking
+  rfidTag String? @unique
   consecutiveFailures Int @default(0)
   failureReasons String?
 

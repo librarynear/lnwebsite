@@ -27,6 +27,18 @@ struct WiFiConfigPayload {
     bool isValid;
 };
 
+struct RFIDCommandPayload {
+    String cmd;
+    String rfid;
+    time_t exp; // 0 if revoke
+    String uid;
+    time_t iat;
+    String qid;
+    String doorId;
+    String sig;
+    bool isValid;
+};
+
 class SecurityManager {
 public:
     SecurityManager();
@@ -38,6 +50,7 @@ public:
     // Parse JSON, verify ECDSA signature, age, and replay
     QRPayload processQR(const String& rawJson);
     WiFiConfigPayload processWiFiQR(const String& rawJson);
+    RFIDCommandPayload processRFIDCommandQR(const String& rawJson);
     
     // Purge expired QIDs from RAM
     void purgeReplayCache();
