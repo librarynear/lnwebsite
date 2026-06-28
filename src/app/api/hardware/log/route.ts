@@ -44,42 +44,75 @@ export async function POST(request: Request) {
       };
     });
 
+    // --- Deduplication Logic ---
+    // 1. Deduplicate within the incoming batch itself
+    const uniqueInsertData = [];
+    const seenMap = new Set();
+    for (const log of insertData) {
+      const key = `${log.libraryId}-${log.userId}-${log.doorId}-${log.timestamp.getTime()}-${log.status}-${log.reason}`;
+      if (!seenMap.has(key)) {
+        seenMap.add(key);
+        uniqueInsertData.push(log);
+      }
+    }
+
+    // 2. Check the database for recently inserted identical logs (within the last 15 seconds) to prevent cross-request duplicates
+    const finalInsertData = [];
+    for (const log of uniqueInsertData) {
+      const tenSecondsAgo = new Date(log.timestamp.getTime() - 15000);
+      const tenSecondsFuture = new Date(log.timestamp.getTime() + 15000);
+      
+      const existingLog = await prisma.entryLog.findFirst({
+        where: {
+          libraryId: log.libraryId,
+          userId: log.userId,
+          doorId: log.doorId,
+          status: log.status,
+          reason: log.reason,
+          timestamp: {
+            gte: tenSecondsAgo,
+            lte: tenSecondsFuture
+          }
+        }
+      });
+
+      if (!existingLog) {
+        finalInsertData.push(log);
+      }
+    }
+
+    if (finalInsertData.length === 0) {
+      // If all were duplicates, just return success immediately
+      return NextResponse.json({ success: true, inserted: 0, note: "All logs were duplicates" });
+    }
+
     // Bulk insert the logs
     await prisma.entryLog.createMany({
-      data: insertData,
+      data: finalInsertData,
       skipDuplicates: true
     });
 
     // Update user failure counts for flagged students logic
-    for (const log of logs) {
-      if (log.uid && log.uid !== "UNKNOWN") {
+    for (const log of finalInsertData) {
+      if (log.userId && log.userId !== "UNKNOWN") {
         if (log.status === "DENIED") {
           const reason = log.reason || "Unknown reason";
-          await prisma.user.update({
-            where: { id: log.uid },
-            data: {
-              consecutiveFailures: { increment: 1 },
-              // Append reason if possible; Prisma doesn't have native string append, so we use string concat hack or just set it:
-              // Actually, since we want a comma separated list, we should fetch first or just trust the DB. 
-              // A simple approach is just overwriting it with the latest reason, or using an raw query.
-              // For safety and speed, we will just update the failureReason.
-            }
-          });
           
-          // To append, we do it in a safer way:
-          const user = await prisma.user.findUnique({ where: { id: log.uid }, select: { failureReasons: true } });
+          const user = await prisma.user.findUnique({ where: { id: log.userId }, select: { failureReasons: true } });
           if (user) {
              const newReasons = user.failureReasons ? `${user.failureReasons}, ${reason}` : reason;
              await prisma.user.update({
-               where: { id: log.uid },
-               data: { failureReasons: newReasons }
+               where: { id: log.userId },
+               data: { 
+                 consecutiveFailures: { increment: 1 },
+                 failureReasons: newReasons 
+               }
              });
           }
-
         } else if (log.status === "SUCCESS" || !log.status) {
           // Reset failures on success
           await prisma.user.update({
-            where: { id: log.uid },
+            where: { id: log.userId },
             data: {
               consecutiveFailures: 0,
               failureReasons: null
@@ -90,7 +123,7 @@ export async function POST(request: Request) {
     }
 
     // Return a solid HTTP 200 to act as an ACK so the ESP32 knows it can delete the logs from flash/RAM
-    return NextResponse.json({ success: true, inserted: insertData.length });
+    return NextResponse.json({ success: true, inserted: finalInsertData.length });
 
   } catch (error: any) {
     console.error("Failed to process hardware entry logs:", error);
