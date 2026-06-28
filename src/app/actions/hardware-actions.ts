@@ -336,3 +336,147 @@ export async function generateRFIDCommandQR(studentId: string, cmd: "ADD_RFID" |
     return { error: "Signature generation failed" };
   }
 }
+
+export async function addOfflineStudentWithRFID(formData: FormData) {
+  // Auth guard
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
+    return { error: 'Unauthorized' };
+  }
+
+  const name = (formData.get("name") as string)?.trim();
+  const rfidTag = (formData.get("rfidTag") as string)?.trim();
+  const planId = formData.get("planId") as string;
+  const seatId = formData.get("seatId") as string;
+  const paymentMethod = (formData.get("paymentMethod") as string) || "CASH";
+
+  if (!name) return { error: "Student name is required" };
+  if (!rfidTag) return { error: "RFID Tag is required" };
+  if (!planId) return { error: "Plan is required" };
+
+  const library = await prisma.library.findFirst({ 
+    where: { librarianId: session.userId } 
+  });
+  if (!library) return { error: "No library found." };
+
+  // Scope the plan
+  const plan = await prisma.plan.findFirst({ where: { id: planId, libraryId: library.id, isActive: true } });
+  if (!plan) return { error: "Selected plan is not available for this library." };
+
+  const isFlexible = plan.type === 'FLEXIBLE';
+  if (!isFlexible && (!seatId || seatId === "NONE")) {
+    return { error: "Please select a seat for this reserved plan." };
+  }
+
+  try {
+    let newUserId = "";
+    let finalExpiry = 0;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Create the Offline User
+      // Generate a dummy unique phone to satisfy the schema's @unique constraint
+      const dummyPhone = `OFFLINE_${crypto.randomUUID()}`;
+      
+      // We also need to generate a uniqueId (FD-YYXXXX)
+      let isUnique = false;
+      let newUniqueId = '';
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const yearStr = new Date().getFullYear().toString().slice(2, 4);
+
+      while (!isUnique) {
+        let randomPart = '';
+        for (let i = 0; i < 4; i++) {
+          randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        newUniqueId = "FD-" + yearStr + randomPart;
+        const existing = await tx.user.findUnique({ where: { uniqueId: newUniqueId } });
+        if (!existing) isUnique = true;
+      }
+
+      const student = await tx.user.create({
+        data: {
+          role: "STUDENT",
+          name,
+          phone: dummyPhone,
+          uniqueId: newUniqueId,
+          rfidTag,
+        }
+      });
+      newUserId = student.id;
+
+      // 2. Validate Seat (if applicable)
+      let seat = null;
+      let startTime = new Date();
+      // Calculate endTime based on IST end of day
+      // Simple offset logic for end of day since we can't import endOfDayIST easily inside this closure without dependencies if they differ
+      // We'll use simple Date math to keep it self-contained
+      const endT = new Date(startTime.getTime());
+      endT.setDate(endT.getDate() + plan.validityDays - 1);
+      endT.setUTCHours(18, 29, 59, 999); // 23:59:59 IST is 18:29:59 UTC
+      const endTime = endT;
+      
+      finalExpiry = Math.floor(endTime.getTime() / 1000);
+
+      if (!isFlexible) {
+        seat = await tx.seat.findFirst({ where: { id: seatId, libraryId: library.id } });
+        if (!seat) throw new Error("Invalid seat");
+
+        const clash = await tx.booking.findFirst({
+          where: {
+            seatId: seat.id,
+            status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
+            startTime: { lt: endTime },
+            endTime: { gt: startTime }
+          }
+        });
+        if (clash) throw new Error("SEAT_TAKEN");
+      }
+
+      // 3. Create Booking
+      await tx.booking.create({
+        data: {
+          studentId: student.id,
+          libraryId: library.id,
+          planId: plan.id,
+          seatId: seat ? seat.id : null,
+          startTime,
+          endTime,
+          status: "CONFIRMED",
+          paymentRef: `MANUAL_${paymentMethod}_${Date.now()}`
+        }
+      });
+    }, { isolationLevel: 'Serializable' });
+
+    // 4. Generate the QR Code payload (re-using the logic)
+    const timestamp = Math.floor(Date.now() / 1000);
+    const qid = crypto.randomUUID();
+    const payloadToSign = `ADD_RFID${rfidTag}${finalExpiry}${newUserId}${timestamp}${qid}`;
+
+    const privateKeyBase64 = process.env.ECDSA_PRIVATE_KEY;
+    if (!privateKeyBase64) return { error: "Server config error: Missing ECDSA_PRIVATE_KEY" };
+
+    const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+    const sign = crypto.createSign('SHA256');
+    sign.update(payloadToSign);
+    sign.end();
+    
+    const signature = sign.sign(privateKey, 'base64');
+
+    const qrPayload = {
+      cmd: "ADD_RFID",
+      rfid: rfidTag,
+      exp: finalExpiry,
+      uid: newUserId,
+      iat: timestamp,
+      qid,
+      doorId: "MAIN_GATE",
+      sig: signature
+    };
+
+    return { success: true, qrPayload: JSON.stringify(qrPayload) };
+
+  } catch (e: any) {
+    if (e.message === 'SEAT_TAKEN') return { error: "Seat is already booked for this duration" };
+    return { error: e.message || "Failed to register offline student" };
+  }
+}

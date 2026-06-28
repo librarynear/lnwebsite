@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
-import { generateRFIDCommandQR } from "@/app/actions/hardware-actions"
+import { generateRFIDCommandQR, addOfflineStudentWithRFID } from "@/app/actions/hardware-actions"
 import QRCode from "react-qr-code"
 import { initializeApp, getApps } from "firebase/app"
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
@@ -89,6 +89,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   // OTP Verification States
   const [step, setStep] = useState<1 | 2>(1)
   const [phone, setPhone] = useState("+91 ")
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -137,7 +138,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   }
 
   async function handleAdd(formData: FormData) {
-    if (!verifiedAuthId) {
+    if (!isOfflineMode && !verifiedAuthId) {
       toast.error("Please verify the student's phone number first.");
       return;
     }
@@ -150,15 +151,30 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     }
     setAddingStudent(true);
     try {
-      const result = await addStudentWithBooking(formData)
-      if (result && 'error' in result) {
-        toast.error(result.error);
-        return;
+      if (isOfflineMode) {
+        const result = await addOfflineStudentWithRFID(formData);
+        if (result && result.error) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success("Offline student enrolled successfully!");
+        setIsOpen(false);
+        setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+        // Show the QR code
+        setRfidQrPayload(result.qrPayload!);
+        setRfidModalOpen(true);
+        router.refresh();
+      } else {
+        const result = await addStudentWithBooking(formData)
+        if (result && 'error' in result) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success("Student enrolled successfully");
+        setIsOpen(false)
+        setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+        router.refresh();
       }
-      toast.success("Student enrolled successfully");
-      setIsOpen(false)
-      setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
-      router.refresh();
     } catch (e: any) {
       toast.error(e.message || "Failed to enroll student");
     } finally {
@@ -298,48 +314,79 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               <input type="hidden" name="authId" value={verifiedAuthId || ''} />
               <div id="recaptcha-container"></div>
               
+              <div className="flex gap-4 mb-4 bg-muted/50 p-1.5 rounded-lg w-full max-w-sm mx-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsOfflineMode(false)}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${!isOfflineMode ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Standard (App)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOfflineMode(true)}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${isOfflineMode ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Offline (RFID)
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Legal Name *</Label>
                   <Input id="name" name="name" placeholder="As per ID proof" required />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address (Optional)</Label>
-                  <Input id="email" name="email" type="email" placeholder="john@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number (OTP Verified) *</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="phone" 
-                      name="phone" 
-                      value={phone} 
-                      onChange={(e) => setPhone(e.target.value)} 
-                      placeholder="+91 98765 43210" 
-                      readOnly={!!verifiedAuthId || step === 2} 
-                      className={!!verifiedAuthId || step === 2 ? "bg-muted cursor-not-allowed opacity-50" : ""}
-                      required 
-                    />
-                    {!verifiedAuthId && step === 1 && (
-                      <Button type="button" onClick={handleSendOTP} disabled={otpLoading || phone.length < 10}>
-                        {otpLoading ? "Sending..." : "Verify"}
-                      </Button>
-                    )}
-                  </div>
-                  {!verifiedAuthId && step === 2 && (
-                    <div className="flex gap-2 mt-2">
-                      <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} />
-                      <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6}>
-                        {otpLoading ? "Checking..." : "Confirm"}
-                      </Button>
+                
+                {!isOfflineMode ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address (Optional)</Label>
+                      <Input id="email" name="email" type="email" placeholder="john@example.com" />
                     </div>
-                  )}
-                  {verifiedAuthId && <div className="text-xs text-green-600 font-bold mt-1">✓ Phone Verified</div>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth (Optional)</Label>
-                  <Input id="dob" name="dob" type="date" />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number (OTP Verified) *</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          id="phone" 
+                          name="phone" 
+                          value={phone} 
+                          onChange={(e) => setPhone(e.target.value)} 
+                          placeholder="+91 98765 43210" 
+                          readOnly={!!verifiedAuthId || step === 2} 
+                          className={!!verifiedAuthId || step === 2 ? "bg-muted cursor-not-allowed opacity-50" : ""}
+                          required={!isOfflineMode} 
+                        />
+                        {!verifiedAuthId && step === 1 && (
+                          <Button type="button" onClick={handleSendOTP} disabled={otpLoading || phone.length < 10}>
+                            {otpLoading ? "Sending..." : "Verify"}
+                          </Button>
+                        )}
+                      </div>
+                      {!verifiedAuthId && step === 2 && (
+                        <div className="flex gap-2 mt-2">
+                          <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} />
+                          <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6}>
+                            {otpLoading ? "Checking..." : "Confirm"}
+                          </Button>
+                        </div>
+                      )}
+                      {verifiedAuthId && <div className="text-xs text-green-600 font-bold mt-1">✓ Phone Verified</div>}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="rfidTag">RFID Tag Hex *</Label>
+                    <Input id="rfidTag" name="rfidTag" placeholder="e.g. 1A2B3C4D" required={isOfflineMode} />
+                    <p className="text-[10px] text-muted-foreground">Scan an unregistered tag at the door, copy it from Live Logs, and paste it here.</p>
+                  </div>
+                )}
+                
+                {!isOfflineMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth (Optional)</Label>
+                    <Input id="dob" name="dob" type="date" />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender (Optional)</Label>
                   <Select name="gender">
