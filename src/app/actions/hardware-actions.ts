@@ -55,14 +55,21 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
   }
 
   try {
-    const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
-    
+    let privateKey = privateKeyBase64;
+    if (!privateKeyBase64.includes('-----BEGIN PRIVATE KEY-----')) {
+      // It must be base64 encoded, let's decode it
+      try {
+        privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+      } catch (e) {
+        console.error("Failed to decode ECDSA_PRIVATE_KEY from base64");
+      }
+    }
+
     const sign = crypto.createSign('SHA256');
     sign.update(payloadToSign);
     sign.end();
     
     // The ESP32 mbedtls ECDSA requires the signature to be standard DER or raw.
-    // The Python script example generated a standard DER signature encoded in Base64.
     // Node.js createSign defaults to DER format.
     const signature = sign.sign(privateKey, 'base64');
 
@@ -321,12 +328,26 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
     const privateKeyBase64 = process.env.ECDSA_PRIVATE_KEY;
     if (!privateKeyBase64) return { error: "Server config error: Missing ECDSA_PRIVATE_KEY" };
 
-    const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+    let privateKey = privateKeyBase64;
+    if (!privateKeyBase64.includes('-----BEGIN PRIVATE KEY-----')) {
+      try {
+        privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
+      } catch (e) {
+        console.error("Failed to decode ECDSA_PRIVATE_KEY from base64");
+      }
+    }
+
     const sign = crypto.createSign('SHA256');
     sign.update(payloadToSign);
     sign.end();
     
-    const signature = sign.sign(privateKey, 'base64');
+    let signature;
+    try {
+      signature = sign.sign(privateKey, 'base64');
+    } catch (sigErr) {
+      console.error("Signature generation failed:", sigErr);
+      return { error: "Failed to generate signature (Invalid ECDSA_PRIVATE_KEY format)" };
+    }
 
     const qrPayload = {
       cmd: "ADD_RFID",
@@ -343,6 +364,7 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
 
   } catch (e: any) {
     if (e.message === 'SEAT_TAKEN') return { error: "Seat is already booked for this duration" };
-    return { error: e.message || "Failed to register offline student" };
+    // Prevent Next.js from crashing serialization by returning only the message string
+    return { error: e?.message || "Failed to register offline student" };
   }
 }
