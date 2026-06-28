@@ -132,6 +132,7 @@ export async function generateProvisioningQR(libraryId: string, ssid: string, pa
 import { getSession } from "./auth-actions";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { endOfDayIST } from "@/lib/date-utils";
 
 export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_GATE") {
   const session = await getSession();
@@ -349,6 +350,7 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
   const planId = formData.get("planId") as string;
   const seatId = formData.get("seatId") as string;
   const paymentMethod = (formData.get("paymentMethod") as string) || "CASH";
+  const startDateStr = formData.get("startDate") as string;
 
   if (!name) return { error: "Student name is required" };
   if (!rfidTag) return { error: "RFID Tag is required" };
@@ -406,14 +408,8 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
 
       // 2. Validate Seat (if applicable)
       let seat = null;
-      let startTime = new Date();
-      // Calculate endTime based on IST end of day
-      // Simple offset logic for end of day since we can't import endOfDayIST easily inside this closure without dependencies if they differ
-      // We'll use simple Date math to keep it self-contained
-      const endT = new Date(startTime.getTime());
-      endT.setDate(endT.getDate() + plan.validityDays - 1);
-      endT.setUTCHours(18, 29, 59, 999); // 23:59:59 IST is 18:29:59 UTC
-      const endTime = endT;
+      let startTime = startDateStr ? new Date(startDateStr) : new Date();
+      const endTime = endOfDayIST(startTime, plan.validityDays - 1);
       
       finalExpiry = Math.floor(endTime.getTime() / 1000);
 
