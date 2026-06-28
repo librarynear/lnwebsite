@@ -463,7 +463,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               </div>
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full" disabled={!verifiedAuthId || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
+                <Button type="submit" className="w-full" disabled={(!isOfflineMode && !verifiedAuthId) || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
