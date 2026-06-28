@@ -16,15 +16,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
+    // Helper to check UUID
+    const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+
     // Parse the logs. The ESP32 sends: [{ uid: "...", doorId: "...", timestamp: 1718790000 }]
-    const insertData = logs.map((log: any) => ({
-      libraryId: body.libraryId,
-      userId: log.uid !== "UNKNOWN" && log.uid ? log.uid : null,
-      doorId: log.doorId || "MAIN_GATE",
-      timestamp: new Date(log.timestamp * 1000),
-      status: log.status || "SUCCESS",
-      reason: log.reason || null
-    }));
+    const insertData = logs.map((log: any) => {
+      let finalUserId = log.uid !== "UNKNOWN" && log.uid ? log.uid : null;
+      let finalReason = log.reason || null;
+
+      // Prevent Foreign Key crash on EntryLog by nullifying non-UUIDs (e.g. RFID tags)
+      if (finalUserId && !isUUID(finalUserId)) {
+        if (finalReason === "Unregistered RFID") {
+          finalReason = `Unregistered RFID: ${finalUserId}`;
+        } else {
+          finalReason = finalReason ? `${finalReason} (ID: ${finalUserId})` : `Invalid ID: ${finalUserId}`;
+        }
+        finalUserId = null;
+      }
+
+      return {
+        libraryId: body.libraryId,
+        userId: finalUserId,
+        doorId: log.doorId || "MAIN_GATE",
+        timestamp: new Date(log.timestamp * 1000),
+        status: log.status || "SUCCESS",
+        reason: finalReason
+      };
+    });
 
     // Bulk insert the logs
     await prisma.entryLog.createMany({

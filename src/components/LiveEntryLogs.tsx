@@ -110,7 +110,7 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
                   <span className="text-xs text-muted-foreground mt-0.5">
                     Door: {log.doorId || "Main Gate"}
                     {isDenied && log.reason && ` • Reason: ${log.reason}`}
-                    {isDenied && log.reason === "Unregistered RFID" && (
+                    {isDenied && log.reason?.startsWith("Unregistered RFID") && (
                       <span className="block mt-1 text-[10px] text-destructive bg-destructive/10 px-2 py-1 rounded font-bold uppercase tracking-wider max-w-fit">
                         Action Required: Copy User ID & Assign RFID to a student
                       </span>
