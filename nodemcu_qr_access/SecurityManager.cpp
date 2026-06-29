@@ -121,8 +121,25 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
         return result;
     }
 
-    // 3. Verify ECDSA Signature (payload = uid + iat + qid)
-    String payloadStr = result.uid + String((unsigned long)result.iat) + result.qid;
+    String payloadStr = "";
+    
+    if (doc.containsKey("cmd") && (doc["cmd"].as<String>() == "ADD_RFID" || doc["cmd"].as<String>() == "REVOKE_RFID")) {
+        // payload = cmd + rfid + exp + uid + iat + qid
+        String cmd = doc["cmd"].as<String>();
+        String rfid = doc.containsKey("rfid") ? doc["rfid"].as<String>() : "";
+        String exp = doc.containsKey("exp") ? doc["exp"].as<String>() : "0";
+        payloadStr = cmd + rfid + exp + result.uid + String((unsigned long)result.iat) + result.qid;
+    } else if (doc.containsKey("cmd") && doc["cmd"].as<String>() == "PROVISION") {
+        // payload = uid + iat + qid + ssid + pass + libId
+        if (!doc.containsKey("ssid") || !doc.containsKey("pass") || !doc.containsKey("libId")) {
+            return result; // Missing Fields
+        }
+        payloadStr = result.uid + String((unsigned long)result.iat) + result.qid + doc["ssid"].as<String>() + doc["pass"].as<String>() + doc["libId"].as<String>();
+    } else {
+        // Default entry QR payload: uid + iat + qid
+        payloadStr = result.uid + String((unsigned long)result.iat) + result.qid;
+    }
+
     if (!verifyECDSASignature(payloadStr, result.sig)) {
         Serial.println("Signature verification failed!");
         return result;

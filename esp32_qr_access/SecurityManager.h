@@ -23,6 +23,10 @@ struct QRPayload {
     String ssid;
     String pass;
     String libId;
+    
+    // RFID Command fields
+    String rfid;
+    time_t exp;
 };
 
 class SecurityManager {

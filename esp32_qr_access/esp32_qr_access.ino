@@ -102,6 +102,20 @@ void loop() {
                         Serial.println("Credentials saved to NVS. Restarting...");
                         delay(1000);
                         ESP.restart();
+                    } else if (result.cmd == "ADD_RFID") {
+                        Serial.println("ADD_RFID Command Received. Valid!");
+                        preferences.begin("rfid_tags", false);
+                        // value format: uid,exp
+                        String val = result.uid + "," + String((unsigned long)result.exp);
+                        preferences.putString(result.rfid.c_str(), val);
+                        preferences.end();
+                        Serial.println("RFID Assigned: " + result.rfid);
+                    } else if (result.cmd == "REVOKE_RFID") {
+                        Serial.println("REVOKE_RFID Command Received. Valid!");
+                        preferences.begin("rfid_tags", false);
+                        preferences.remove(result.rfid.c_str());
+                        preferences.end();
+                        Serial.println("RFID Revoked: " + result.rfid);
                     } else {
                         Serial.println("QR Valid -> Access Granted");
                         hwController.unlockDoor();

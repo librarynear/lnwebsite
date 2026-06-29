@@ -48,6 +48,10 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     if (doc.containsKey("ssid")) result.ssid = doc["ssid"].as<String>();
     if (doc.containsKey("pass")) result.pass = doc["pass"].as<String>();
     if (doc.containsKey("libId")) result.libId = doc["libId"].as<String>();
+    
+    // Optional RFID command fields
+    if (doc.containsKey("rfid")) result.rfid = doc["rfid"].as<String>();
+    if (doc.containsKey("exp")) result.exp = doc["exp"].as<time_t>();
 
     // 2. Verify Time validity
     time_t now;
@@ -68,15 +72,24 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
     }
 
     // 3. Verify ECDSA Signature
-    String payloadStr = result.uid + String(result.iat) + result.qid;
+    String payloadStr = "";
     
-    // If it's a provisioning command, the signature covers the extra fields
-    if (doc.containsKey("cmd") && doc["cmd"].as<String>() == "PROVISION") {
+    if (doc.containsKey("cmd") && (doc["cmd"].as<String>() == "ADD_RFID" || doc["cmd"].as<String>() == "REVOKE_RFID")) {
+        // payload = cmd + rfid + exp + uid + iat + qid
+        String cmd = doc["cmd"].as<String>();
+        String rfid = doc.containsKey("rfid") ? doc["rfid"].as<String>() : "";
+        String exp = doc.containsKey("exp") ? doc["exp"].as<String>() : "0";
+        payloadStr = cmd + rfid + exp + result.uid + String(result.iat) + result.qid;
+    } else if (doc.containsKey("cmd") && doc["cmd"].as<String>() == "PROVISION") {
+        // payload = uid + iat + qid + ssid + pass + libId
         if (!doc.containsKey("ssid") || !doc.containsKey("pass") || !doc.containsKey("libId")) {
             result.failReason = "Provisioning QR Missing Fields";
             return result;
         }
-        payloadStr += doc["ssid"].as<String>() + doc["pass"].as<String>() + doc["libId"].as<String>();
+        payloadStr = result.uid + String(result.iat) + result.qid + doc["ssid"].as<String>() + doc["pass"].as<String>() + doc["libId"].as<String>();
+    } else {
+        // Default entry QR payload: uid + iat + qid
+        payloadStr = result.uid + String(result.iat) + result.qid;
     }
 
     if (!verifyECDSASignature(payloadStr, result.sig)) {

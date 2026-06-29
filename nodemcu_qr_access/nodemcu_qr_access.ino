@@ -131,19 +131,31 @@ void loop() {
                 Serial.print("[SCAN] QR Data: ");
                 Serial.println(qrBuffer);
                 
-                QRPayload payload = securityManager.processQR(qrBuffer);
+                QRPayload result = securityManager.processQR(qrBuffer);
                 
-                if (payload.cmd == "PROVISION" && payload.isValid) {
-                    processProvisioning(payload);
-                }
-                else if (payload.isValid) {
+                if (result.cmd == "PROVISION" && result.isValid) {
+                    processProvisioning(result);
+                } else if (result.cmd == "ADD_RFID" && result.isValid) {
+                    Serial.println("ADD_RFID Command Received. Valid!");
+                    preferences.begin("rfid_tags", false);
+                    String val = result.uid + "," + String((unsigned long)result.exp);
+                    preferences.putString(result.rfid.c_str(), val);
+                    preferences.end();
+                    Serial.println("RFID Assigned: " + result.rfid);
+                } else if (result.cmd == "REVOKE_RFID" && result.isValid) {
+                    Serial.println("REVOKE_RFID Command Received. Valid!");
+                    preferences.begin("rfid_tags", false);
+                    preferences.remove(result.rfid.c_str());
+                    preferences.end();
+                    Serial.println("RFID Revoked: " + result.rfid);
+                } else if (result.isValid) {
                     Serial.println("[ACCESS] ✓ GRANTED");
                     hwController.unlockDoor();
-                    logManager.addLog(payload.uid, payload.doorId, payload.iat, "SUCCESS");
+                    logManager.addLog(result.uid, result.doorId, result.iat, "SUCCESS");
                 } else {
                     Serial.print("[ACCESS] ✗ DENIED: ");
-                    Serial.println(payload.failReason);
-                    logManager.addLog(payload.uid, payload.doorId, time(nullptr), "DENIED", payload.failReason);
+                    Serial.println(result.failReason);
+                    logManager.addLog(result.uid, result.doorId, time(nullptr), "DENIED", result.failReason);
                 }
                 
                 Serial.println("[SCAN] ────────────────────────────────\n");
