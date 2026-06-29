@@ -161,6 +161,11 @@ export async function generateRFIDCommandQR(studentId: string, cmd: "ADD_RFID" |
   // Update database first
   try {
     if (cmd === "ADD_RFID") {
+      const existing = await prisma.user.findFirst({ where: { rfidTag: rfid } });
+      if (existing && existing.id !== studentId) {
+        return { error: `RFID Tag ${rfid} is already assigned to another student (${existing.name || 'Unknown'}).` };
+      }
+
       await prisma.user.update({
         where: { id: studentId },
         data: { rfidTag: rfid }
@@ -245,6 +250,12 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
   const isFlexible = plan.type === 'FLEXIBLE';
   if (!isFlexible && (!seatId || seatId === "NONE")) {
     return { error: "Please select a seat for this reserved plan." };
+  }
+
+  // Check if RFID tag is already assigned
+  const existingRfid = await prisma.user.findFirst({ where: { rfidTag } });
+  if (existingRfid) {
+    return { error: `RFID Tag ${rfidTag} is already assigned to another student (${existingRfid.name || 'Unknown'}).` };
   }
 
   try {
