@@ -246,8 +246,8 @@ export default async function LibrarianDashboardPage() {
         </div>
       </div>
 
-      {/* Row 2: Transactions & Live Access Logs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Row 2: Transactions */}
+      <div className="w-full">
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col h-[420px]">
           <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
             <div>
@@ -314,13 +314,14 @@ export default async function LibrarianDashboardPage() {
             </table>
           </div>
         </div>
-
-        <div className="h-[420px] flex flex-col">
-          <LiveEntryLogs libraryId={library.id} />
-        </div>
       </div>
 
-      {/* Row 3: Check-in Attendance */}
+      {/* Row 3: Live Access Logs */}
+      <div className="w-full h-[420px] flex flex-col">
+        <LiveEntryLogs libraryId={library.id} />
+      </div>
+
+      {/* Row 4: Check-in Attendance */}
       <div className="w-full">
         <DashboardAttendance logs={checkinLogs as any} />
       </div>

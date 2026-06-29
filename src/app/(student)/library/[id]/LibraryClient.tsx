@@ -569,67 +569,63 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           }, 100);
                         }
                       }}
-                      className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-500' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-400'}`}
+                      className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-primary shadow-md ring-1 ring-primary' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-primary/50'}`}
                     >
                       
                       {/* Subtle thin color line on left */}
-                      <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isSelected ? 'bg-blue-500' : (isFullDay ? 'bg-blue-500' : 'bg-slate-300')}`}></div>
+                      <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isSelected ? 'bg-primary' : 'bg-slate-300'}`}></div>
 
                       {/* Left Side: Clean Typography */}
-                      <div className="flex-1 py-4 pr-3 pl-5 flex flex-col justify-center relative min-w-0">
+                      <div className="flex-1 py-5 pr-3 pl-5 flex flex-col justify-center relative min-w-0">
                         {/* Subtle hover gradient */}
                         <div className={`absolute inset-0 bg-gradient-to-r from-blue-50/[0.2] to-transparent transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}></div>
                         
                         <div className="relative z-10">
-                          {/* Super Title */}
-                          <div className={`text-[11px] font-bold mb-1.5 flex items-center gap-1.5 whitespace-nowrap ${isFullDay ? 'text-blue-600' : 'text-slate-500'}`}>
-                            {isFullDay ? 'Reserved Seat' : 'Flexible Hours'}
-                            {plan.discount > 0 && (
-                              <span className="bg-blue-50 text-blue-600 border border-blue-200/60 text-[10px] font-black px-1.5 py-0.5 rounded-full tracking-wide">
-                                {plan.discount}% OFF
-                              </span>
-                            )}
-                          </div>
-                          
-                          {/* Stacked Title & Subtitle */}
+                          {/* Title & Subtitle */}
                           <div className="mb-2">
-                            <h3 className="text-[22px] font-black tracking-tight leading-none transition-colors whitespace-nowrap text-slate-900 group-hover:text-blue-950">
+                            <h3 className={`text-[22px] md:text-[24px] font-black tracking-tight leading-none transition-colors truncate group-hover:text-primary ${isSelected ? 'text-primary' : 'text-slate-900'}`}>
                               {months} Month{months > 1 ? 's' : ''}
                             </h3>
-                            <div className="text-[12px] font-semibold text-slate-700 mt-1.5 whitespace-nowrap">
+                            <div className="text-[13px] font-bold text-slate-700 mt-2 truncate bg-primary/10 inline-block px-2 py-0.5 rounded text-primary">
                               {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
                             </div>
                           </div>
                           
                           {/* Details list */}
-                          <div className="flex flex-col gap-y-1 mt-2.5">
-                            <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
-                              <div className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0"></div>
-                              {plan.validityDays} Days
-                            </div>
-                          </div>
+                          <ul className="flex flex-col gap-y-1.5 mt-3 pr-2">
+                            <li className="text-[12px] font-medium text-slate-500 flex items-start gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
+                              <span className="leading-tight">{plan.validityDays} Days Validity</span>
+                            </li>
+                            {plan.discount > 0 && (
+                              <li className="text-[12px] font-medium text-slate-500 flex items-start gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
+                                <span className="leading-tight"><span className="text-success font-bold">{plan.discount}% OFF</span> applied</span>
+                              </li>
+                            )}
+                          </ul>
                         </div>
                       </div>
 
                       {/* Divider (Ticket Style) */}
-                      <div className={`border-l-[1.5px] border-dashed my-3 transition-colors relative ${isSelected ? 'border-blue-300' : 'border-slate-200 group-hover:border-blue-200'}`}>
+                      <div className={`border-l-[1.5px] border-dashed my-3 transition-colors relative ${isSelected ? 'border-primary/30' : 'border-slate-200 group-hover:border-primary/20'}`}>
                         {/* Ticket notches */}
-                        <div className="absolute -top-3 -left-1.5 w-3 h-3 bg-white border-b-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
-                        <div className="absolute -bottom-3 -left-1.5 w-3 h-3 bg-white border-t-[1.5px] border-r-[1.5px] border-transparent rounded-full"></div>
+                        <div className="absolute -top-3 -left-1.5 w-3 h-3 bg-background border-b-[1.5px] border-r-[1.5px] border-transparent rounded-full z-20"></div>
+                        <div className="absolute -bottom-3 -left-1.5 w-3 h-3 bg-background border-t-[1.5px] border-r-[1.5px] border-transparent rounded-full z-20"></div>
                       </div>
 
                       {/* Right Side: Price Block */}
-                      <div className={`py-4 pr-5 pl-4 w-[135px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-blue-50/50' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
+                      <div className={`py-5 pr-5 pl-4 w-[145px] flex flex-col justify-center items-end relative z-10 transition-colors flex-shrink-0 ${isSelected ? 'bg-primary/5' : 'bg-slate-50/50 group-active:bg-slate-100/50'}`}>
                         <div className="text-right">
-                          <div className="flex items-baseline justify-end gap-0.5 mb-1 whitespace-nowrap">
-                            <span className="text-[15px] font-bold text-slate-900">₹</span>
-                            <span className="text-[30px] font-black tracking-tighter text-slate-900">{perMonth}</span>
-                            <span className="text-[11px] font-bold text-slate-500">/mo</span>
+                          <div className="flex items-baseline justify-end gap-0.5 mb-1.5 truncate w-full">
+                            <span className="text-[16px] font-bold text-slate-900">₹</span>
+                            <span className="text-[32px] font-black tracking-tighter text-slate-900">{perMonth}</span>
+                            <span className="text-[12px] font-bold text-slate-500">/mo</span>
                           </div>
-                          <div className="text-[11px] font-semibold text-slate-400 leading-tight whitespace-nowrap flex flex-col items-end">
-                            <span>Total ₹{finalPrice.toFixed(0)}</span>
+                          <div className="text-[12px] font-semibold text-slate-500 leading-tight flex flex-col items-end gap-1 mt-1 truncate w-full">
+                            <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>
                             {plan.discount > 0 && (
-                              <span className="line-through opacity-60">₹{plan.price.toFixed(0)}</span>
+                              <span className="line-through opacity-60 text-muted-foreground truncate w-full text-right">₹{plan.price.toFixed(0)}</span>
                             )}
                           </div>
                         </div>
