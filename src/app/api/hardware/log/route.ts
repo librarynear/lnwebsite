@@ -20,18 +20,30 @@ export async function POST(request: Request) {
     const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
     // Parse the logs. The ESP32 sends: [{ uid: "...", doorId: "...", timestamp: 1718790000 }]
-    const insertData = logs.map((log: any) => {
+    const insertData = await Promise.all(logs.map(async (log: any) => {
       let finalUserId = log.uid !== "UNKNOWN" && log.uid ? log.uid : null;
       let finalReason = log.reason || null;
 
       // Prevent Foreign Key crash on EntryLog by nullifying non-UUIDs (e.g. RFID tags)
       if (finalUserId && !isUUID(finalUserId)) {
-        if (finalReason === "Unregistered RFID") {
-          finalReason = `Unregistered RFID: ${finalUserId}`;
+        // The hardware sent an RFID tag instead of a UUID, let's look it up
+        const userByRfid = await prisma.user.findUnique({
+          where: { rfidTag: finalUserId }
+        });
+
+        if (userByRfid) {
+          finalUserId = userByRfid.id;
+          if (finalReason === "Unregistered RFID") {
+            finalReason = "Access Denied: Inactive/Expired Plan";
+          }
         } else {
-          finalReason = finalReason ? `${finalReason} (ID: ${finalUserId})` : `Invalid ID: ${finalUserId}`;
+          if (finalReason === "Unregistered RFID") {
+            finalReason = `Unregistered RFID: ${finalUserId}`;
+          } else {
+            finalReason = finalReason ? `${finalReason} (ID: ${finalUserId})` : `Invalid ID: ${finalUserId}`;
+          }
+          finalUserId = null;
         }
-        finalUserId = null;
       }
 
       return {
@@ -42,7 +54,7 @@ export async function POST(request: Request) {
         status: log.status || "SUCCESS",
         reason: finalReason
       };
-    });
+    }));
 
     // --- Deduplication Logic ---
     // 1. Deduplicate within the incoming batch itself

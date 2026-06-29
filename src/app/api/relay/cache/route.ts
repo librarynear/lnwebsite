@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     // Only sending necessary offline-verification math
     const validStudents = activeBookings.map(b => ({
       student_id: b.studentId,
+      rfid: b.student.rfidTag, // Add the RFID tag so ESP32 knows it
       valid_until: b.endTime.toISOString(),
       allowed_start: relay.library.openingTime || "00:00",
       allowed_end: relay.library.closingTime || "23:59"
