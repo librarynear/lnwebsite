@@ -65,10 +65,16 @@ void setup() {
             configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
             
             struct tm timeinfo;
-            if(!getLocalTime(&timeinfo)){
-                Serial.println("Failed to obtain time");
-            } else {
+            int ntpRetries = 0;
+            while(!getLocalTime(&timeinfo, 5000) && ntpRetries < 3){
+                Serial.println("Failed to obtain time, retrying NTP sync...");
+                delay(2000);
+                ntpRetries++;
+            }
+            if(ntpRetries < 3){
                 Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
+            } else {
+                Serial.println("CRITICAL: Failed to sync NTP time. QR Access will fail until synced.");
             }
         }
     }
