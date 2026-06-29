@@ -81,7 +81,7 @@ export default async function LibrarianDashboardPage() {
       orderBy: { createdAt: 'desc' }
     }),
     prisma.entryLog.findMany({
-      where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo }, status: "SUCCESS" },
+      where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo }, status: { in: ["SUCCESS", "IN", "OUT"] } },
       include: { user: { select: { name: true, phone: true } } },
       orderBy: { timestamp: 'desc' }
     })
@@ -97,7 +97,7 @@ export default async function LibrarianDashboardPage() {
     ...entryLogs.map(log => ({
       id: log.id,
       student: log.user || { name: 'Unknown', phone: '' },
-      status: 'CHECK_IN' as const,
+      status: (log.status === 'OUT' ? 'CHECK_OUT' : 'CHECK_IN') as 'CHECK_IN' | 'CHECK_OUT',
       timestamp: log.timestamp
     }))
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -116,14 +116,19 @@ export default async function LibrarianDashboardPage() {
   startOfDay.setHours(0, 0, 0, 0);
 
   const todayEntryLogs = await prisma.entryLog.findMany({
-    where: { libraryId: library.id, timestamp: { gte: startOfDay }, status: "SUCCESS" },
-    include: { user: true }
+    where: { libraryId: library.id, timestamp: { gte: startOfDay }, status: { in: ["SUCCESS", "IN", "OUT"] } },
+    include: { user: true },
+    orderBy: { timestamp: 'asc' }
   });
 
   const studentsInsideMap = new Map();
   todayEntryLogs.forEach(log => {
     if (log.user) {
-      studentsInsideMap.set(log.userId, log.user);
+      if (log.status === "OUT") {
+        studentsInsideMap.delete(log.userId);
+      } else {
+        studentsInsideMap.set(log.userId, log.user);
+      }
     }
   });
   const studentsInside = Array.from(studentsInsideMap.values());

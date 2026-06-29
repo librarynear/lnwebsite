@@ -62,16 +62,21 @@ void setup() {
             
             // Sync NTP Time if connected
             Serial.println("Syncing NTP Time...");
-            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+            // Use multiple NTP servers: pool.ntp.org, time.nist.gov, and time.google.com for redundancy
+            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER, "time.nist.gov", "time.google.com");
             
             struct tm timeinfo;
             int ntpRetries = 0;
-            while(!getLocalTime(&timeinfo, 5000) && ntpRetries < 3){
+            while(!getLocalTime(&timeinfo, 5000) && ntpRetries < 5){
                 Serial.println("Failed to obtain time, retrying NTP sync...");
+                // Re-trigger configTime just in case the first DNS resolution failed completely
+                if (ntpRetries == 2) {
+                    configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, "in.pool.ntp.org", "time.google.com", "time.windows.com");
+                }
                 delay(2000);
                 ntpRetries++;
             }
-            if(ntpRetries < 3){
+            if(ntpRetries < 5){
                 Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
             } else {
                 Serial.println("CRITICAL: Failed to sync NTP time. QR Access will fail until synced.");
