@@ -68,22 +68,23 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
   }, [libraryId]);
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-6 shadow-sm mt-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="bg-card rounded-2xl border border-border p-6 shadow-sm h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-4 shrink-0">
         <Clock className="w-5 h-5 text-primary animate-pulse" />
         <h2 className="font-bold text-foreground">Live Access Logs</h2>
       </div>
 
       {(!supabaseUrl || !supabaseKey) && (
-        <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200 mb-4">
+        <div className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200 mb-4 shrink-0">
           ⚠️ Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local. Realtime updates are disabled.
         </div>
       )}
 
       {recentLogs.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Waiting for new door scans...</p>
+        <p className="text-sm text-muted-foreground italic flex-1">Waiting for new door scans...</p>
       ) : (
-        <ul className="space-y-3">
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          <ul className="space-y-3">
           {recentLogs.map((log) => {
             const isDenied = log.status === "DENIED";
             const consecutiveFailures = log.userId ? (failureCounts[log.userId] || 0) : 0;
@@ -123,7 +124,8 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </div>
       )}
     </div>
   );

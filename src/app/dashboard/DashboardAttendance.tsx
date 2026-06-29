@@ -23,7 +23,7 @@ export function DashboardAttendance({ logs }: { logs: CheckinLog[] }) {
   });
 
   return (
-    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col h-full">
+    <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col max-h-[400px]">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold font-heading">Attendance</h2>
         <select 
@@ -41,9 +41,9 @@ export function DashboardAttendance({ logs }: { logs: CheckinLog[] }) {
         </select>
       </div>
 
-      <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 flex-1 overflow-y-auto pr-2 content-start">
         {filteredLogs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground h-full">
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground h-full col-span-full">
             <Clock className="w-8 h-8 mb-2 opacity-30" />
             <p className="text-sm">No activity recorded</p>
           </div>
