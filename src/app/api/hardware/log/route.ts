@@ -24,7 +24,6 @@ export async function POST(request: Request) {
       let finalUserId = log.uid !== "UNKNOWN" && log.uid ? log.uid : null;
       let finalReason = log.reason || null;
 
-      // Prevent Foreign Key crash on EntryLog by nullifying non-UUIDs (e.g. RFID tags)
       if (finalUserId && !isUUID(finalUserId)) {
         // The hardware sent an RFID tag instead of a UUID, let's look it up
         const userByRfid = await prisma.user.findUnique({
@@ -33,16 +32,29 @@ export async function POST(request: Request) {
 
         if (userByRfid) {
           finalUserId = userByRfid.id;
-          if (finalReason === "Unregistered RFID") {
-            finalReason = "Access Denied: Inactive/Expired Plan";
+          if (finalReason === "Unknown RFID" || finalReason === "Unregistered RFID") {
+            finalReason = `Access Denied: Inactive/Expired Plan (${userByRfid.name || 'Unknown User'})`;
           }
         } else {
-          if (finalReason === "Unregistered RFID") {
+          if (finalReason === "Unknown RFID" || finalReason === "Unregistered RFID") {
             finalReason = `Unregistered RFID: ${finalUserId}`;
           } else {
             finalReason = finalReason ? `${finalReason} (ID: ${finalUserId})` : `Invalid ID: ${finalUserId}`;
           }
           finalUserId = null;
+        }
+      } else if (finalUserId && isUUID(finalUserId)) {
+        // It's a valid UUID. If the reason is 'Unknown RFID', the hardware knew the UUID
+        // but rejected it (likely because they aren't in the active cache). Let's fetch the name.
+        if (finalReason === "Unknown RFID" || finalReason === "Unregistered RFID") {
+          const userById = await prisma.user.findUnique({
+            where: { id: finalUserId }
+          });
+          if (userById) {
+            finalReason = `Access Denied: Inactive/Expired Plan (${userById.name || 'Unknown User'})`;
+          } else {
+            finalReason = "Access Denied: Inactive/Expired Plan";
+          }
         }
       }
 
