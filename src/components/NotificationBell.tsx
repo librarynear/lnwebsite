@@ -23,10 +23,10 @@ export function NotificationBell({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="relative p-3 w-12 h-12 flex items-center justify-center rounded-full hover:bg-muted transition-colors mr-2">
-          <Bell className="w-6 h-6 text-foreground" />
+      <PopoverTrigger className="relative w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-muted transition-colors mr-1 sm:mr-2">
+          <Bell size={24} className="!w-6 !h-6 text-foreground" />
           {unreadCount > 0 && (
-            <span className="absolute top-2 right-2 w-3 h-3 bg-destructive rounded-full border-2 border-background"></span>
+            <span className="absolute top-2 right-2 sm:right-2.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-destructive rounded-full border-2 border-background"></span>
           )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
