@@ -49,8 +49,8 @@ export function AccessQRModal({ libraryId, iconOnly }: { libraryId: string; icon
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={
         iconOnly ? (
-          <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:text-foreground">
-            <QrCode className="w-5 h-5" />
+          <Button variant="ghost" className="relative w-12 h-12 p-3 rounded-full text-foreground hover:bg-muted">
+            <QrCode className="w-6 h-6" strokeWidth={2.5} />
           </Button>
         ) : (
           <Button variant="outline" className="gap-2 w-full sm:w-auto">

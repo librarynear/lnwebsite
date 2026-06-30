@@ -42,9 +42,15 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col bg-background overflow-hidden relative w-full">
       
-      {/* 1. Hero Section */}
-      <section className="flex flex-col min-h-[calc(100vh-80px)] bg-[#eff3f9] relative">
-        <div className="container max-w-[1300px] mx-auto px-6 md:px-10 py-12 md:py-24 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16 flex-1">
+      {/* 1. Featured Libraries Carousel */}
+      <FeaturedCarousel libraries={libraries} />
+
+      {/* 2. Bento Box Features (Why Choose FocusX) */}
+      <BentoFeatures />
+
+      {/* 3. Hero Section */}
+      <section className="flex flex-col bg-[#eff3f9] relative py-12 md:py-24">
+        <div className="container max-w-[1300px] mx-auto px-6 md:px-10 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16">
           
           {/* Left Content */}
           <div className="flex-1 flex flex-col justify-center items-start z-10">
@@ -78,14 +84,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. Featured Libraries Carousel */}
-      <FeaturedCarousel libraries={libraries} />
-
-      {/* 3. How It Works */}
+      {/* 4. How It Works */}
       <HowItWorks />
-
-      {/* 4. Bento Box Features */}
-      <BentoFeatures />
 
       {/* 5. Student Testimonials */}
       <Testimonials />
