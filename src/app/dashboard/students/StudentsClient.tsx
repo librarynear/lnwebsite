@@ -4,7 +4,7 @@ import { formatStandardDate } from "@/lib/date-utils";
 import { useState, useEffect, Fragment } from "react"
 import { useRouter } from "next/navigation"
 import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
-import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan, unrevokeBooking } from "@/app/actions/student-actions"
+import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
 import { generateRFIDCommandQR, addOfflineStudentWithRFID } from "@/app/actions/hardware-actions"
 import QRCode from "react-qr-code"
@@ -12,6 +12,7 @@ import { initializeApp, getApps } from "firebase/app"
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { firebaseConfig } from "@/lib/firebase/clientApp"
 import toast from "react-hot-toast"
+import { getStudentByPhoneOrAuthId } from "@/app/actions/student-actions"
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,16 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [verificationObj, setVerificationObj] = useState<any>(null)
   const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const [addFormSeatId, setAddFormSeatId] = useState<string | null>(null)
+
+  const [studentFormData, setStudentFormData] = useState({
+    name: "",
+    email: "",
+    dob: "",
+    gender: "",
+    address: "",
+    isKycVerified: false
+  });
 
   const handleSendOTP = async () => {
     try {
@@ -128,7 +139,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       setVerifiedAuthId(result.user.uid);
       const secondaryAuth = getAuth(getApps().find(app => app.name === 'Secondary')!);
       await secondaryAuth.signOut();
-      toast.success("Phone verified!");
+      
+      // Fetch global student data if it exists
+      const existingStudent = await getStudentByPhoneOrAuthId(result.user.uid, phone);
+      if (existingStudent) {
+        setStudentFormData({
+          name: existingStudent.name || "",
+          email: existingStudent.email || "",
+          dob: existingStudent.dob || "",
+          gender: existingStudent.gender || "",
+          address: existingStudent.address || "",
+          isKycVerified: existingStudent.digilockerVerified || false
+        });
+        if (existingStudent.digilockerVerified) {
+          toast.success("Found verified profile!");
+        } else {
+          toast.success("Found existing profile!");
+        }
+      } else {
+        toast.success("Phone verified!");
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Invalid OTP");
@@ -173,6 +203,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
         toast.success("Student enrolled successfully");
         setIsOpen(false)
         setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+        setAddFormSeatId(null);
+        setStudentFormData({ name: "", email: "", dob: "", gender: "", address: "", isKycVerified: false });
         router.refresh();
       }
     } catch (e: any) {
@@ -333,15 +365,31 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Legal Name *</Label>
-                  <Input id="name" name="name" placeholder="As per ID proof" required />
+                  <Label htmlFor="name">Full Legal Name * {studentFormData.isKycVerified && <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded ml-1">Verified</span>}</Label>
+                  <Input 
+                    id="name" 
+                    name="name" 
+                    placeholder="As per ID proof" 
+                    value={studentFormData.name}
+                    onChange={(e) => setStudentFormData(s => ({...s, name: e.target.value}))}
+                    readOnly={studentFormData.isKycVerified}
+                    className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed font-medium" : ""}
+                    required 
+                  />
                 </div>
                 
                 {!isOfflineMode ? (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address (Optional)</Label>
-                      <Input id="email" name="email" type="email" placeholder="john@example.com" />
+                      <Input 
+                        id="email" 
+                        name="email" 
+                        type="email" 
+                        placeholder="john@example.com" 
+                        value={studentFormData.email}
+                        onChange={(e) => setStudentFormData(s => ({...s, email: e.target.value}))}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number (OTP Verified) *</Label>
@@ -384,13 +432,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 {!isOfflineMode && (
                   <div className="space-y-2">
                     <Label htmlFor="dob">Date of Birth (Optional)</Label>
-                    <Input id="dob" name="dob" type="date" />
+                    <Input 
+                      id="dob" 
+                      name="dob" 
+                      type="date" 
+                      value={studentFormData.dob}
+                      onChange={(e) => setStudentFormData(s => ({...s, dob: e.target.value}))}
+                      readOnly={studentFormData.isKycVerified}
+                      className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                    />
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender (Optional)</Label>
-                  <Select name="gender">
-                    <SelectTrigger>
+                  <Select 
+                    name="gender" 
+                    value={studentFormData.gender || undefined} 
+                    onValueChange={(val) => setStudentFormData(s => ({...s, gender: val || ""}))}
+                    disabled={studentFormData.isKycVerified}
+                  >
+                    <SelectTrigger className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -399,10 +460,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       <SelectItem value="OTHER">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  {studentFormData.isKycVerified && <input type="hidden" name="gender" value={studentFormData.gender} />}
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="address">Verified Address (Optional)</Label>
-                  <Input id="address" name="address" placeholder="Full residential address" />
+                  <Input 
+                    id="address" 
+                    name="address" 
+                    placeholder="Full residential address" 
+                    value={studentFormData.address}
+                    onChange={(e) => setStudentFormData(s => ({...s, address: e.target.value}))}
+                    readOnly={studentFormData.isKycVerified}
+                    className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                  />
                 </div>
               </div>
 
@@ -429,9 +499,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               {plans.find(p => p.id === selectedPlanId)?.type === 'FIXED' && (
                 <div className="space-y-2">
                   <Label htmlFor="seatId">Assign Seat *</Label>
-                  <Select name="seatId">
+                  <input type="hidden" name="seatId" value={addFormSeatId || ""} />
+                  <Select value={addFormSeatId || undefined} onValueChange={setAddFormSeatId}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a seat" />
+                      <SelectValue placeholder="Select a seat">
+                        {addFormSeatId ? seats.find(s => s.id === addFormSeatId)?.name : "Select a seat"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {seats.map(s => (
@@ -827,7 +900,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                 )
                               )}
 
-                              {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
+                              {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'CANCELLED') && (
                                 <>
                                   <DropdownMenuSeparator className="my-1" />
                                   <DropdownMenuItem 
@@ -856,28 +929,6 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                     className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-destructive/10 text-destructive"
                                   >
                                     <UserMinus className="w-4 h-4 mr-2" /> Revoke Access
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-
-                              {booking.status === 'CANCELLED' && (
-                                <>
-                                  <DropdownMenuSeparator className="my-1" />
-                                  <DropdownMenuItem 
-                                    onClick={async () => {
-                                      setLoadingId(booking.id);
-                                      try {
-                                        await unrevokeBooking(booking.id);
-                                        toast.success("Student un-revoked successfully");
-                                        router.refresh();
-                                      } catch (e: any) {
-                                        toast.error(e.message || "Failed to un-revoke");
-                                      }
-                                      setLoadingId(null);
-                                    }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
-                                  >
-                                    Un-revoke Student
                                   </DropdownMenuItem>
                                 </>
                               )}

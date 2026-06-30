@@ -26,6 +26,41 @@ async function generateUniqueId() {
   return newId;
 }
 
+export async function getStudentByPhoneOrAuthId(authId?: string, phone?: string) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+  let student = null;
+  if (authId) {
+    student = await prisma.user.findUnique({ where: { authId } });
+  }
+
+  if (!student && phone) {
+    const normalizedPhone = phone.replace(/\s+/g, '');
+    student = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { phone },
+          { phone: normalizedPhone },
+          { phone: { endsWith: normalizedPhone.slice(-10) } }
+        ]
+      } 
+    });
+  }
+
+  if (!student) return null;
+
+  return {
+    name: student.name,
+    email: student.email,
+    phone: student.phone,
+    dob: student.dob ? student.dob.toISOString().split('T')[0] : "",
+    gender: student.gender,
+    address: student.address,
+    digilockerVerified: student.digilockerVerified
+  };
+}
+
 export async function assignUniqueIdToStudent(studentId: string) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
@@ -204,17 +239,23 @@ export async function addStudentWithBooking(formData: FormData) {
   }
 
   if (student) {
+    const updateData: any = {
+      email: email || student.email,
+      phone: phone || student.phone,
+      authId: authId || student.authId,
+    };
+
+    // If student has done KYC, never overwrite their personal info
+    if (!student.digilockerVerified) {
+      updateData.name = name;
+      updateData.dob = dobStr ? new Date(dobStr) : student.dob;
+      updateData.gender = gender || student.gender;
+      updateData.address = address || student.address;
+    }
+
     student = await prisma.user.update({
       where: { id: student.id },
-      data: {
-        name,
-        email: email || student.email,
-        phone: phone || student.phone,
-        authId: authId || student.authId,
-        dob: dobStr ? new Date(dobStr) : student.dob,
-        gender: gender || student.gender,
-        address: address || student.address
-      }
+      data: updateData
     });
   } else {
     try {
@@ -352,53 +393,7 @@ export async function extendBookingExact(bookingId: string) {
   return { success: true };
 }
 
-export async function unrevokeBooking(bookingId: string) {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
-  const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) throw new Error("Library not found");
-
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { plan: true } });
-  if (!booking || booking.libraryId !== library.id) throw new Error("Invalid booking");
-  if (booking.status !== 'CANCELLED') throw new Error("Booking is not revoked");
-
-  // Revoke had overwritten endTime to "now". Reconstruct the original expiry
-  // from the start date + plan validity. If that window is still in the future
-  // the plan is restored exactly; if it already passed it simply shows expired
-  // (the librarian can then renew).
-  const restoredEndTime = endOfDayIST(booking.startTime, booking.plan.validityDays - 1);
-  const now = new Date();
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Only guard the seat if the restored plan is actually still active.
-      if (booking.seatId && restoredEndTime > now) {
-        const clash = await tx.booking.findFirst({
-          where: {
-            seatId: booking.seatId,
-            id: { not: bookingId },
-            status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-            startTime: { lt: restoredEndTime },
-            endTime: { gt: booking.startTime },
-          },
-        });
-        if (clash) throw new Error("SEAT_TAKEN");
-      }
-
-      await tx.booking.update({
-        where: { id: bookingId },
-        data: { status: 'CONFIRMED', endTime: restoredEndTime },
-      });
-    }, { isolationLevel: 'Serializable' });
-  } catch (e: any) {
-    if (e.message === 'SEAT_TAKEN') throw new Error("That seat has been booked by someone else. Free it up or change the seat before un-revoking.");
-    throw e;
-  }
-
-  revalidatePath("/dashboard/students");
-  return { success: true };
-}
 
 export async function renewPlan(bookingId: string, paymentMethod: string, newPlanId?: string, newSeatId?: string) {
   const session = await getSession();
