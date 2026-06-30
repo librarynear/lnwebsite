@@ -32,13 +32,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
           </Link>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <Link
-              href="/onboarding"
-              className="flex items-center gap-1.5 text-xs font-semibold rounded-full bg-[#0a1128] text-white hover:bg-[#0a1128]/90 px-4 py-2 transition-colors md:px-5 md:text-[14px]"
-            >
-              <Plus className="w-4 h-4" />
-              Add Your Library
-            </Link>
+
             
             <Suspense fallback={<div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse ml-2" />}>
               <NavbarAuth />

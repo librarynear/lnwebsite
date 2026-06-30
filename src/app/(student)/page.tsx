@@ -78,11 +78,11 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. How It Works */}
-      <HowItWorks />
-
-      {/* 3. Featured Libraries Carousel */}
+      {/* 2. Featured Libraries Carousel */}
       <FeaturedCarousel libraries={libraries} />
+
+      {/* 3. How It Works */}
+      <HowItWorks />
 
       {/* 4. Bento Box Features */}
       <BentoFeatures />

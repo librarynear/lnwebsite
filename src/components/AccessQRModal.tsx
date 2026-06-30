@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { QrCode, Loader2 } from "lucide-react";
 import { generateEntryQR } from "@/app/actions/hardware-actions";
 
-export function AccessQRModal({ libraryId }: { libraryId: string }) {
+export function AccessQRModal({ libraryId, iconOnly }: { libraryId: string; iconOnly?: boolean }) {
   const [qrData, setQrData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +47,18 @@ export function AccessQRModal({ libraryId }: { libraryId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={
-        <Button variant="outline" className="gap-2 w-full sm:w-auto">
-          <QrCode className="w-4 h-4" />
-          Show Access QR
-        </Button>
-      } />
+      <DialogTrigger asChild>
+        {iconOnly ? (
+          <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:text-foreground">
+            <QrCode className="w-5 h-5" />
+          </Button>
+        ) : (
+          <Button variant="outline" className="gap-2 w-full sm:w-auto">
+            <QrCode className="w-4 h-4" />
+            Show Access QR
+          </Button>
+        )}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Library Access QR</DialogTitle>

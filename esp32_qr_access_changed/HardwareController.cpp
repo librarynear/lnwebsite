@@ -12,7 +12,18 @@ void HardwareController::init() {
     Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
     lcd.init();
     lcd.backlight();
-    showIdle();
+    
+    byte tickChar[8] = {
+      0b00000,
+      0b00000,
+      0b00001,
+      0b00010,
+      0b10100,
+      0b01000,
+      0b00000,
+      0b00000
+    };
+    lcd.createChar(1, tickChar);
 }
 
 void HardwareController::unlockDoor() {
