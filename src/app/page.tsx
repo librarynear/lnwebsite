@@ -273,8 +273,8 @@ async function HomeContent() {
                       src={lib.coverImageUrl}
                       alt={`${lib.display_name} — study library in ${lib.locality || "Delhi"}`}
                       fill
-                      priority={index === 0}
-                      fetchPriority={index === 0 ? "high" : "auto"}
+                      priority={index < 6}
+                      fetchPriority={index < 6 ? "high" : "auto"}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     />
