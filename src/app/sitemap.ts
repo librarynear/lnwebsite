@@ -15,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/for-owners`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${base}/directory`, changeFrequency: "daily", priority: 0.9 },
   ];
 
   // Fetch ALL libraries by paginating (bypassing PostgREST max-rows 1000 limit)
@@ -25,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   while (true) {
     const { data } = await supabaseServer
       .from("library_branches")
-      .select("slug, city, locality, nearest_metro, amenities_text, updated_at")
+      .select("slug, city, locality, nearest_metro, amenities_text, updated_at, pin_code")
       .eq("is_active", true)
       .range(page * pageSize, (page + 1) * pageSize - 1);
       
@@ -40,6 +41,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cityPages: MetadataRoute.Sitemap = uniqueCities.flatMap((city) => [
     { url: `${base}/${city}`, changeFrequency: "weekly", priority: 0.85 },
     { url: `${base}/${city}/libraries`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/${city}/24-hour-libraries`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${base}/${city}/top-10-libraries`, changeFrequency: "weekly", priority: 0.9 },
   ]);
 
   const libraryPages: MetadataRoute.Sitemap = branchData.map((b) => ({
@@ -130,5 +133,65 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...statics, ...cityPages, ...libraryPages, ...localityPages, ...metroPages, ...amenityPages, ...blogPages];
+  // Pincode pages
+  const uniquePincodes = [
+    ...new Set(
+      branchData
+        .filter((row) => row.pin_code)
+        .map((row) => `${row.city.toLowerCase()}::${row.pin_code}`)
+    ),
+  ];
+
+  const pincodePages: MetadataRoute.Sitemap = uniquePincodes.map((entry) => {
+    const [city, pincode] = entry.split("::");
+    return {
+      url: `${base}/${city}/pincode/${pincode}`,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    };
+  });
+
+  // Top 10 Locality pages
+  const top10LocalityPages: MetadataRoute.Sitemap = uniqueLocalities.map((entry) => {
+    const [city, localitySlug] = entry.split("::");
+    return {
+      url: `${base}/${city}/top-10/locality/${encodeURIComponent(localitySlug)}`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    };
+  });
+
+  // Exam Pages (Static list of exams applied to cities and localities)
+  const popularExams = ["upsc", "neet", "jee", "ssc", "bank-po"];
+  
+  const examCityPages: MetadataRoute.Sitemap = uniqueCities.flatMap((city) => 
+    popularExams.map((exam) => ({
+      url: `${base}/${city}/exam/${exam}`,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    }))
+  );
+
+  const examLocalityPages: MetadataRoute.Sitemap = uniqueLocalities.flatMap((entry) => {
+    const [city, localitySlug] = entry.split("::");
+    return popularExams.map((exam) => ({
+      url: `${base}/${city}/exam/${exam}/locality/${encodeURIComponent(localitySlug)}`,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }));
+  });
+
+  return [
+    ...statics, 
+    ...cityPages, 
+    ...libraryPages, 
+    ...localityPages, 
+    ...metroPages, 
+    ...amenityPages, 
+    ...blogPages,
+    ...pincodePages,
+    ...top10LocalityPages,
+    ...examCityPages,
+    ...examLocalityPages
+  ];
 }
