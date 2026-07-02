@@ -1,9 +1,7 @@
 "use server";
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import type { Database } from "@/types/supabase";
 
 export async function submitReview(
   libraryBranchId: string,
@@ -11,7 +9,7 @@ export async function submitReview(
   reviewText: string,
   pathname: string
 ) {
-  const supabase = createServerActionClient<Database>({ cookies });
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -50,7 +48,6 @@ export async function submitReview(
     return { error: "Failed to submit your review. Please try again later." };
   }
 
-  revalidateTag("library-cards");
   revalidatePath(pathname);
   
   return { success: true };
