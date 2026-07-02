@@ -256,8 +256,8 @@ export default async function CityPage({ params }: PageProps) {
                       src={lib.coverImageUrl}
                       alt={`${lib.display_name} — study library in ${lib.locality || cityLabel}`}
                       fill
-                      priority={index < 8}
-                      fetchPriority={index < 8 ? "high" : "auto"}
+                      priority={index < 2}
+                      fetchPriority={index < 2 ? "high" : "auto"}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 25vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     />

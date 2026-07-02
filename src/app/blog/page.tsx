@@ -61,7 +61,7 @@ export default async function BlogIndexPage() {
                   <div className="flex flex-col flex-1 min-w-0 pr-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 shrink-0">
-                        <Image src="/logo.webp" alt="LibraryNear" width={20} height={20} className="object-cover w-full h-full" />
+                        <Image src="/logo-icon.webp" alt="LibraryNear" width={20} height={20} className="object-cover w-full h-full" />
                       </div>
                       <span className="text-xs font-medium text-gray-900 font-sans">LibraryNear Team</span>
                     </div>

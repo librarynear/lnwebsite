@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: "/logo.webp",
+    icon: "/logo-icon.webp",
   },
 };
 

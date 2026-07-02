@@ -143,7 +143,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       name: "LibraryNear",
       logo: {
         "@type": "ImageObject",
-        url: `${siteUrl}/logo.webp`,
+        url: `${siteUrl}/logo-icon.webp`,
       },
     },
     description: post.seoDescription,
@@ -167,7 +167,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             
             <div className="flex items-center gap-4 mb-8">
               <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-100 shrink-0">
-                <Image src="/logo.webp" alt="LibraryNear" width={44} height={44} className="object-cover w-full h-full" />
+                <Image src="/logo-icon.webp" alt="LibraryNear" width={44} height={44} className="object-cover w-full h-full" />
               </div>
               <div className="flex flex-col justify-center">
                 <span className="text-[16px] font-medium text-gray-900 font-sans leading-tight">

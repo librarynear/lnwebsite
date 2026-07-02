@@ -182,7 +182,7 @@ async function HomeContent() {
       "@type": "Organization",
       name: "LibraryNear",
       url: siteUrl,
-      logo: `${siteUrl}/logo.webp`,
+      logo: `${siteUrl}/logo-icon.webp`,
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+91-8796190507",
@@ -273,8 +273,8 @@ async function HomeContent() {
                       src={lib.coverImageUrl}
                       alt={`${lib.display_name} — study library in ${lib.locality || "Delhi"}`}
                       fill
-                      priority={index < 6}
-                      fetchPriority={index < 6 ? "high" : "auto"}
+                      priority={index < 2}
+                      fetchPriority={index < 2 ? "high" : "auto"}
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                     />

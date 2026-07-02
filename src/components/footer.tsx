@@ -41,9 +41,9 @@ export function Footer() {
             <div className="col-span-1 md:col-span-5">
               <Link href="/" className="flex items-center gap-2 group mb-5">
                 <Image
-                  src="/logo.webp"
+                  src="/logo-icon.webp"
                   alt="LibraryNear Logo"
-                  width={132}
+                  width={40}
                   height={40}
                   className="h-10 w-auto object-contain shrink-0"
                 />

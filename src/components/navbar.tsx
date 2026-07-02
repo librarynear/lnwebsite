@@ -8,9 +8,9 @@ export function Navbar() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-10">
         <IntentLink href="/" className="flex items-center gap-2 group shrink-0">
           <Image
-            src="/logo.webp"
+            src="/logo-icon.webp"
             alt="LibraryNear Logo"
-            width={132}
+            width={40}
             height={40}
             className="h-8 w-auto object-contain shrink-0 md:h-10"
             priority
