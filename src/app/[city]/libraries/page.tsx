@@ -236,17 +236,25 @@ async function searchLibraries(
   }
 
   if (q) {
-    const { data: rpcData, error: rpcError } = await supabaseServer.rpc("search_libraries" as never, {
-      query_term: q,
-      city_filter: city,
-      max_results: 60,
-    } as never);
+    const hasStrictFilters = !!(locality || verifiedOnly);
+    let rpcResults: SearchResult[] | null = null;
+    
+    // Only use RPC if there are no strict filters that would cause
+    // premature truncation before in-memory filtering.
+    if (!hasStrictFilters) {
+      const { data: rpcData, error: rpcError } = await supabaseServer.rpc("search_libraries" as never, {
+        query_term: q,
+        city_filter: city,
+        max_results: 60,
+      } as never);
 
-    if (!rpcError && rpcData && (rpcData as SearchResult[]).length > 0) {
-      let results = rpcData as SearchResult[];
+      if (!rpcError && rpcData && (rpcData as SearchResult[]).length > 0) {
+        rpcResults = rpcData as SearchResult[];
+      }
+    }
 
-      if (locality) results = results.filter((result) => result.locality === locality);
-      if (verifiedOnly) results = results.filter((result) => result.verification_status === "verified");
+    if (rpcResults) {
+      let results = rpcResults;
 
       if (sort === "name_asc") {
         results = [...results].sort((a, b) => a.display_name.localeCompare(b.display_name));
@@ -254,7 +262,9 @@ async function searchLibraries(
         results = [...results].sort((a, b) => {
           const aVerified = a.verification_status === "verified" ? 0 : 1;
           const bVerified = b.verification_status === "verified" ? 0 : 1;
-          return aVerified - bVerified;
+          if (aVerified !== bVerified) return aVerified - bVerified;
+          // Secondary stable sort for verified libraries
+          return (b.profile_completeness_score ?? 0) - (a.profile_completeness_score ?? 0);
         });
       } else if (sort === "completeness") {
         results = [...results].sort(
@@ -283,7 +293,9 @@ async function searchLibraries(
           fallbackQuery = fallbackQuery.order("display_name", { ascending: true });
           break;
         case "verified":
-          fallbackQuery = fallbackQuery.order("verification_status", { ascending: false });
+          fallbackQuery = fallbackQuery
+            .order("verification_status", { ascending: false })
+            .order("profile_completeness_score", { ascending: false });
           break;
         case "completeness":
         default:
@@ -313,7 +325,9 @@ async function searchLibraries(
         browseQuery = browseQuery.order("display_name", { ascending: true });
         break;
       case "verified":
-        browseQuery = browseQuery.order("verification_status", { ascending: false });
+        browseQuery = browseQuery
+          .order("verification_status", { ascending: false })
+          .order("profile_completeness_score", { ascending: false });
         break;
       case "completeness":
       default:
