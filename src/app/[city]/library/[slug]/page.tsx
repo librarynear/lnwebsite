@@ -369,6 +369,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
   const librarySchema = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
+    "@id": pageUrl,
     name: lib.display_name,
     url: pageUrl,
     description: lib.description || fallbackDescription,

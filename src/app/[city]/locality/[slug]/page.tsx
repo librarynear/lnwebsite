@@ -279,6 +279,16 @@ export default async function LocalityPage({ params }: PageProps) {
               availability, cleanliness, and how quiet the study environment feels during peak hours.
             </p>
           </section>
+
+          <section className="rounded-3xl border border-border/70 bg-slate-50/40 p-6">
+            <h2 className="text-xl font-bold text-black">Popular filters in {locality}</h2>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <IntentLink href={`/${city}/amenity/ac/locality/${slug}`} className="px-3 py-1.5 bg-white border border-border rounded-full text-sm font-medium hover:bg-muted/50 transition-colors">AC Libraries</IntentLink>
+              <IntentLink href={`/${city}/amenity/wifi/locality/${slug}`} className="px-3 py-1.5 bg-white border border-border rounded-full text-sm font-medium hover:bg-muted/50 transition-colors">WiFi Enabled</IntentLink>
+              <IntentLink href={`/${city}/amenity/24x7/locality/${slug}`} className="px-3 py-1.5 bg-white border border-border rounded-full text-sm font-medium hover:bg-muted/50 transition-colors">24x7 Open</IntentLink>
+              <IntentLink href={`/${city}/amenity/discussion-room/locality/${slug}`} className="px-3 py-1.5 bg-white border border-border rounded-full text-sm font-medium hover:bg-muted/50 transition-colors">Discussion Rooms</IntentLink>
+            </div>
+          </section>
         </div>
       </div>
     </div>

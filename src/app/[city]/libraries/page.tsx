@@ -823,7 +823,7 @@ async function LibrariesContent({
                       lib={lib}
                       city={city}
                       nearbyMode={nearbyMode}
-                      priority={index === 0}
+                      priority={index < 4}
                     />
                   ))}
                 </div>
