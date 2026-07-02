@@ -3,7 +3,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 import { client } from "@/sanity/lib/client";
 
-export const revalidate = 86400; // Regenerate once per day
+export const revalidate = 0; // Force dynamic to bust Vercel cache
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
@@ -89,8 +89,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const amenityLocalitySet = new Set<string>();
   branchData.forEach((row) => {
     if (!row.amenities_text) return;
-    const amenities = row.amenities_text.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean);
-    amenities.forEach((amenity) => {
+    const amenities = row.amenities_text.split(",").map((a: string) => a.trim().toLowerCase()).filter(Boolean);
+    amenities.forEach((amenity: string) => {
       const aSlug = amenity.replace(/\s+/g, "-");
       const city = row.city.toLowerCase();
       amenityLocalitySet.add(`${city}::${aSlug}::NONE`);
