@@ -398,7 +398,31 @@ async function LibraryFiltersSidebar({
   lng?: string;
   totalCount: number;
 }) {
-  const localities = await getLibrariesLocalities(city);
+  let localities: string[];
+
+  if (q || nearbyMode) {
+    let baseLibraries: SearchResult[] = [];
+    if (nearbyMode) {
+      const res = await searchLibraries(
+        city,
+        q,
+        undefined,
+        undefined,
+        verifiedOnly,
+        nearbyMode,
+        lat ? Number(lat) : undefined,
+        lng ? Number(lng) : undefined
+      );
+      baseLibraries = res.results;
+    } else {
+      const res = await getLibrariesSearchResults(city, q, undefined, undefined, verifiedOnly);
+      baseLibraries = res.results;
+    }
+    localities = Array.from(new Set(baseLibraries.map((l) => l.locality).filter(Boolean))) as string[];
+    localities.sort((a, b) => a.localeCompare(b));
+  } else {
+    localities = await getLibrariesLocalities(city);
+  }
 
   return (
     <LibraryFilters

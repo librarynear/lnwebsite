@@ -305,8 +305,12 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
     setHighlightedIndex(-1);
     const params = new URLSearchParams();
     if (q) params.set("q", q);
-    const locality = currentParams.get("locality");
-    if (locality) params.set("locality", locality);
+    
+    // We intentionally DO NOT preserve the `locality` parameter here.
+    // When a user initiates a new text search from the top bar, it acts as a fresh 
+    // global search. If they wanted a specific locality, they would select it 
+    // from the suggestions dropdown (which sets locality via `getSuggestionHref`).
+
     if (nearbyMode && nearbyCoords) {
       params.set("nearby", "1");
       params.set("lat", nearbyCoords.lat.toFixed(4));
