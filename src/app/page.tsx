@@ -13,7 +13,7 @@ import { LibraryGridSkeleton } from "@/components/library-listing-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSiteUrl } from "@/lib/site-url";
 import { sanitizeSearchTerm } from "@/lib/postgrest";
-import { EmergencyGuidesHero } from "@/components/emergency-guides-hero";
+
 
 export const revalidate = 120;
 
@@ -224,7 +224,6 @@ async function HomeContent() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
       />
 
-      <EmergencyGuidesHero />
 
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2 md:py-3">
