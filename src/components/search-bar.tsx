@@ -266,10 +266,8 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
       return `/${suggestion.city}/library/${suggestion.slug}`;
     }
 
-    if (suggestion.type === "locality") {
-      const params = new URLSearchParams();
-      params.set("locality", suggestion.label);
-      return `/${suggestion.city}/libraries?${params.toString()}`;
+    if (suggestion.type === "locality" || suggestion.type === "metro") {
+      return `/${suggestion.city}/${suggestion.type}/${suggestion.slug}`;
     }
 
     const params = new URLSearchParams();
@@ -303,6 +301,22 @@ export function SearchBar({ city = "delhi", compact = false }: SearchBarProps) {
   function navigate(q: string) {
     setOpen(false);
     setHighlightedIndex(-1);
+
+    if (q) {
+      const normalizedQ = q.trim().toLowerCase();
+      // Check if the exact query matches a known locality or metro suggestion
+      const exactMatch = flatSuggestions.find(
+        (s) =>
+          (s.type === "locality" || s.type === "metro") &&
+          s.label.toLowerCase() === normalizedQ
+      );
+      
+      if (exactMatch) {
+        router.push(`/${exactMatch.city}/${exactMatch.type}/${exactMatch.slug}`);
+        return;
+      }
+    }
+
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     

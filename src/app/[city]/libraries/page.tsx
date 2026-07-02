@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { permanentRedirect } from "next/navigation";
 import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { MapPin, SlidersHorizontal, SearchX, ArrowRight, Navigation, BookOpen } from "lucide-react";
@@ -859,6 +860,28 @@ export default async function LibrariesPage({ params, searchParams }: PageProps)
   const q = rawQ ? boundSearchTerm(rawQ) : rawQ;
   const verifiedOnly = verified === "1";
   const nearbyMode = nearby === "1";
+
+  // SEO Canonical Redirect for exact location matches
+  if (q && !locality && !sort && !verifiedOnly && !nearbyMode) {
+    const { data } = await supabaseServer.rpc("search_suggestions" as never, {
+      query_term: q,
+      city_filter: city,
+      max_results: 3,
+    } as never);
+
+    const suggestionsData = data as unknown as any[];
+
+    if (suggestionsData && Array.isArray(suggestionsData) && suggestionsData.length > 0) {
+      const topSuggestion = suggestionsData[0];
+      if (
+        (topSuggestion.type === "locality" || topSuggestion.type === "metro") &&
+        topSuggestion.label.toLowerCase() === q.toLowerCase()
+      ) {
+        permanentRedirect(`/${topSuggestion.city}/${topSuggestion.type}/${topSuggestion.slug}`);
+      }
+    }
+  }
+
   const parsedLat = lat ? Number(lat) : undefined;
   const parsedLng = lng ? Number(lng) : undefined;
   const latitude = isValidLatitude(parsedLat ?? null) ? parsedLat : undefined;
