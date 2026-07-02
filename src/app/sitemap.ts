@@ -17,20 +17,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/for-owners`, changeFrequency: "weekly", priority: 0.7 },
   ];
 
-  // All library detail pages
+  // Fetch ALL libraries, overriding 1000 row default limit
   const { data: branches } = await supabaseServer
     .from("library_branches")
-    .select("slug, city, locality, updated_at")
-    .eq("is_active", true);
+    .select("slug, city, locality, nearest_metro, amenities_text, updated_at")
+    .eq("is_active", true)
+    .limit(50000);
 
-  const uniqueCities = [...new Set((branches ?? []).map((row) => row.city.toLowerCase()))];
+  const branchData = branches ?? [];
+
+  const uniqueCities = [...new Set(branchData.map((row) => row.city.toLowerCase()))];
 
   const cityPages: MetadataRoute.Sitemap = uniqueCities.flatMap((city) => [
     { url: `${base}/${city}`, changeFrequency: "weekly", priority: 0.85 },
     { url: `${base}/${city}/libraries`, changeFrequency: "daily", priority: 0.9 },
   ]);
 
-  const libraryPages: MetadataRoute.Sitemap = (branches ?? []).map((b) => ({
+  const libraryPages: MetadataRoute.Sitemap = branchData.map((b) => ({
     url: `${base}/${b.city.toLowerCase()}/library/${b.slug}`,
     lastModified: b.updated_at ? new Date(b.updated_at) : new Date(),
     changeFrequency: "weekly",
@@ -40,9 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Locality pages
   const uniqueLocalities = [
     ...new Set(
-      (branches ?? [])
+      branchData
         .filter((row) => row.locality)
-        .map((row) => `${row.city.toLowerCase()}::${row.locality!.toLowerCase().replace(/\s+/g, "-")}`),
+        .map((row) => `${row.city.toLowerCase()}::${row.locality!.toLowerCase().replace(/\s+/g, "-")}`)
     ),
   ];
 
@@ -53,6 +56,57 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     };
+  });
+
+  // Metro pages
+  const uniqueMetros = [
+    ...new Set(
+      branchData
+        .filter((row) => row.nearest_metro)
+        .map((row) => `${row.city.toLowerCase()}::${row.nearest_metro!.toLowerCase().replace(/\s+/g, "-")}`)
+    ),
+  ];
+
+  const metroPages: MetadataRoute.Sitemap = uniqueMetros.map((entry) => {
+    const [city, metroSlug] = entry.split("::");
+    return {
+      url: `${base}/${city}/metro/${encodeURIComponent(metroSlug)}`,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    };
+  });
+
+  // Amenity pages
+  const amenityLocalitySet = new Set<string>();
+  branchData.forEach((row) => {
+    if (!row.amenities_text) return;
+    const amenities = row.amenities_text.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean);
+    amenities.forEach((amenity) => {
+      const aSlug = amenity.replace(/\s+/g, "-");
+      const city = row.city.toLowerCase();
+      amenityLocalitySet.add(`${city}::${aSlug}::NONE`);
+      if (row.locality) {
+        const lSlug = row.locality.toLowerCase().replace(/\s+/g, "-");
+        amenityLocalitySet.add(`${city}::${aSlug}::${lSlug}`);
+      }
+    });
+  });
+
+  const amenityPages: MetadataRoute.Sitemap = Array.from(amenityLocalitySet).map((entry) => {
+    const [city, aSlug, lSlug] = entry.split("::");
+    if (lSlug === "NONE") {
+      return {
+        url: `${base}/${city}/amenity/${encodeURIComponent(aSlug)}`,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      };
+    } else {
+      return {
+        url: `${base}/${city}/amenity/${encodeURIComponent(aSlug)}/locality/${encodeURIComponent(lSlug)}`,
+        changeFrequency: "weekly",
+        priority: 0.5,
+      };
+    }
   });
 
   // Blog pages
@@ -67,5 +121,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...statics, ...cityPages, ...libraryPages, ...localityPages, ...blogPages];
+  return [...statics, ...cityPages, ...libraryPages, ...localityPages, ...metroPages, ...amenityPages, ...blogPages];
 }
