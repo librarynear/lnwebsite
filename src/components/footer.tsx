@@ -45,6 +45,7 @@ export function Footer() {
                   alt="LibraryNear Logo"
                   width={40}
                   height={40}
+                  sizes="40px"
                   className="h-10 w-auto object-contain shrink-0"
                 />
                 <span className="text-2xl tracking-tight hidden sm:block">

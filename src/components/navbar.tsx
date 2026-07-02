@@ -12,6 +12,7 @@ export function Navbar() {
             alt="LibraryNear Logo"
             width={40}
             height={40}
+            sizes="40px"
             className="h-8 w-auto object-contain shrink-0 md:h-10"
             priority
           />
