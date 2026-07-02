@@ -606,8 +606,36 @@ export async function createOfflineStudentWithRFID(libraryId: string, name: stri
   }
 }
 
-export async function getUserBasicDetails(userId: string) {
+export async function getUserBasicDetails(userId: string, libraryId: string) {
   try {
+    // Staff-only, and scoped to a library the caller actually controls. This
+    // stops anonymous / cross-library PII enumeration by UUID.
+    const session = await getSession();
+    if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+      return { error: 'Unauthorized' };
+    }
+    if (!libraryId) return { error: 'Unauthorized' };
+
+    if (session.role === 'RECEPTIONIST') {
+      if (!session.employerLibraryId || session.employerLibraryId !== libraryId) {
+        return { error: 'Unauthorized' };
+      }
+    } else if (session.role === 'LIBRARIAN') {
+      const controlled = await prisma.library.findFirst({
+        where: { id: libraryId, librarianId: session.userId },
+        select: { id: true },
+      });
+      if (!controlled) return { error: 'Unauthorized' };
+    }
+
+    // The target must have activity at this library (a booking or an entry log),
+    // so a librarian can't read details for arbitrary users.
+    const [hasBooking, hasEntry] = await Promise.all([
+      prisma.booking.findFirst({ where: { studentId: userId, libraryId }, select: { id: true } }),
+      prisma.entryLog.findFirst({ where: { userId, libraryId }, select: { id: true } }),
+    ]);
+    if (!hasBooking && !hasEntry) return { error: 'Not found' };
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {

@@ -16,6 +16,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
+    // Cap batch size — each entry triggers per-log DB queries below, so an
+    // oversized batch is a DoS vector even with a valid device key.
+    const MAX_LOG_ENTRIES = 500;
+    if (logs.length > MAX_LOG_ENTRIES) {
+      return NextResponse.json({ error: `Too many logs (max ${MAX_LOG_ENTRIES})` }, { status: 413 });
+    }
+
     // Helper to check UUID
     const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 

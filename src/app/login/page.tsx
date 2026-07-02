@@ -123,7 +123,8 @@ export default function LoginPage() {
       const result = await confirmationResult.confirm(otp)
       const user = result.user
 
-      const dbCheck = await checkUserExists(formattedPhone, user.uid);
+      const idToken = await user.getIdToken()
+      const dbCheck = await checkUserExists(formattedPhone, idToken);
 
       if (dbCheck.exists) {
         await completeLogin(user, formattedPhone, '')
@@ -165,14 +166,15 @@ export default function LoginPage() {
 
   async function completeLogin(firebaseUser: any, phone: string, userName: string) {
     try {
-      const syncResult = await syncUserOnSignup(firebaseUser.uid, phone, userName)
+      const idToken = await firebaseUser.getIdToken()
+
+      const syncResult = await syncUserOnSignup(idToken, phone, userName)
       if (syncResult && 'error' in syncResult) {
         toast.error(syncResult.error || "An error occurred during signup");
         setLoading(false)
         return
       }
 
-      const idToken = await firebaseUser.getIdToken()
       const res = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,7 +186,11 @@ export default function LoginPage() {
         const urlParams = new URLSearchParams(window.location.search)
         
         if (urlParams.get('popup') === 'true') {
-          window.opener?.postMessage({ type: 'LOGIN_SUCCESS', token: idToken }, '*');
+          // The embedded (iframe) checkout can't rely on the session cookie due to
+          // third-party cookie blocking, so it authenticates with this ID token.
+          // Scope the message to our OWN origin — never '*', which would leak the
+          // token to any page that happened to open this popup.
+          window.opener?.postMessage({ type: 'LOGIN_SUCCESS', token: idToken }, window.location.origin);
           window.close();
           return;
         }

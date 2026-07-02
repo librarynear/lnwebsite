@@ -378,6 +378,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         window.open('/login?popup=true', 'Login', `width=${width},height=${height},top=${top},left=${left}`);
         
         const listener = (e: MessageEvent) => {
+          // Only accept the login result from our own origin; ignore messages
+          // injected by any other window/frame.
+          if (e.origin !== window.location.origin) return;
           if (e.data?.type === 'LOGIN_SUCCESS') {
             window.removeEventListener('message', listener);
             executeCheckout(e.data.token);

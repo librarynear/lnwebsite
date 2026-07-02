@@ -13,14 +13,16 @@ export async function POST(req: Request) {
     let session = await getSession();
     let authUserId = session?.userId;
     let authRole = session?.role;
+    let authEmployerLibraryId = session?.employerLibraryId ?? null;
 
     if (!session && idToken && adminAuth) {
       try {
-        const decoded = await adminAuth.verifyIdToken(idToken);
+        const decoded = await adminAuth.verifyIdToken(idToken, true);
         const user = await prisma.user.findUnique({ where: { authId: decoded.uid } });
         if (user) {
           authUserId = user.id;
           authRole = user.role;
+          authEmployerLibraryId = user.employerLibraryId ?? null;
         }
       } catch (e) {
         console.error("Iframe token verification failed", e);
@@ -49,6 +51,15 @@ export async function POST(req: Request) {
       const library = await prisma.library.findUnique({ where: { id: libraryId } });
       if (!library || library.librarianId !== authUserId) {
         return NextResponse.json({ error: 'Forbidden: You do not own this library' }, { status: 403 });
+      }
+    }
+
+    // A receptionist may only transact for the single library that employs them.
+    // Without this they could pass an arbitrary libraryId and create bookings
+    // (for any studentId) at libraries they don't work for.
+    if (authRole === 'RECEPTIONIST') {
+      if (!authEmployerLibraryId || authEmployerLibraryId !== libraryId) {
+        return NextResponse.json({ error: 'Forbidden: You cannot create bookings for this library' }, { status: 403 });
       }
     }
 

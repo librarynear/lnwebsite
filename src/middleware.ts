@@ -20,6 +20,38 @@ function getClientIp(request: NextRequest): string {
   return '127.0.0.1';
 }
 
+// Routes authenticated by API key or gateway signature (not the session cookie).
+// CSRF does not apply to these — a browser can't forge their credentials — and
+// they are legitimately called cross-origin / server-to-server without an Origin.
+const CSRF_EXEMPT_PREFIXES = [
+  '/api/webhooks',
+  '/api/relay',
+  '/api/hardware',
+  '/api/student/checkin',
+  '/api/razorpay/callback',
+  '/api/vitals',
+];
+
+function getAllowedOrigins(request: NextRequest): Set<string> {
+  const allowed = new Set<string>();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    try { allowed.add(new URL(appUrl).origin); } catch {}
+  }
+  // The deployment's own origin (covers preview/prod URLs and the embedded
+  // iframe, whose document is served from this same origin).
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  if (host) {
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    allowed.add(`${proto}://${host}`);
+  }
+  if (process.env.NODE_ENV !== 'production') {
+    allowed.add('http://localhost:3000');
+    allowed.add('http://127.0.0.1:3000');
+  }
+  return allowed;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith('/api');
@@ -48,6 +80,33 @@ export async function middleware(request: NextRequest) {
       // must not open them to abuse. General API endpoints fail open for uptime.
       if (isSensitive) {
         return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+      }
+    }
+  }
+
+  // --- CSRF defense ---
+  // The session cookie is SameSite=None (required so it survives the embedded
+  // iframe payment flow), which means the browser attaches it to cross-site
+  // requests too. To stop cross-site forgery we require that state-changing
+  // requests originate from an allowed origin. Webhook / hardware / relay routes
+  // are exempt because they authenticate via API key or gateway signature.
+  const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+  if ((isApi || isServerAction) && isMutation) {
+    const isExempt = CSRF_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p));
+    if (!isExempt) {
+      const origin = request.headers.get('origin');
+      // Fall back to Referer's origin when Origin is absent (some browsers omit
+      // it on same-origin navigations, though not on fetch/XHR).
+      let sourceOrigin = origin;
+      if (!sourceOrigin) {
+        const referer = request.headers.get('referer');
+        if (referer) {
+          try { sourceOrigin = new URL(referer).origin; } catch {}
+        }
+      }
+      const allowed = getAllowedOrigins(request);
+      if (!sourceOrigin || !allowed.has(sourceOrigin)) {
+        return NextResponse.json({ error: 'Cross-site request blocked' }, { status: 403 });
       }
     }
   }

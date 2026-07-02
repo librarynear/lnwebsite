@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
+import { computeExpectedAmountPaise, amountMatches } from "@/lib/booking-pricing";
 
 export async function POST(req: Request) {
   try {
@@ -17,9 +18,13 @@ export async function POST(req: Request) {
       .createHmac("sha256", webhookSecret)
       .update(rawBody)
       .digest("hex");
-    
-    // Timing-safe comparison to prevent timing attacks
-    if (!crypto.timingSafeEqual(Buffer.from(expectedSignature, 'hex'), Buffer.from(signature, 'hex'))) {
+
+    // Timing-safe comparison to prevent timing attacks. Compare byte lengths
+    // first — timingSafeEqual throws on mismatched lengths, which would surface
+    // as a 500 and leak that the length was wrong.
+    const expectedBuf = Buffer.from(expectedSignature, 'hex');
+    const providedBuf = Buffer.from(signature, 'hex');
+    if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
@@ -56,6 +61,11 @@ export async function POST(req: Request) {
         ? event.payload.order.entity.id
         : event.payload.payment.entity.order_id;
 
+      // Amount actually paid, as reported by the (signature-verified) event.
+      const paidPaise = event.event === "order.paid"
+        ? Number(event.payload.payment?.entity?.amount ?? event.payload.order?.entity?.amount_paid)
+        : Number(event.payload.payment.entity.amount);
+
       if (orderId) {
         let bookingCreated = false;
         try {
@@ -74,6 +84,20 @@ export async function POST(req: Request) {
             const plan = await tx.plan.findUnique({ where: { id: intent.planId } });
             if (!plan) {
               throw new Error("PLAN_NOT_FOUND");
+            }
+
+            // Verify the paid amount matches the server-computed price before
+            // fulfilling. Without this, a tampered order amount would still get
+            // a CONFIRMED booking created here.
+            const expectedPaise = await computeExpectedAmountPaise({
+              planId: intent.planId,
+              libraryId: intent.libraryId,
+              seatId: intent.seatId,
+              hasLocker: intent.hasLocker,
+              standaloneLockerId: intent.standaloneLockerId,
+            });
+            if (expectedPaise === null || !Number.isFinite(paidPaise) || !amountMatches(paidPaise, expectedPaise)) {
+              throw new Error("AMOUNT_MISMATCH");
             }
 
             const activeBooking = await tx.booking.findFirst({
@@ -136,7 +160,7 @@ export async function POST(req: Request) {
             }
           }, { isolationLevel: 'Serializable' });
         } catch (err: any) {
-          if (err.message === "SEAT_ALREADY_BOOKED" || err.message === "LOCKER_ALREADY_BOOKED") {
+          if (err.message === "SEAT_ALREADY_BOOKED" || err.message === "LOCKER_ALREADY_BOOKED" || err.message === "AMOUNT_MISMATCH") {
             try {
               const Razorpay = require('razorpay');
               const rzp = new Razorpay({
@@ -148,7 +172,7 @@ export async function POST(req: Request) {
                 : event.payload.payment.entity.id;
               if (paymentId) {
                 await rzp.payments.refund(paymentId, {});
-                console.log(`Refunded payment ${paymentId} due to conflict`);
+                console.log(`Refunded payment ${paymentId} due to ${err.message === "AMOUNT_MISMATCH" ? 'amount mismatch' : 'conflict'}`);
               }
             } catch (refundErr) {
               console.error("Refund failed:", refundErr);

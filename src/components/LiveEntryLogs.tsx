@@ -56,7 +56,7 @@ export function LiveEntryLogs({ libraryId }: { libraryId: string }) {
           const newLog = payload.new as LiveLog;
           
           if (newLog.userId) {
-            const userRes = await getUserBasicDetails(newLog.userId);
+            const userRes = await getUserBasicDetails(newLog.userId, libraryId);
             if (userRes.success && userRes.user) {
               newLog.user = userRes.user;
             }

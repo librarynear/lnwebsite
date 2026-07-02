@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { getSession } from "./auth-actions"
 import { revalidatePath } from "next/cache"
+import { verifyFirebaseIdToken } from "@/lib/verify-firebase-token"
 
 export async function addReceptionist(formData: FormData) {
   const session = await getSession();
@@ -18,9 +19,16 @@ export async function addReceptionist(formData: FormData) {
 
   const phone = formData.get("phone") as string;
   const name = formData.get("name") as string;
-  const authId = formData.get("authId") as string;
+  const idToken = formData.get("idToken") as string;
 
-  if (!phone || !name || !authId) return { error: "Phone, name, and OTP verification are required" };
+  if (!phone || !name || !idToken) return { error: "Phone, name, and OTP verification are required" };
+
+  // Verify the OTP token really belongs to the phone being onboarded, so a
+  // librarian can't bind an arbitrary Firebase UID (or someone else's) to a
+  // RECEPTIONIST role.
+  const verified = await verifyFirebaseIdToken(idToken, phone);
+  if (!verified.ok) return { error: verified.error };
+  const authId = verified.uid;
 
   try {
     // Check if user already exists by authId or phone

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 import { adminAuth } from "@/lib/firebase/firebaseAdmin"
 import { redis } from "@/lib/redis"
+import { verifyFirebaseIdToken } from "@/lib/verify-firebase-token"
 
 // Short TTL keeps per-request auth cheap while bounding role/profile staleness.
 const SESSION_CACHE_TTL_SECONDS = 30
@@ -88,16 +89,17 @@ export async function getPostLoginRedirect(): Promise<string> {
   return '/';
 }
 
-// NOTE: Since Firebase login is done on the client side, these old server actions 
-// are no longer directly used for credentials, but we keep the logic here for 
-// Prisma DB creation just in case, or we move it strictly to client side + JIT.
-// The `login` and `signup` forms in the UI will need to be converted to client components.
-export async function checkUserExists(phone: string, authId?: string) {
+// NOTE: Firebase login happens client-side; these actions run AFTER the client
+// has completed OTP verification and can produce a valid ID token. We never trust
+// a bare `authId`/`phone` string — the ID token is verified server-side first.
+export async function checkUserExists(phone: string, idToken: string) {
   try {
-    if (authId) {
-      const userByAuth = await prisma.user.findUnique({ where: { authId } });
-      if (userByAuth) return { exists: true };
-    }
+    // Require proof of identity to prevent anonymous phone-number enumeration.
+    const caller = await verifyFirebaseIdToken(idToken, phone);
+    if (!caller.ok) return { error: caller.error };
+
+    const userByAuth = await prisma.user.findUnique({ where: { authId: caller.uid } });
+    if (userByAuth) return { exists: true };
 
     const normalizedPhone = phone.startsWith('+91') ? phone.slice(3) : phone;
     const phoneWithCode = phone.startsWith('+91') ? phone : `+91${phone}`;
@@ -118,15 +120,13 @@ export async function checkUserExists(phone: string, authId?: string) {
   }
 }
 
-export async function syncUserOnSignup(authId: string, phone: string, name?: string) {
+export async function syncUserOnSignup(idToken: string, phone: string, name?: string) {
   try {
-    // Verify the authId is a real Firebase UID
-    if (!adminAuth) return { error: 'Auth not initialized' };
-    try {
-      await adminAuth.getUser(authId);
-    } catch {
-      return { error: 'Invalid auth credentials' };
-    }
+    // Trust boundary: verify the ID token proves the caller owns both this
+    // Firebase UID and this phone number before creating or linking any account.
+    const caller = await verifyFirebaseIdToken(idToken, phone);
+    if (!caller.ok) return { error: caller.error };
+    const authId = caller.uid;
 
     // 1. Try to find by authId first (Definitive match for returning Firebase users)
     let userByAuth = await prisma.user.findUnique({ where: { authId } });

@@ -36,9 +36,23 @@ export async function updateInquiryStatus(inquiryId: string, status: 'NEW' | 'CO
     const session = await getSession();
     if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { success: false };
 
-    // Verify ownership
+    const validStatuses = ['NEW', 'CONTACTED', 'CONVERTED', 'CLOSED'];
+    if (!validStatuses.includes(status)) return { success: false };
+
+    // Authorize against the inquiry's ACTUAL library, not the client-supplied
+    // libraryId. Without this, a librarian could pass their own libraryId while
+    // targeting an inquiryId that belongs to a different library (IDOR).
+    const inquiry = await prisma.inquiry.findUnique({
+      where: { id: inquiryId },
+      select: { libraryId: true },
+    });
+    if (!inquiry) return { success: false };
+
     if (session.role === 'LIBRARIAN') {
-      const lib = await prisma.library.findFirst({ where: { id: libraryId, librarianId: session.userId } });
+      const lib = await prisma.library.findFirst({
+        where: { id: inquiry.libraryId, librarianId: session.userId },
+        select: { id: true },
+      });
       if (!lib) return { success: false };
     }
 

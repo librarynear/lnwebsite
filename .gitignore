@@ -40,8 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*
 arduino-cli*
 esp32_qr_access/config.h
 nodemcu_qr_access/config.h
+
+# Local-only scripts that read/hold secrets. NEVER commit or deploy these.
+/local-scripts/
+/scratch/
+/preserved_before_testing/

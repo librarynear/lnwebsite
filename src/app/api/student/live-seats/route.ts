@@ -16,9 +16,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Missing libraryId' }, { status: 400 });
     }
 
+    // Return only what the seat map needs. Do NOT spread the whole library row —
+    // it contains sensitive fields (paymentAccountId, passbookPhoto, librarianId).
     const library = await prisma.library.findUnique({
       where: { id: libraryId },
-      include: {
+      select: {
+        id: true,
+        name: true,
         seats: true,
       }
     });

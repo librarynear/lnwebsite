@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import prisma from '@/lib/prisma';
 import { redis } from '@/lib/redis';
+import { computeExpectedAmountPaise, amountMatches } from '@/lib/booking-pricing';
 
 function getRazorpayClient(): Razorpay {
   const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -57,7 +58,9 @@ export async function GET(req: NextRequest) {
     const payload = `${linkId}|${refId}|${linkStatus}|${paymentId}`;
     const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))) {
+    const expectedBuf = Buffer.from(expected, 'hex');
+    const providedBuf = Buffer.from(signature, 'hex');
+    if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
       return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
     }
 
@@ -100,6 +103,26 @@ export async function GET(req: NextRequest) {
       if (!locker || locker.libraryId !== libraryId) {
         return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
       }
+    }
+
+    // 3b. Server-side amount verification — confirm the customer actually paid the
+    // full server-computed price. Without this a tampered payment link amount
+    // would still create a CONFIRMED booking.
+    const expectedAmountPaise = await computeExpectedAmountPaise({ planId, libraryId, seatId, hasLocker, standaloneLockerId });
+    if (expectedAmountPaise === null) {
+      return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
+    }
+    try {
+      const payment = await getRazorpayClient().payments.fetch(paymentId);
+      const paidPaise = Number(payment.amount);
+      const isPaid = payment.status === 'captured' || payment.status === 'authorized';
+      if (!isPaid || !amountMatches(paidPaise, expectedAmountPaise)) {
+        console.error('[callback] amount mismatch or unpaid', { status: payment.status });
+        return NextResponse.redirect(`${appUrl}/?payment=invalid`, { status: 303 });
+      }
+    } catch (e) {
+      console.error('[callback] payment fetch failed', e);
+      return NextResponse.redirect(`${appUrl}/?payment=error`, { status: 303 });
     }
 
     // 4. Atomic booking creation inside a serializable transaction

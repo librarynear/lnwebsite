@@ -21,7 +21,7 @@ export function StaffForm() {
   const [otp, setOtp] = useState("")
   const [otpLoading, setOtpLoading] = useState(false)
   const [verificationObj, setVerificationObj] = useState<any>(null)
-  const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
+  const [verifiedIdToken, setVerifiedIdToken] = useState<string | null>(null)
 
   const handleSendOTP = async () => {
     try {
@@ -50,7 +50,10 @@ export function StaffForm() {
       setOtpLoading(true);
       setError(null);
       const result = await verificationObj.confirm(otp);
-      setVerifiedAuthId(result.user.uid);
+      // Capture a fresh ID token BEFORE signing out — the server re-verifies it
+      // to prove this phone was really OTP-verified.
+      const token = await result.user.getIdToken();
+      setVerifiedIdToken(token);
       const secondaryAuth = getAuth(getApps().find(app => app.name === 'Secondary')!);
       await secondaryAuth.signOut();
       toast.success("Phone verified!");
@@ -64,7 +67,7 @@ export function StaffForm() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!verifiedAuthId) {
+    if (!verifiedIdToken) {
       setError("Please verify the staff's phone number first.");
       return;
     }
@@ -73,7 +76,7 @@ export function StaffForm() {
     setError(null);
     
     const formData = new FormData(e.currentTarget);
-    formData.append("authId", verifiedAuthId); // Pass the verified auth ID
+    formData.append("idToken", verifiedIdToken); // Server re-verifies this token
     
     try {
       const res = await addReceptionist(formData);
@@ -85,7 +88,7 @@ export function StaffForm() {
         setStep(1);
         setPhone("+91 ");
         setOtp("");
-        setVerifiedAuthId(null);
+        setVerifiedIdToken(null);
       }
     } catch (err: any) {
       setError(err.message || "Failed to add receptionist");
@@ -120,17 +123,17 @@ export function StaffForm() {
             value={phone} 
             onChange={(e) => setPhone(e.target.value)} 
             placeholder="+91 98765 43210" 
-            readOnly={!!verifiedAuthId || step === 2} 
-            className={!!verifiedAuthId || step === 2 ? "opacity-50 cursor-not-allowed" : ""}
+            readOnly={!!verifiedIdToken || step === 2} 
+            className={!!verifiedIdToken || step === 2 ? "opacity-50 cursor-not-allowed" : ""}
             required 
           />
-          {!verifiedAuthId && step === 1 && (
+          {!verifiedIdToken && step === 1 && (
             <Button type="button" onClick={handleSendOTP} disabled={otpLoading || phone.length < 10}>
               {otpLoading ? "Sending..." : "Verify"}
             </Button>
           )}
         </div>
-        {!verifiedAuthId && step === 2 && (
+        {!verifiedIdToken && step === 2 && (
           <div className="flex gap-2 mt-2">
             <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} />
             <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6}>
@@ -138,12 +141,12 @@ export function StaffForm() {
             </Button>
           </div>
         )}
-        {verifiedAuthId && <div className="text-xs text-green-600 font-bold mt-1">✓ Phone Verified</div>}
+        {verifiedIdToken && <div className="text-xs text-green-600 font-bold mt-1">✓ Phone Verified</div>}
       </div>
 
       <button 
         type="submit" 
-        disabled={loading || !verifiedAuthId}
+        disabled={loading || !verifiedIdToken}
         className="w-full mt-4 bg-primary text-primary-foreground font-semibold py-2.5 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
       >
         {loading && <Loader2 className="w-4 h-4 animate-spin" />}
