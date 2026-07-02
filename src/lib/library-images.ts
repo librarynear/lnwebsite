@@ -5,9 +5,9 @@ type LibraryImage = Tables<"library_images">;
 type ImageVariant = "card" | "detailHero" | "detailThumb";
 
 const IMAGEKIT_TRANSFORMS: Record<ImageVariant, string> = {
-  card: "tr=w-540,h-540,c-at_max,f-auto,q-70",
-  detailHero: "tr=w-1400,h-1400,c-at_max,f-auto,q-78",
-  detailThumb: "tr=w-900,h-900,c-at_max,f-auto,q-75",
+  card: "tr=w-540,h-540,c-at_max,f-auto,q-60",
+  detailHero: "tr=w-1400,h-1400,c-at_max,f-auto,q-75",
+  detailThumb: "tr=w-900,h-900,c-at_max,f-auto,q-65",
 };
 
 export function getOptimizedImageUrl(url: string | null | undefined, variant: ImageVariant = "card"): string | null {
