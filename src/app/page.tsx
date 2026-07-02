@@ -182,7 +182,7 @@ async function HomeContent() {
       "@type": "Organization",
       name: "LibraryNear",
       url: siteUrl,
-      logo: `${siteUrl}/logo.png`,
+      logo: `${siteUrl}/logo.webp`,
       contactPoint: {
         "@type": "ContactPoint",
         telephone: "+91-8796190507",

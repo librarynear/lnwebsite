@@ -287,7 +287,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const previewImage =
     (lib.library_images?.[0]?.imagekit_url
       ? getOptimizedImageUrl(lib.library_images[0].imagekit_url, "detailHero")
-      : null) || `${siteUrl}/logo.png`;
+      : null) || `${siteUrl}/logo.webp`;
   const previewTitle = `${lib.display_name}${lib.locality ? `, ${lib.locality}` : ""} | LibraryNear`;
   const previewDescription = buildMetadataDescription(lib, feePlans);
   const keywords = [

@@ -226,7 +226,7 @@ export default async function CityPage({ params }: PageProps) {
         </section>
       ) : null}
 
-      <section className="container mx-auto px-6 py-10 pb-20 md:px-10">
+      <section className="container mx-auto min-h-screen px-6 py-10 pb-20 md:px-10">
         <div className="mb-6 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-bold text-black">Featured libraries in {cityLabel}</h2>
           <IntentLink href={`/${city}/libraries`} className="text-sm font-semibold text-primary hover:underline">
