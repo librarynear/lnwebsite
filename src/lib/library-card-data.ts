@@ -13,14 +13,16 @@ export type LibraryCardData = Pick<
   | "nearest_metro_distance_km"
   | "verification_status"
   | "profile_completeness_score"
+  | "aggregate_rating"
+  | "review_count"
   | "cover_image_url"
 >;
 
 export const LIBRARY_CARD_SELECT =
-  "id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score,cover_image_url";
+  "id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score,aggregate_rating,review_count,cover_image_url";
 
 export const LIBRARY_CARD_SELECT_FALLBACK =
-  "id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score";
+  "id,slug,city,display_name,locality,nearest_metro,nearest_metro_distance_km,verification_status,profile_completeness_score,aggregate_rating,review_count";
 
 type LibraryCardQueryRow = Omit<LibraryCardData, "cover_image_url"> & {
   cover_image_url?: string | null;

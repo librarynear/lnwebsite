@@ -17,6 +17,7 @@ import { MapEmbed } from "@/components/map-embed";
 import { LibraryDetailActions } from "@/components/library-detail-actions";
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery";
 import { getSiteUrl } from "@/lib/site-url";
+import { LibraryReviews } from "@/components/library-reviews";
 
 type LibraryBranch = Tables<"library_branches">;
 type FeePlan = Tables<"library_fee_plans">;
@@ -46,6 +47,8 @@ type LibraryDetailData = Pick<
   | "total_seats"
   | "phone_number"
   | "state"
+  | "aggregate_rating"
+  | "review_count"
 > & {
   library_fee_plans: FeePlan[] | null;
   library_images: LibraryImage[] | null;
@@ -74,6 +77,8 @@ const LIBRARY_DETAIL_SELECT = `
   total_seats,
   phone_number,
   state,
+  aggregate_rating,
+  review_count,
   library_fee_plans (
     id,
     library_branch_id,
@@ -346,6 +351,14 @@ export default async function LibraryDetailPage({ params }: PageProps) {
   if (!lib) notFound();
 
   const feePlans = lib.library_fee_plans ?? [];
+  const { data: reviewsData } = await supabaseServer
+    .from("library_reviews")
+    .select("id, rating, review_text, created_at, profiles(full_name, avatar_url)")
+    .eq("library_branch_id", lib.id)
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+  const reviews = (reviewsData || []) as any[];
+
   const images = (lib.library_images ?? [])
     .map((image, index) =>
       getOptimizedImageUrl(image.imagekit_url, index === 0 ? "detailHero" : "detailThumb"),
@@ -411,6 +424,28 @@ export default async function LibraryDetailPage({ params }: PageProps) {
             description: plan.description || plan.duration_label || undefined,
             availability: "https://schema.org/InStock",
           })),
+        }
+      : {}),
+    ...(lib.aggregate_rating && lib.review_count
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: lib.aggregate_rating,
+            reviewCount: lib.review_count,
+            bestRating: 5,
+            worstRating: 1
+          }
+        }
+      : {}),
+    ...(reviews.length
+      ? {
+          review: reviews.map(r => ({
+            "@type": "Review",
+            author: { "@type": "Person", name: r.profiles?.full_name || "Anonymous Student" },
+            datePublished: r.created_at.split("T")[0],
+            reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+            reviewBody: r.review_text
+          }))
         }
       : {}),
   };
@@ -592,6 +627,14 @@ export default async function LibraryDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
           </section>
+
+          {/* Student Reviews */}
+          <LibraryReviews 
+            libraryBranchId={lib.id} 
+            reviews={reviews} 
+            aggregateRating={lib.aggregate_rating || 0} 
+            reviewCount={lib.review_count || 0} 
+          />
         </div>
 
         {/* SIDEBAR */}

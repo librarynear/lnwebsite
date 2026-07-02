@@ -38,6 +38,8 @@ export type Database = {
           description?: string | null;
           verification_status: string | null;
           profile_completeness_score: number | null;
+          aggregate_rating: number | null;
+          review_count: number | null;
           is_active: boolean | null;
           created_source: string | null;
           last_confirmed_at: string | null;
@@ -60,6 +62,8 @@ export type Database = {
           display_name: string;
           pin_code: string;
           city: string;
+          aggregate_rating?: number | null;
+          review_count?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["library_branches"]["Row"]>;
         Relationships: [];
@@ -110,6 +114,26 @@ export type Database = {
           imagekit_url: string;
         };
         Update: Partial<Database["public"]["Tables"]["library_images"]["Row"]>;
+        Relationships: [];
+      };
+      library_reviews: {
+        Row: {
+          id: string;
+          library_branch_id: string;
+          user_id: string;
+          rating: number;
+          review_text: string;
+          status: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["library_reviews"]["Row"]> & {
+          library_branch_id: string;
+          user_id: string;
+          rating: number;
+          review_text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["library_reviews"]["Row"]>;
         Relationships: [];
       };
       library_social_links: {
