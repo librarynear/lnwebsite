@@ -17,14 +17,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/for-owners`, changeFrequency: "weekly", priority: 0.7 },
   ];
 
-  // Fetch ALL libraries, overriding 1000 row default limit
-  const { data: branches } = await supabaseServer
-    .from("library_branches")
-    .select("slug, city, locality, nearest_metro, amenities_text, updated_at")
-    .eq("is_active", true)
-    .limit(50000);
-
-  const branchData = branches ?? [];
+  // Fetch ALL libraries by paginating (bypassing PostgREST max-rows 1000 limit)
+  let branchData: any[] = [];
+  const pageSize = 1000;
+  let page = 0;
+  
+  while (true) {
+    const { data } = await supabaseServer
+      .from("library_branches")
+      .select("slug, city, locality, nearest_metro, amenities_text, updated_at")
+      .eq("is_active", true)
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+    if (!data || data.length === 0) break;
+    branchData.push(...data);
+    if (data.length < pageSize) break;
+    page++;
+  }
 
   const uniqueCities = [...new Set(branchData.map((row) => row.city.toLowerCase()))];
 
