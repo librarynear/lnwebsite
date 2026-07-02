@@ -22,12 +22,14 @@ public:
     
     // Periodic sync function (call from loop)
     void sync();
+    
+    // Forces saving RAM logs to flash (e.g. before restart)
+    void saveToFlash();
 
 private:
     std::vector<LogEntry> ramLogs;
     unsigned long lastSyncAttempt = 0;
     
-    void saveToFlash();
     bool uploadBatch(const String& jsonPayload);
     bool uploadRamLogs();
     bool uploadFlashLogs();

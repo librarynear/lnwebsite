@@ -76,6 +76,7 @@ bool checkProvisionQR() {
                     Serial.println("Credentials saved to NVS. Restarting to connect...");
                     hwController.showMessage(" Saved WiFi!  ", "  Restarting... ", 3000);
                     delay(1500);
+                    logManager.saveToFlash(); // Save any offline RAM logs before restart
                     ESP.restart(); // Restart to use new credentials instantly
                     return true;
                 }
@@ -175,18 +176,35 @@ void setup() {
             // Sync NTP Time if connected
             Serial.println("Syncing NTP Time...");
             hwController.showMessage(" Syncing NTP... ", "", 0);
-            configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
             
-            struct tm timeinfo;
-            if(!getLocalTime(&timeinfo)){
-                Serial.println("Failed to obtain time");
-                hwController.showMessage(" NTP Sync Failed ", "", 2000);
-            } else {
-                Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
-                hwController.showMessage(" NTP Sync: [\x01] ", "", 1000);
+            int ntpRetries = 0;
+            bool ntpSynced = false;
+            while (!ntpSynced && ntpRetries < 3) {
+                configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+                struct tm timeinfo;
+                // getLocalTime has a built-in timeout, default is 5000ms
+                if(!getLocalTime(&timeinfo)){
+                    ntpRetries++;
+                    Serial.printf("NTP Sync Failed. Retry %d/3\n", ntpRetries);
+                    if (ntpRetries < 3) {
+                        hwController.showMessage(" NTP Sync Failed", " Retry " + String(ntpRetries) + "/3 ", 2000);
+                    } else {
+                        hwController.showMessage(" NTP Failed!   ", " Offline Mode ", 2000);
+                    }
+                } else {
+                    Serial.println(&timeinfo, "Time synced: %A, %B %d %Y %H:%M:%S");
+                    hwController.showMessage(" NTP Sync: [\x01] ", "", 1000);
+                    ntpSynced = true;
+                }
             }
             delay(1000);
-            
+        }
+        
+        time_t finalTime;
+        time(&finalTime);
+        if (finalTime < 1000000000) {
+            hwController.showMessage(" Clock Not Set! ", " Admin QR Only! ", 3000);
+        } else {
             hwController.showMessage(" All Set Up! [\x01]", " Ready to Scan! ", 3000);
         }
     }
@@ -220,6 +238,7 @@ void loop() {
                         Serial.println("Credentials saved to NVS. Restarting...");
                         hwController.showMessage(" Saved WiFi!  ", "  Restarting... ", 3000);
                         delay(1500);
+                        logManager.saveToFlash(); // Save any offline RAM logs before restart
                         ESP.restart();
                     } else if (result.cmd == "ADD_RFID") {
                         Serial.println("ADD_RFID COMMAND RECEIVED.");

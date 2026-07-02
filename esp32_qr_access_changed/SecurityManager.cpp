@@ -69,7 +69,7 @@ QRPayload SecurityManager::processQR(const String& rawJson) {
         if (now < result.iat - 60) {
             // NTP drift allowance
             Serial.println("QR Code is from the future? Check NTP sync.");
-            result.failReason = "Future Timestamp (NTP Out of Sync?)";
+            result.failReason = "Clock Not Synced";
             return result;
         }
     }
@@ -224,7 +224,7 @@ int SecurityManager::checkRfidAuthorization(const String& uid) {
     time(&now);
     
     // Ensure we have a valid time synced (> year 2001) before enforcing expiration
-    if (now > 1000000000 && now > exp) {
+    if (exp > 0 && now > 1000000000 && now > exp) {
         return -1; // Expired
     }
     

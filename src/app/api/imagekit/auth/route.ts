@@ -15,7 +15,7 @@ export async function GET() {
   try {
     const { getSession } = await import('@/app/actions/auth-actions');
     const session = await getSession();
-    if (!session) {
+    if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -1,6 +1,7 @@
 #include "HardwareController.h"
 #include "config.h"
 #include <Wire.h>
+#include <time.h>
 
 HardwareController::HardwareController() : lcd(0x27, 16, 2) {}
 
@@ -66,7 +67,13 @@ void HardwareController::showMessage(const String& line1, const String& line2, i
 }
 
 void HardwareController::showIdle() {
-    showMessage("  Scan QR Code  ", " Or Tap RFID ID ", 0);
+    time_t now;
+    time(&now);
+    if (now < 1000000000) {
+        showMessage(" Clock Not Set! ", " Admin QR Only! ", 0);
+    } else {
+        showMessage("  Scan QR Code  ", " Or Tap RFID ID ", 0);
+    }
 }
 
 void HardwareController::showWelcome() {

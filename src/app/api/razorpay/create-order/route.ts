@@ -72,6 +72,15 @@ export async function POST(req: NextRequest) {
 
     const libraryId = plan.libraryId;
 
+    const lastBooking = await prisma.booking.findFirst({
+      where: { studentId: authUserId, libraryId },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    if (lastBooking && lastBooking.status === 'CANCELLED') {
+      return NextResponse.json({ error: 'Your access to this library has been revoked. Please contact the librarian.' }, { status: 403 });
+    }
+
     const library = await prisma.library.findUnique({
       where: { id: libraryId },
       select: { name: true },

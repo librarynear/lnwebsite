@@ -395,7 +395,7 @@ export async function extendBookingExact(bookingId: string) {
 
 
 
-export async function renewPlan(bookingId: string, paymentMethod: string, newPlanId?: string, newSeatId?: string) {
+export async function renewPlan(bookingId: string, paymentMethod: string, newPlanId?: string, newSeatId?: string, startDate?: Date) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -429,15 +429,14 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
     throw new Error("Please select a seat for this reserved (fixed-seat) plan.");
   }
 
-  const now = new Date();
-  const baseDate = booking.endTime > now ? booking.endTime : now;
+  const startBase = startDate ? startDate : new Date();
   
-  let newEndTime;
-  if (booking.endTime > now) {
-    newEndTime = endOfDayIST(booking.endTime, targetPlan.validityDays);
-  } else {
-    newEndTime = endOfDayIST(now, targetPlan.validityDays - 1);
-  }
+  // If the booking is active, append to its end time (unless startBase is after it)
+  // If the booking was cancelled/revoked, it is no longer active, so start from startBase
+  const isActive = booking.endTime > new Date() && booking.status !== 'CANCELLED';
+  const effectiveStart = isActive && booking.endTime > startBase ? booking.endTime : startBase;
+  
+  let newEndTime = endOfDayIST(effectiveStart, isActive && booking.endTime > startBase ? targetPlan.validityDays : targetPlan.validityDays - 1);
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -451,8 +450,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
             seatId: targetSeatId,
             status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
             startTime: { lt: newEndTime },
-            endTime: { gt: baseDate },
-            id: { not: bookingId }
+            endTime: { gt: effectiveStart }
           }
         });
         if (clash) throw new Error("SEAT_TAKEN");
@@ -464,9 +462,11 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
           libraryId: booking.libraryId,
           planId: targetPlan.id,
           seatId: targetSeatId,
-          startTime: baseDate,
+          startTime: effectiveStart,
           endTime: newEndTime,
-          status: "CONFIRMED",
+          status: paymentMethod === 'ONLINE' ? 'PENDING_PAYMENT' : 'CONFIRMED',
+          hasLocker: booking.hasLocker,
+          standaloneLockerId: booking.standaloneLockerId,
           paymentRef: `RENEWAL_${paymentMethod}_${Date.now()}`
         }
       });
@@ -478,4 +478,148 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
 
   revalidatePath("/dashboard/students");
   return { success: true };
+}
+
+export async function searchActiveStudents() {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { error: 'Unauthorized' };
+  }
+
+  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
+    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
+  )?.id;
+
+  if (!libraryId) return { error: 'Library not found' };
+
+  try {
+    const students = await prisma.user.findMany({
+      where: {
+        bookings: {
+          some: {
+            libraryId,
+            status: { in: ['CONFIRMED', 'PENDING_PAYMENT', 'COMPLETED'] }
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        uniqueId: true,
+        rfidTag: true,
+        bookings: {
+          where: {
+            libraryId,
+            status: { in: ['CONFIRMED', 'PENDING_PAYMENT', 'COMPLETED'] }
+          },
+          orderBy: { endTime: 'desc' },
+          take: 1,
+          select: { endTime: true }
+        }
+      }
+    });
+
+    return { success: true, students };
+  } catch (error) {
+    console.error("Failed to fetch students for RFID:", error);
+    return { error: 'Failed to fetch students' };
+  }
+}
+
+export async function getStudentProfile(studentId: string) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { error: 'Unauthorized' };
+  }
+
+  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
+    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
+  )?.id;
+
+  if (!libraryId) return { error: 'Library not found' };
+
+  try {
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      include: {
+        bookings: {
+          where: { libraryId },
+          include: { plan: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!student) return { error: 'Student not found' };
+    return { success: true, student };
+  } catch (error) {
+    console.error("Failed to fetch student profile:", error);
+    return { error: 'Failed to fetch student profile' };
+  }
+}
+
+export async function createOfflineStudentWithRFID(libraryId: string, name: string, rfidTag: string, gender?: string) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { error: 'Unauthorized' };
+  }
+
+  try {
+    // Generate a unique 6-char ID
+    let uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    
+    // Ensure uniqueness
+    let exists = await prisma.user.findUnique({ where: { uniqueId } });
+    while (exists) {
+      uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
+      exists = await prisma.user.findUnique({ where: { uniqueId } });
+    }
+
+    const newStudent = await prisma.user.create({
+      data: {
+        name,
+        gender,
+        uniqueId,
+        rfidTag,
+        role: "STUDENT"
+      }
+    });
+
+    // We successfully created the student and assigned the RFID.
+    // Now we must generate the PROVISION hardware QR so the door scanner learns this new RFID.
+    // ADD_RFID requires an expiration timestamp (0 means never expires for the scanner itself)
+    const { generateRFIDCommandQR } = await import("./hardware-actions");
+    const qrResult = await generateRFIDCommandQR(newStudent.id, "ADD_RFID", rfidTag, 0);
+
+    if (qrResult.error) {
+      return { error: qrResult.error };
+    }
+
+    return { success: true, student: newStudent, qrPayload: qrResult.qrPayload };
+  } catch (error: any) {
+    console.error("Failed to create offline student:", error);
+    if (error.code === 'P2002' && error.meta?.target?.includes('rfidTag')) {
+      return { error: 'This RFID tag is already assigned to another user.' };
+    }
+    return { error: 'Failed to create student' };
+  }
+}
+
+export async function getUserBasicDetails(userId: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        gender: true
+      }
+    });
+    if (!user) return { error: 'User not found' };
+    return { success: true, user };
+  } catch (error) {
+    return { error: 'Failed to fetch user details' };
+  }
 }

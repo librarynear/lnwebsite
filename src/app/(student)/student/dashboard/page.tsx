@@ -42,8 +42,8 @@ export default async function StudentDashboardPage() {
 
   if (!student) redirect("/login");
 
-  const activeBookings = allBookings.filter(b => b.endTime > now);
-  const pastBookings = allBookings.filter(b => b.endTime <= now);
+  const activeBookings = allBookings.filter(b => b.endTime > now && b.status !== 'CANCELLED');
+  const pastBookings = allBookings.filter(b => b.endTime <= now || b.status === 'CANCELLED');
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -196,7 +196,9 @@ export default async function StudentDashboardPage() {
                         targetSeatId={booking.seatId} 
                         isFlexible={booking.plan.type === "FLEXIBLE"} 
                       />
-                      <AccessQRModal libraryId={booking.libraryId} />
+                      {booking.status === 'CONFIRMED' && (
+                        <AccessQRModal libraryId={booking.libraryId} />
+                      )}
                     </div>
                   </div>
                 ))}

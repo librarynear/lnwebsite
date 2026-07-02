@@ -35,6 +35,11 @@ export async function POST(req: Request) {
       studentId = authUserId;
     }
 
+    const isStaff = authRole === 'LIBRARIAN' || authRole === 'ADMIN' || authRole === 'RECEPTIONIST';
+    if (!isStaff && studentId !== authUserId) {
+      return NextResponse.json({ error: 'Forbidden: You cannot create bookings for other users' }, { status: 403 });
+    }
+
     // Validate required fields
     if (!studentId || !libraryId || !planId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -74,6 +79,16 @@ export async function POST(req: Request) {
     }
 
     const isLibrarianOrAdmin = authRole === 'LIBRARIAN' || authRole === 'ADMIN';
+
+    if (!isLibrarianOrAdmin) {
+      const lastBooking = await prisma.booking.findFirst({
+        where: { studentId, libraryId },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (lastBooking && lastBooking.status === 'CANCELLED') {
+        return NextResponse.json({ error: 'Your access to this library has been revoked. Please contact the librarian.' }, { status: 403 });
+      }
+    }
 
     // Atomic transaction to prevent race conditions on seat/locker booking
     const booking = await prisma.$transaction(async (tx) => {

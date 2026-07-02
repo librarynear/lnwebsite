@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock, Grid, X, ChevronLeft, ChevronRight, Share, Heart } from "lucide-react"
+import { 
+  MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock, Grid, X, ChevronLeft, ChevronRight, Share, Heart,
+  Snowflake, Droplet, Video, Car, ShieldCheck, VolumeX, Wifi, Bath, Coffee, Plug, CheckCircle2 
+} from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
@@ -12,6 +15,26 @@ import { auth } from "@/lib/firebase/clientApp"
 import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 import { toast } from "react-hot-toast"
 import { formatStandardDate } from "@/lib/date-utils"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+
+const facilityIconMap: Record<string, React.ElementType> = {
+  "AC": Snowflake,
+  "RO Water": Droplet,
+  "CCTV": Video,
+  "Parking": Car,
+  "Security Guard": ShieldCheck,
+  "Silent Zone": VolumeX,
+  "Wi-Fi": Wifi,
+  "Washroom": Bath,
+  "Locker": Lock,
+  "Tea/Coffee": Coffee,
+  "Charging Points": Plug
+};
+
+function getFacilityIcon(fac: string) {
+  const Icon = facilityIconMap[fac] || CheckCircle2;
+  return <Icon className="w-5 h-5 text-primary shrink-0" />;
+}
 // Seat map pulls in react-zoom-pan-pinch; load it only when the section renders
 // so it stays out of the initial library-page bundle.
 const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
@@ -34,6 +57,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   const realtimeOccupiedSeatIds = useRealtimeSeats(library.id, initialOccupiedSeatIds);
   
   const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION">("ONLINE");
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   
   // Feedback State
   const [feedbackType, setFeedbackType] = useState<"FEEDBACK" | "COMPLAINT" | null>(null);
@@ -115,6 +139,13 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   const checkoutLockRef = useRef(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const scrollToSection = (sectionId: string, align: ScrollLogicalPosition = 'start') => {
+    setTimeout(() => {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: align });
+    }, 150);
+  };
 
   // Derive recommended plans based on the selected plan's duration
   const recommendedPlans = selectedPlan 
@@ -249,7 +280,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     endDate.setDate(endDate.getDate() + selectedPlan.validityDays - 1);
   }
 
-  const executeCheckout = async (idToken?: string) => {
+  const executeCheckout = async (idToken?: string, overrideMode?: "ONLINE" | "RECEPTION") => {
     if (!selectedPlan) {
       toast.error("Please select a plan.");
       return;
@@ -263,7 +294,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     checkoutLockRef.current = true;
     setIsProcessing(true);
 
-    if (paymentMode === "RECEPTION") {
+    const mode = overrideMode || paymentMode;
+
+    if (mode === "RECEPTION") {
       try {
         const res = await fetch('/api/checkout/reception', {
           method: 'POST',
@@ -321,7 +354,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (overrideMode?: "ONLINE" | "RECEPTION") => {
     if (checkoutLockRef.current) return;
     
     const user = auth.currentUser;
@@ -359,7 +392,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       return;
     }
     const idToken = user ? await user.getIdToken() : undefined;
-    executeCheckout(idToken);
+    executeCheckout(idToken, overrideMode);
   }
 
   // Compute unique hours for filters
@@ -491,9 +524,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           </section>
         </div>
 
-        {/* Right Column: Sticky Booking Widget */}
+        {/* Right Column: Booking Widget */}
         <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 booking-widget-container" id="booking-widget">
-          <div className="relative lg:sticky lg:top-8 bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6">
+          <div className="relative bg-card border border-border shadow-2xl rounded-3xl p-6 space-y-6" id="booking-scroll-container">
             <h3 className="text-2xl font-black font-heading tracking-tight text-foreground">
               {selectedPlan ? (
                 <span>₹{totalAmount.toFixed(0)}</span>
@@ -502,7 +535,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               )}
             </h3>
 
-            <div className="space-y-3" id="plans-section">
+            <div className="space-y-3 scroll-mt-24" id="plans-section">
               <label className="text-sm font-bold text-foreground flex items-center justify-between">
                 <span>1. Choose a Plan</span>
               </label>
@@ -558,15 +591,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                         setSelectedPlan(plan);
                         if (plan.type === "FLEXIBLE") {
                           setSelectedSeat(null);
-                          setTimeout(() => {
-                            const widget = document.getElementById('payment-section');
-                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                          }, 100);
+                          scrollToSection('payment-section', 'center');
                         } else {
-                          setTimeout(() => {
-                            const widget = document.getElementById('seat-section');
-                            if (widget) window.scrollTo({top: widget.getBoundingClientRect().top + window.pageYOffset - 100, behavior: 'smooth'});
-                          }, 100);
+                          scrollToSection('seat-section', 'start');
                         }
                       }}
                       className={`flex flex-row bg-white rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden group relative active:scale-[0.99] active:bg-slate-50/50 ${isSelected ? 'border-primary shadow-md ring-1 ring-primary' : 'border-slate-200 shadow-sm hover:shadow-md hover:border-primary/50'}`}
@@ -644,7 +671,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             {/* Seat Selection Inline */}
             {selectedPlan && !isFlexible && (
               <>
-                <div className="space-y-3 pt-4 border-t border-border" id="seat-section">
+                <div className="space-y-3 pt-4 border-t border-border scroll-mt-24" id="seat-section">
                   <label className="text-sm font-bold text-foreground flex justify-between items-center">
                     <span>2. Select a Seat</span>
                   </label>
@@ -692,22 +719,29 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                       </>
                     ) : (
                       <>
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-sm text-foreground">Optional Locker</span>
-                          {selectedStandaloneLockerId && <span className="font-bold text-sm text-primary">+₹{lockerCost.toFixed(0)}</span>}
-                        </div>
-                        <select 
-                          value={selectedStandaloneLockerId}
-                          onChange={(e) => setSelectedStandaloneLockerId(e.target.value)}
-                          className="w-full text-sm rounded-lg border border-border bg-background p-2 focus:outline-none focus:ring-1 focus:ring-primary"
-                        >
-                          <option value="">No locker needed</option>
-                          {library.standaloneLockers.map((locker: any) => (
-                            <option key={locker.id} value={locker.id}>
-                              {locker.name} - ₹{locker.price}/mo
-                            </option>
-                          ))}
-                        </select>
+                        {library.standaloneLockers.length > 0 && (
+                          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 transition-all">
+                            <label className="text-sm font-bold text-primary mb-2 flex items-center justify-between">
+                              <div className="flex items-center gap-2"><Lock className="w-4 h-4" /> Optional Locker</div>
+                              {selectedStandaloneLockerId && <span className="font-bold text-sm text-primary">+₹{lockerCost.toFixed(0)}</span>}
+                            </label>
+                            <select 
+                              value={selectedStandaloneLockerId}
+                              onChange={(e) => setSelectedStandaloneLockerId(e.target.value)}
+                              className="w-full text-sm rounded-lg border border-primary/20 bg-background p-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground font-medium"
+                            >
+                              <option value="">No locker needed</option>
+                              {library.standaloneLockers.map((locker: any) => (
+                                <option key={locker.id} value={locker.id}>
+                                  {locker.name} - ₹{locker.price}/mo
+                                </option>
+                              ))}
+                            </select>
+                            {selectedStandaloneLockerId && (
+                              <p className="text-xs text-primary/80 mt-2 font-medium">Locker fee will be added to your total.</p>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -715,24 +749,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               </div>
             )}
 
-            {/* Payment Method Toggle */}
-            <div className="space-y-3 pt-4 border-t border-border" id="payment-section">
-              <label className="text-sm font-bold text-foreground">3. Payment Method</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPaymentMode("ONLINE")}
-                  className={`flex-1 py-3 px-2 rounded-xl text-xs font-bold transition-all border-2 ${paymentMode === "ONLINE" ? 'bg-primary/10 border-primary text-primary' : 'bg-background border-border text-muted-foreground hover:border-border/80'}`}
-                >
-                  Pay Online
-                </button>
-                <button
-                  onClick={() => setPaymentMode("RECEPTION")}
-                  className={`flex-1 py-3 px-2 rounded-xl text-xs font-bold transition-all border-2 ${paymentMode === "RECEPTION" ? 'bg-primary/10 border-primary text-primary' : 'bg-background border-border text-muted-foreground hover:border-border/80'}`}
-                >
-                  Pay at Reception
-                </button>
-              </div>
-            </div>
+            {/* Payment Mode Selection has been moved to Bottom Sheet */}
 
             {selectedPlan && (
               <div className="flex justify-between items-center text-sm font-medium mt-4 bg-muted/30 p-4 rounded-xl border border-border">
@@ -767,20 +784,55 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               </div>
             )}
 
-            <button 
-              onClick={handleCheckout}
-              disabled={!selectedPlan || (!isFlexible && !selectedSeat) || isProcessing || dynamicState.isLoading || dynamicState.hasError}
-              className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg mt-4"
-            >
-              {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {isProcessing ? "Processing..." : (paymentMode === "ONLINE" ? `Pay ₹${totalAmount.toFixed(0)}` : `Book for ₹${totalAmount.toFixed(0)}`)}
-            </button>
+            <div id="payment-section" className="mt-4 scroll-mt-24">
+              <button 
+                onClick={() => setShowPaymentSheet(true)}
+                disabled={!selectedPlan || (!isFlexible && !selectedSeat) || isProcessing || dynamicState.isLoading || dynamicState.hasError}
+                className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
+              >
+                Book Now for ₹{totalAmount.toFixed(0)}
+              </button>
+            </div>
             
             <p className="text-center text-xs text-muted-foreground">
-              {paymentMode === "ONLINE" ? "Secure payments by Razorpay." : "Your booking will be confirmed after payment at reception."}
+              You will be asked to select a payment method next.
             </p>
           </div>
         </div>
+
+        <Sheet open={showPaymentSheet} onOpenChange={setShowPaymentSheet}>
+          <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh]">
+            <SheetHeader className="px-1 text-left pb-4">
+              <SheetTitle className="text-2xl font-black">Choose Payment Method</SheetTitle>
+              <SheetDescription>
+                How would you like to pay ₹{totalAmount.toFixed(0)} for your booking?
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-3 pb-8 px-1">
+              <button
+                onClick={() => {
+                  setPaymentMode("ONLINE");
+                  setShowPaymentSheet(false);
+                  setTimeout(() => handleCheckout("ONLINE"), 100);
+                }}
+                className="w-full py-4 px-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:opacity-90 transition-opacity flex justify-between items-center shadow-md"
+              >
+                <span>Pay Now (Online)</span>
+                <span className="bg-primary-foreground/20 px-2 py-1 rounded text-sm tracking-widest font-black">₹{totalAmount.toFixed(0)}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setPaymentMode("RECEPTION");
+                  setShowPaymentSheet(false);
+                  setTimeout(() => handleCheckout("RECEPTION"), 100);
+                }}
+                className="w-full py-4 px-4 bg-muted text-foreground border border-border rounded-2xl font-bold text-lg hover:bg-muted/80 transition-colors flex justify-between items-center"
+              >
+                <span>Pay at Reception (Cash/Online)</span>
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Left Column 2: Facilities & Map */}
         <div className="order-3 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2 space-y-12">
@@ -789,10 +841,13 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           {/* Facilities */}
           <section className="facilities-section">
             <h2 className="text-2xl font-bold font-heading tracking-tight mb-6">What this place offers</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-8">
               {library.facilities.map((fac: string) => (
                 <div key={fac} className="flex items-center gap-3 text-foreground font-medium text-sm">
-                  <Check className="w-5 h-5 text-primary shrink-0" /> {fac}
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    {getFacilityIcon(fac)}
+                  </div>
+                  {fac}
                 </div>
               ))}
             </div>
@@ -921,16 +976,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         </div>
         {!selectedPlan ? (
           <button 
-            onClick={() => {
-              const widget = document.getElementById('plans-section');
-              if (widget) {
-                const yOffset = -100; 
-                const y = widget.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({top: y, behavior: 'smooth'});
-              } else {
-                window.scrollTo({top: 0, behavior: 'smooth'});
-              }
-            }} 
+            onClick={() => scrollToSection('plans-section', 'start')} 
             className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg"
           >
             Select Plan
@@ -938,12 +984,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         ) : (!isFlexible && !selectedSeat) ? (
           <button 
             onClick={() => {
-              const widget = document.getElementById('seat-section');
-              if (widget) {
-                const yOffset = -100; 
-                const y = widget.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                window.scrollTo({top: y, behavior: 'smooth'});
-              }
+              scrollToSection('seat-section', 'start');
               import('react-hot-toast').then(({ default: toast }) => {
                 toast("Please select a seat first", { icon: "💺" });
               });
@@ -954,12 +995,12 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           </button>
         ) : (
           <button 
-            onClick={handleCheckout}
+            onClick={() => setShowPaymentSheet(true)}
             disabled={isProcessing || dynamicState.isLoading || dynamicState.hasError}
             className="bg-primary text-primary-foreground font-bold px-6 py-3 rounded-xl hover:opacity-90 shadow-lg flex items-center gap-2 disabled:opacity-50"
           >
             {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {isProcessing ? "Processing..." : (paymentMode === "ONLINE" ? "Pay Now" : "Book Now")}
+            {isProcessing ? "Processing..." : "Book Now"}
           </button>
         )}
       </div>

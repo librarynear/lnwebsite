@@ -82,7 +82,7 @@ export default async function LibrarianDashboardPage() {
     }),
     prisma.entryLog.findMany({
       where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo }, status: { in: ["SUCCESS", "IN", "OUT"] } },
-      include: { user: { select: { name: true, phone: true } } },
+      include: { user: { select: { id: true, name: true, phone: true } } },
       orderBy: { timestamp: 'desc' }
     })
   ]);

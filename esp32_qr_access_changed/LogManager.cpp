@@ -111,6 +111,8 @@ bool LogManager::uploadRamLogs() {
 }
 
 void LogManager::saveToFlash() {
+    if (ramLogs.empty()) return;
+    
     Serial.println("Saving RAM logs to Flash backup.");
     
     DynamicJsonDocument doc(4096);

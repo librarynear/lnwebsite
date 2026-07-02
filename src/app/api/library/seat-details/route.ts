@@ -22,13 +22,17 @@ export async function GET(request: Request) {
 
     // Verify the user has access to this library
     if (session.role !== 'ADMIN') {
-      const allowedLibraryId = session.role === 'LIBRARIAN' ? session.userId : session.employerLibraryId;
-      const library = await prisma.library.findFirst({
-        where: { id: libraryId, librarianId: session.role === 'LIBRARIAN' ? session.userId : undefined }
-      });
-      // Additional check for receptionist could be done here based on employerLibraryId matching libraryId.
-      if (!library && libraryId !== allowedLibraryId) {
-        return NextResponse.json({ error: "Unauthorized access to this library" }, { status: 403 });
+      if (session.role === 'LIBRARIAN') {
+        const library = await prisma.library.findFirst({
+          where: { id: libraryId, librarianId: session.userId }
+        });
+        if (!library) {
+          return NextResponse.json({ error: "Unauthorized access to this library" }, { status: 403 });
+        }
+      } else if (session.role === 'RECEPTIONIST') {
+        if (libraryId !== session.employerLibraryId) {
+          return NextResponse.json({ error: "Unauthorized access to this library" }, { status: 403 });
+        }
       }
     }
 

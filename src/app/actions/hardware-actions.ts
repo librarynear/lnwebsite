@@ -151,12 +151,22 @@ export async function generateProvisioningQR(libraryId: string, ssid: string, pa
 
 export async function generateRFIDCommandQR(studentId: string, cmd: "ADD_RFID" | "REVOKE_RFID", rfid: string, exp: number = 0) {
   const session = await getSession();
-  if (!session || !session.userId) {
+  if (!session || (session.role !== "LIBRARIAN" && session.role !== "ADMIN")) {
     return { error: "Unauthorized" };
   }
 
-  // Verify the caller is the librarian (assuming they have access if they can see the student)
-  // To keep it simple, we trust the caller if session exists, but ideally we'd check librarian role.
+  // Verify the librarian actually manages a library that the student has booked at
+  if (session.role === "LIBRARIAN") {
+    const studentHasBooking = await prisma.booking.findFirst({
+      where: {
+        studentId,
+        library: { librarianId: session.userId }
+      }
+    });
+    if (!studentHasBooking) {
+      return { error: "Unauthorized: You do not manage this student." };
+    }
+  }
   
   // Update database first
   try {

@@ -43,6 +43,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
+import { AssignRFIDModal } from "@/components/AssignRFIDModal"
+import { StudentProfileModal } from "@/components/StudentProfileModal"
 
 export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [] }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[] }) {
   const router = useRouter()
@@ -59,7 +61,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
   const [paymentApprovalId, setPaymentApprovalId] = useState<string | null>(null)
   const [approvalLoading, setApprovalLoading] = useState(false)
-  const [profileStudent, setProfileStudent] = useState<any | null>(null)
+  const [profileStudentId, setProfileStudentId] = useState<string | null>(null)
   const [addingStudent, setAddingStudent] = useState(false)
   
   const [seatChangeBookingId, setSeatChangeBookingId] = useState<string | null>(null)
@@ -73,6 +75,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewPlanMode, setRenewPlanMode] = useState<'SAME' | 'CHANGE'>('SAME');
   const [renewSelectedPlanId, setRenewSelectedPlanId] = useState<string | null>(null);
   const [renewSelectedSeatId, setRenewSelectedSeatId] = useState<string | null>(null);
+  const [renewStartDate, setRenewStartDate] = useState<Date | undefined>(undefined);
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
   // Tabs & Sorting
@@ -86,11 +89,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [rfidTagInput, setRfidTagInput] = useState("");
   const [rfidQrPayload, setRfidQrPayload] = useState<string | null>(null);
   const [rfidLoading, setRfidLoading] = useState(false);
+  const [rfidTagToAssign, setRfidTagToAssign] = useState<string | null>(null);
 
   // OTP Verification States
   const [step, setStep] = useState<1 | 2>(1)
   const [phone, setPhone] = useState("+91 ")
-  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -168,7 +172,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   }
 
   async function handleAdd(formData: FormData) {
-    if (!isOfflineMode && !verifiedAuthId) {
+    if (!verifiedAuthId) {
       toast.error("Please verify the student's phone number first.");
       return;
     }
@@ -181,34 +185,18 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     }
     setAddingStudent(true);
     try {
-      if (isOfflineMode) {
-        const result = await addOfflineStudentWithRFID(formData);
-        if (result && result.error) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("Offline student enrolled successfully!");
-        setIsOpen(false);
-        setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
-        // Show the QR code
-        setRfidQrPayload(result.qrPayload!);
-        setRfidModalOpen(true);
-        router.refresh();
-      } else {
-        const result = await addStudentWithBooking(formData)
-        if (result && 'error' in result) {
-          toast.error(result.error);
-          return;
-        }
-        toast.success("Student enrolled successfully");
-        setIsOpen(false)
-        setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
-        setAddFormSeatId(null);
-        setStudentFormData({ name: "", email: "", dob: "", gender: "", address: "", isKycVerified: false });
-        router.refresh();
+      const result = await addStudentWithBooking(formData);
+      if (result && result.error) {
+        toast.error(result.error);
+        return;
       }
+      toast.success("Student enrolled & plan assigned!");
+      setIsOpen(false);
+      setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+      setStudentFormData({ name: "", email: "", dob: "", gender: "", address: "", isKycVerified: false });
+      router.refresh();
     } catch (e: any) {
-      toast.error(e.message || "Failed to enroll student");
+      toast.error(e.message || "Failed to add student.");
     } finally {
       setAddingStudent(false);
     }
@@ -254,11 +242,23 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     const bIsActiveConf = b.status === 'CONFIRMED' && new Date(b.endTime) >= now;
     const exIsActiveConf = existing.status === 'CONFIRMED' && new Date(existing.endTime) >= now;
     
+    const bIsRevoked = b.status === 'CANCELLED';
+    const exIsRevoked = existing.status === 'CANCELLED';
+
+    // Priority 1: Active Confirmed
     if (bIsActiveConf && !exIsActiveConf) {
       latestBookingsMap.set(b.studentId, b);
     } else if (!bIsActiveConf && exIsActiveConf) {
       // keep existing
-    } else {
+    } 
+    // Priority 2: Revoked
+    else if (bIsRevoked && !exIsRevoked && existing.status !== 'CONFIRMED') {
+      latestBookingsMap.set(b.studentId, b);
+    } else if (!bIsRevoked && exIsRevoked && b.status !== 'CONFIRMED') {
+      // keep existing revoked over pending/inactive
+    }
+    // Priority 3: Fallback (latest end time)
+    else {
       if (new Date(b.endTime).getTime() > new Date(existing.endTime).getTime()) {
          latestBookingsMap.set(b.studentId, b);
       }
@@ -317,12 +317,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   let renewNewExpiryStr = "";
   let renewAddedDays = 0;
   if (renewBookingData && renewTargetPlan) {
-    const end = new Date(renewBookingData.endTime);
-    const n = new Date();
-    const baseDate = end > n ? end : n;
+    const startBase = renewStartDate || new Date();
+    const isActive = renewBookingData.endTime > new Date() && renewBookingData.status !== 'CANCELLED';
+    const effectiveStart = isActive && new Date(renewBookingData.endTime) > startBase ? new Date(renewBookingData.endTime) : startBase;
+    
     renewAddedDays = renewTargetPlan.validityDays;
-    const futureEnd = new Date(baseDate);
-    futureEnd.setDate(futureEnd.getDate() + renewAddedDays - (end > n ? 0 : 1));
+    const futureEnd = new Date(effectiveStart);
+    futureEnd.setDate(futureEnd.getDate() + renewAddedDays - (isActive && new Date(renewBookingData.endTime) > startBase ? 0 : 1));
     renewNewExpiryStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(futureEnd);
   }
 
@@ -346,197 +347,177 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               <input type="hidden" name="authId" value={verifiedAuthId || ''} />
               <div id="recaptcha-container"></div>
               
-              <div className="flex gap-4 mb-4 bg-muted/50 p-1.5 rounded-lg w-full max-w-sm mx-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsOfflineMode(false)}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${!isOfflineMode ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Standard (App)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsOfflineMode(true)}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${isOfflineMode ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                >
-                  Offline (RFID)
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Legal Name * {studentFormData.isKycVerified && <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded ml-1">Verified</span>}</Label>
-                  <Input 
-                    id="name" 
-                    name="name" 
-                    placeholder="As per ID proof" 
-                    value={studentFormData.name}
-                    onChange={(e) => setStudentFormData(s => ({...s, name: e.target.value}))}
-                    readOnly={studentFormData.isKycVerified}
-                    className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed font-medium" : ""}
-                    required 
-                  />
-                </div>
-                
-                {!isOfflineMode ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address (Optional)</Label>
-                      <Input 
-                        id="email" 
-                        name="email" 
-                        type="email" 
-                        placeholder="john@example.com" 
-                        value={studentFormData.email}
-                        onChange={(e) => setStudentFormData(s => ({...s, email: e.target.value}))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number (OTP Verified) *</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          id="phone" 
-                          name="phone" 
-                          value={phone} 
-                          onChange={(e) => setPhone(e.target.value)} 
-                          placeholder="+91 98765 43210" 
-                          readOnly={!!verifiedAuthId || step === 2} 
-                          className={!!verifiedAuthId || step === 2 ? "bg-muted cursor-not-allowed opacity-50" : ""}
-                          required={!isOfflineMode} 
-                        />
-                        {!verifiedAuthId && step === 1 && (
-                          <Button type="button" onClick={handleSendOTP} disabled={otpLoading || phone.length < 10}>
-                            {otpLoading ? "Sending..." : "Verify"}
-                          </Button>
-                        )}
-                      </div>
-                      {!verifiedAuthId && step === 2 && (
-                        <div className="flex gap-2 mt-2">
-                          <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} />
-                          <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6}>
-                            {otpLoading ? "Checking..." : "Confirm"}
-                          </Button>
-                        </div>
-                      )}
-                      {verifiedAuthId && <div className="text-xs text-green-600 font-bold mt-1">✓ Phone Verified</div>}
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-2 md:col-span-1">
-                    <Label htmlFor="rfidTag">RFID Tag Hex *</Label>
-                    <Input id="rfidTag" name="rfidTag" placeholder="e.g. 1A2B3C4D" required={isOfflineMode} />
-                    <p className="text-[10px] text-muted-foreground">Scan an unregistered tag at the door, copy it from Live Logs, and paste it here.</p>
-                  </div>
-                )}
-                
-                {!isOfflineMode && (
-                  <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth (Optional)</Label>
+              <div className="space-y-6">
+                <div className="space-y-2 max-w-md mx-auto bg-muted/30 p-4 rounded-xl border border-border">
+                  <Label htmlFor="phone" className="text-center block text-lg mb-2">Student Phone Number *</Label>
+                  <div className="flex gap-2">
                     <Input 
-                      id="dob" 
-                      name="dob" 
-                      type="date" 
-                      value={studentFormData.dob}
-                      onChange={(e) => setStudentFormData(s => ({...s, dob: e.target.value}))}
-                      readOnly={studentFormData.isKycVerified}
-                      className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                      id="phone" 
+                      name="phone" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)} 
+                      placeholder="+91 98765 43210" 
+                      readOnly={!!verifiedAuthId || step === 2} 
+                      className={!!verifiedAuthId || step === 2 ? "bg-muted cursor-not-allowed opacity-50 text-lg py-6 text-center tracking-wider" : "text-lg py-6 text-center tracking-wider"}
+                      required
                     />
+                    {!verifiedAuthId && step === 1 && (
+                      <Button type="button" onClick={handleSendOTP} disabled={otpLoading || phone.length < 10} className="h-auto px-6">
+                        {otpLoading ? "..." : "Verify"}
+                      </Button>
+                    )}
+                  </div>
+                  {!verifiedAuthId && step === 2 && (
+                    <div className="flex gap-2 mt-4 animate-in fade-in slide-in-from-top-2">
+                      <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} className="text-center tracking-widest text-lg py-6" />
+                      <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6} className="h-auto px-6">
+                        {otpLoading ? "..." : "Confirm"}
+                      </Button>
+                    </div>
+                  )}
+                  {verifiedAuthId && <div className="text-sm text-success font-bold mt-2 text-center animate-in zoom-in-95 flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" /> Phone Verified</div>}
+                </div>
+
+                {verifiedAuthId && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Legal Name * {studentFormData.isKycVerified && <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded ml-1">Verified</span>}</Label>
+                        <Input 
+                          id="name" 
+                          name="name" 
+                          placeholder="As per ID proof" 
+                          value={studentFormData.name}
+                          onChange={(e) => setStudentFormData(s => ({...s, name: e.target.value}))}
+                          readOnly={studentFormData.isKycVerified}
+                          className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed font-medium" : ""}
+                          required 
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address (Optional)</Label>
+                        <Input 
+                          id="email" 
+                          name="email" 
+                          type="email" 
+                          placeholder="john@example.com" 
+                          value={studentFormData.email}
+                          onChange={(e) => setStudentFormData(s => ({...s, email: e.target.value}))}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="dob">Date of Birth (Optional)</Label>
+                        <Input 
+                          id="dob" 
+                          name="dob" 
+                          type="date" 
+                          value={studentFormData.dob}
+                          onChange={(e) => setStudentFormData(s => ({...s, dob: e.target.value}))}
+                          readOnly={studentFormData.isKycVerified}
+                          className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gender">Gender (Optional)</Label>
+                        <Select 
+                          name="gender" 
+                          value={studentFormData.gender || undefined} 
+                          onValueChange={(val) => setStudentFormData(s => ({...s, gender: val || ""}))}
+                          disabled={studentFormData.isKycVerified}
+                        >
+                          <SelectTrigger className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MALE">Male</SelectItem>
+                            <SelectItem value="FEMALE">Female</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {studentFormData.isKycVerified && <input type="hidden" name="gender" value={studentFormData.gender} />}
+                      </div>
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="address">Verified Address (Optional)</Label>
+                        <Input 
+                          id="address" 
+                          name="address" 
+                          placeholder="Full residential address" 
+                          value={studentFormData.address}
+                          onChange={(e) => setStudentFormData(s => ({...s, address: e.target.value}))}
+                          readOnly={studentFormData.isKycVerified}
+                          className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                        />
+                      </div>
+                    </div>
+
+                    <hr className="border-border my-6" />
+
+                    <div className="space-y-2">
+                      <Label>Assign Initial Plan *</Label>
+                      <input type="hidden" name="planId" value={selectedPlanId || ""} required />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
+                        {plans.map(p => (
+                          <div 
+                            key={p.id} 
+                            onClick={() => setSelectedPlanId(p.id)}
+                            className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="font-bold text-foreground text-sm">{p.name}</div>
+                            <div className="text-xl font-black mt-1">₹{p.price}</div>
+                            <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {plans.find(p => p.id === selectedPlanId)?.type === 'FIXED' && (
+                      <div className="space-y-2 mt-6">
+                        <Label htmlFor="seatId">Assign Seat *</Label>
+                        <input type="hidden" name="seatId" value={addFormSeatId || ""} />
+                        <Select value={addFormSeatId || undefined} onValueChange={setAddFormSeatId}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a seat">
+                              {addFormSeatId ? seats.find(s => s.id === addFormSeatId)?.name : "Select a seat"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {seats.map(s => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="startDate">Start Date</Label>
+                        <Input id="startDate" name="startDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="paymentMethod">Payment Method</Label>
+                        <Select name="paymentMethod" defaultValue="CASH" required>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CASH">Cash</SelectItem>
+                            <SelectItem value="ONLINE">Online/UPI</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender (Optional)</Label>
-                  <Select 
-                    name="gender" 
-                    value={studentFormData.gender || undefined} 
-                    onValueChange={(val) => setStudentFormData(s => ({...s, gender: val || ""}))}
-                    disabled={studentFormData.isKycVerified}
-                  >
-                    <SelectTrigger className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MALE">Male</SelectItem>
-                      <SelectItem value="FEMALE">Female</SelectItem>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {studentFormData.isKycVerified && <input type="hidden" name="gender" value={studentFormData.gender} />}
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address">Verified Address (Optional)</Label>
-                  <Input 
-                    id="address" 
-                    name="address" 
-                    placeholder="Full residential address" 
-                    value={studentFormData.address}
-                    onChange={(e) => setStudentFormData(s => ({...s, address: e.target.value}))}
-                    readOnly={studentFormData.isKycVerified}
-                    className={studentFormData.isKycVerified ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
-                  />
-                </div>
-              </div>
-
-              <hr className="border-border" />
-
-              <div className="space-y-2">
-                <Label>Assign Initial Plan *</Label>
-                <input type="hidden" name="planId" value={selectedPlanId || ""} required />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
-                  {plans.map(p => (
-                    <div 
-                      key={p.id} 
-                      onClick={() => setSelectedPlanId(p.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                    >
-                      <div className="font-bold text-foreground text-sm">{p.name}</div>
-                      <div className="text-xl font-black mt-1">₹{p.price}</div>
-                      <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {plans.find(p => p.id === selectedPlanId)?.type === 'FIXED' && (
-                <div className="space-y-2">
-                  <Label htmlFor="seatId">Assign Seat *</Label>
-                  <input type="hidden" name="seatId" value={addFormSeatId || ""} />
-                  <Select value={addFormSeatId || undefined} onValueChange={setAddFormSeatId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a seat">
-                        {addFormSeatId ? seats.find(s => s.id === addFormSeatId)?.name : "Select a seat"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {seats.map(s => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input id="startDate" name="startDate" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Payment Method</Label>
-                  <Select name="paymentMethod" defaultValue="CASH" required>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CASH">Cash</SelectItem>
-                      <SelectItem value="ONLINE">Online/UPI</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full" disabled={(!isOfflineMode && !verifiedAuthId) || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
+                <Button type="submit" className="w-full" disabled={!verifiedAuthId || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -812,7 +793,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               )}
                               
                               <DropdownMenuItem 
-                                onClick={() => setProfileStudent({ ...booking.student, booking })}
+                                onClick={() => setProfileStudentId(booking.student.id)}
                                 className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
                               >
                                 View Profile
@@ -1137,145 +1118,21 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       </Dialog>
 
       {/* View Profile Modal */}
-      <Dialog open={!!profileStudent} onOpenChange={(open) => !open && setProfileStudent(null)}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Student Profile</DialogTitle>
-          </DialogHeader>
-          {profileStudent && (
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-primary/10 text-primary font-heading font-black text-2xl flex items-center justify-center rounded-full overflow-hidden shrink-0">
-                  {profileStudent.profilePhotoUrl ? (
-                    <img src={profileStudent.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    profileStudent.name.charAt(0)
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-foreground">{profileStudent.name}</h3>
-                    {profileStudent.digilockerVerified && (
-                      <span className="flex items-center gap-1 bg-success/10 text-success text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                        <ShieldCheck className="w-3 h-3" /> Verified
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm font-mono text-muted-foreground">{profileStudent.uniqueId}</div>
-                </div>
-              </div>
-              <hr className="border-border" />
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Email Address</span>
-                  <span className="font-bold text-foreground">{profileStudent.email || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Phone Number</span>
-                  <span className="font-bold text-foreground">{profileStudent.phone || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Date of Birth</span>
-                  <span className="font-bold text-foreground">{profileStudent.dob ? formatStandardDate(profileStudent.dob) : "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground font-medium block mb-1">Gender</span>
-                  <span className="font-bold text-foreground capitalize">{profileStudent.gender?.toLowerCase() || "N/A"}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground font-medium block mb-1">Verified Address</span>
-                  <span className="font-bold text-foreground">{profileStudent.address || "N/A"}</span>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Booking History (This Library)</h4>
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 pb-4">
-                  {bookings.filter(b => b.student.id === profileStudent.id).map(b => (
-                    <div key={b.id} className="bg-card rounded-2xl border border-border shadow-sm flex flex-col relative overflow-hidden group">
-                      <div className={`absolute top-0 w-full h-1 ${b.plan.type === 'FIXED' ? 'bg-primary' : 'bg-warning'}`} />
-                      
-                      <div className="p-5 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded mb-2 inline-block ${b.plan.type === 'FIXED' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}`}>
-                              {b.plan.type}
-                            </span>
-                            <h3 className="text-lg font-bold text-foreground line-clamp-2">{b.plan.name}</h3>
-                          </div>
-                          <div className="flex justify-between items-start mb-2">
-                            {(() => {
-                              const isExpired = new Date(b.endTime) < now;
-                              if (isExpired) {
-                                return (
-                                  <span className="text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider bg-destructive/10 text-destructive">
-                                    PLAN EXPIRED
-                                  </span>
-                                );
-                              }
-                              return (
-                                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${b.status === 'CONFIRMED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                                  {b.status}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2 mb-4 mt-auto">
-                          <div className="flex items-center text-sm text-foreground">
-                            <CalendarClock className="w-4 h-4 text-muted-foreground mr-2" />
-                            <span className="font-medium text-muted-foreground mr-1">Booked Dates:</span> 
-                            {formatStandardDate(b.startTime)} - {formatStandardDate(b.endTime)}
-                          </div>
-                          <div className="flex items-center text-sm text-foreground">
-                            <Clock className="w-4 h-4 text-muted-foreground mr-2" />
-                            <span className="font-medium text-muted-foreground mr-1">Access:</span> {b.plan.durationHours ? `${b.plan.durationHours} Hours / Day` : 'Full Day'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="pt-4 mt-4 border-t border-border flex sm:justify-between items-center w-full gap-2">
-            <div className="flex flex-wrap gap-2">
-              {profileStudent?.booking?.status !== 'CANCELLED' && profileStudent?.booking?.plan?.type === 'FIXED' && (
-                <Button 
-                  onClick={() => {
-                    setSeatChangeBookingId(profileStudent.booking.id);
-                    setSelectedNewSeatId(profileStudent.booking.seatId || "NONE");
-                    setProfileStudent(null);
-                  }}
-                  variant="outline"
-                  className="bg-muted text-foreground hover:bg-muted/80"
-                >
-                  Change Seat
-                </Button>
-              )}
-              {(profileStudent?.booking?.status === 'CONFIRMED' || profileStudent?.booking?.status === 'COMPLETED') && (
-                <>
-                  <Button 
-                    onClick={() => {
-                      setRenewModalBookingId(profileStudent.booking.id);
-                      setRenewSelectedPlanId(profileStudent.booking.planId);
-                      setRenewSelectedSeatId(profileStudent.booking.seatId || "NONE");
-                      setRenewPlanMode('SAME');
-                      setProfileStudent(null);
-                    }}
-                    variant="outline"
-                  >
-                    Renew Plan
-                  </Button>
-                </>
-              )}
-            </div>
-            <Button onClick={() => setProfileStudent(null)} variant="default">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StudentProfileModal
+        studentId={profileStudentId}
+        open={!!profileStudentId}
+        onOpenChange={(open) => !open && setProfileStudentId(null)}
+        onChangeSeat={(bookingId, seatId) => {
+          setSeatChangeBookingId(bookingId);
+          setSelectedNewSeatId(seatId);
+        }}
+        onRenewPlan={(bookingId, planId, seatId) => {
+          setRenewModalBookingId(bookingId);
+          setRenewSelectedPlanId(planId);
+          setRenewSelectedSeatId(seatId);
+          setRenewPlanMode('SAME');
+        }}
+      />
 
       {/* Hardware Status & Live Logs */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
@@ -1332,8 +1189,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         {log.isOfflineSync && <span className="block text-[10px] text-warning mt-0.5">Synced Offline</span>}
                       </td>
-                      <td className="p-4">
-                        <p className="font-medium text-sm text-foreground">{log.student?.name || 'Unknown'}</p>
+                      <td className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => log.studentId && setProfileStudentId(log.studentId)}>
+                        <p className="font-medium text-sm text-foreground hover:underline">{log.student?.name || 'Unknown'}</p>
                         {log.student?.uniqueId && <p className="text-xs font-mono text-muted-foreground">{log.student.uniqueId}</p>}
                       </td>
                       <td className="p-4">
@@ -1342,6 +1199,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         }`}>
                           {log.status.replace('_', ' ')}
                         </span>
+                        {(log as any).reason && (log.status === 'DENIED') && (
+                          <span className="block mt-1 text-[10px] text-muted-foreground">
+                            {(log as any).reason}
+                          </span>
+                        )}
+                        {(log as any).reason?.startsWith("Unregistered RFID") && (
+                          <button 
+                            onClick={() => setRfidTagToAssign((log as any).reason?.split(":")[1]?.trim())}
+                            className="mt-1 block text-xs bg-primary text-primary-foreground font-bold px-2 py-1 rounded-md hover:opacity-90"
+                          >
+                            Assign RFID
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1421,6 +1291,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
         if (!open) {
           setRenewModalBookingId(null);
           setRenewLoadingMethod(null);
+          setRenewStartDate(undefined);
         }
       }}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -1520,6 +1391,16 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             )}
           </div>
           
+          <div className="pt-2 border-t border-border mt-2 space-y-2">
+            <label className="text-sm font-medium text-foreground block">Start Date (Optional)</label>
+            <Input 
+              type="date" 
+              value={renewStartDate ? renewStartDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setRenewStartDate(e.target.value ? new Date(e.target.value) : undefined)}
+            />
+            <p className="text-xs text-muted-foreground">If left blank, defaults to today (or appends to current active plan).</p>
+          </div>
+          
           <div className="flex flex-col gap-3 pt-2 border-t border-border mt-2">
             <Button 
               onClick={async () => {
@@ -1534,7 +1415,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     renewModalBookingId, 
                     "CASH", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
-                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined
+                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
+                    renewStartDate
                   );
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
@@ -1563,7 +1445,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     renewModalBookingId, 
                     "ONLINE", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
-                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined
+                    renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
+                    renewStartDate
                   );
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
@@ -1663,6 +1546,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           )}
         </DialogContent>
       </Dialog>
+      <AssignRFIDModal 
+        rfidTag={rfidTagToAssign || ""}
+        open={!!rfidTagToAssign}
+        onOpenChange={(open) => {
+          if (!open) setRfidTagToAssign(null);
+        }}
+      />
     </>
   )
 }

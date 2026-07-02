@@ -33,7 +33,7 @@ export default async function ManageStudentsPage() {
   });
 
   const entryLogsRaw = await prisma.entryLog.findMany({
-    where: { libraryId: library.id, status: 'SUCCESS' },
+    where: { libraryId: library.id, status: { in: ['SUCCESS', 'DENIED', 'IN', 'OUT'] } },
     include: { user: true },
     orderBy: { timestamp: 'desc' },
     take: 50
@@ -46,6 +46,7 @@ export default async function ManageStudentsPage() {
       libraryId: log.libraryId,
       relayId: log.relayId,
       status: log.status,
+      reason: null,
       timestamp: log.timestamp,
       isOfflineSync: log.isOfflineSync,
       createdAt: log.createdAt,
@@ -57,7 +58,8 @@ export default async function ManageStudentsPage() {
       studentId: log.userId || '',
       libraryId: log.libraryId,
       relayId: log.doorId,
-      status: 'CHECK_IN' as const,
+      status: log.status === 'DENIED' ? 'DENIED' : 'CHECK_IN' as any,
+      reason: log.reason,
       timestamp: log.timestamp,
       isOfflineSync: false,
       createdAt: log.createdAt,

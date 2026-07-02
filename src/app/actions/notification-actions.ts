@@ -10,6 +10,22 @@ export async function sendNotification(studentId: string, title: string, message
     return { error: 'Unauthorized' };
   }
 
+  if (session.role !== 'ADMIN') {
+    const libraryId = session.role === 'LIBRARIAN' ? session.userId : session.employerLibraryId;
+    if (!libraryId) {
+      return { error: 'Unauthorized: Library ID not found in session' };
+    }
+    const studentHasBooking = await prisma.booking.findFirst({
+      where: {
+        studentId,
+        libraryId
+      }
+    });
+    if (!studentHasBooking) {
+      return { error: "Forbidden: You do not have permission to notify this student." };
+    }
+  }
+
   try {
     await prisma.notification.create({
       data: {
