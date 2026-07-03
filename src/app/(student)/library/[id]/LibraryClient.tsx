@@ -820,7 +820,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                 }}
                 className="w-full py-4 px-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:opacity-90 transition-opacity flex justify-between items-center shadow-md"
               >
-                <span>Pay Now (Online)</span>
+                <span>Pay Online-QR Code</span>
                 <span className="bg-primary-foreground/20 px-2 py-1 rounded text-sm tracking-widest font-black">₹{totalAmount.toFixed(0)}</span>
               </button>
               <button
