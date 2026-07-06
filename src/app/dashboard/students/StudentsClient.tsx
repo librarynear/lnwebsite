@@ -122,7 +122,17 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       const secondaryAuth = getAuth(secondaryApp);
       
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+      
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch(e) {}
+        (window as any).recaptchaVerifier = null;
+      }
+      
       const appVerifier = new RecaptchaVerifier(secondaryAuth, 'recaptcha-container', { size: 'invisible' });
+      (window as any).recaptchaVerifier = appVerifier;
+      
       const confirmation = await signInWithPhoneNumber(secondaryAuth, formattedPhone, appVerifier);
       
       setVerificationObj(confirmation);

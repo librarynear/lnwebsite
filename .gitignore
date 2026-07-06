@@ -48,3 +48,4 @@ nodemcu_qr_access/config.h
 /local-scripts/
 /scratch/
 /preserved_before_testing/
+.env*

@@ -31,7 +31,17 @@ export function StaffForm() {
       const secondaryAuth = getAuth(secondaryApp);
       
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+      
+      if ((window as any).staffRecaptchaVerifier) {
+        try {
+          (window as any).staffRecaptchaVerifier.clear();
+        } catch(e) {}
+        (window as any).staffRecaptchaVerifier = null;
+      }
+      
       const appVerifier = new RecaptchaVerifier(secondaryAuth, 'staff-recaptcha', { size: 'invisible' });
+      (window as any).staffRecaptchaVerifier = appVerifier;
+      
       const confirmation = await signInWithPhoneNumber(secondaryAuth, formattedPhone, appVerifier);
       
       setVerificationObj(confirmation);

@@ -50,6 +50,8 @@ model User {
   consecutiveFailures Int @default(0)
   failureReasons String?
 
+  canvasState CanvasState?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -377,4 +379,23 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([studentId])
+}
+
+model CanvasState {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // JSON field containing widget configurations (positions, sizes, types, colors)
+  widgets   Json     @default("[]")
+  
+  // Aesthetic preferences
+  theme     String   @default("pastel-pink")
+  font      String   @default("inter")
+  bgUrl     String?  // Custom background image URL
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
