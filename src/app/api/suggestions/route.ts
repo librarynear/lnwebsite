@@ -104,18 +104,45 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { result: rpcResponse, metric: rpcMetric } = await measureAsync(
-    "rpc",
+  const { result: geoResponse, metric: geoMetric } = await measureAsync(
+    "geoRpc",
     () =>
-      supabaseServer.rpc("search_suggestions" as never, {
-        query_term: q,
-        city_filter: city || null,
-        max_results: 10,
+      supabaseServer.rpc("search_libraries_geospatial" as never, {
+        search_term: q,
       } as never),
   );
 
-  let data = rpcResponse.data;
-  let error = rpcResponse.error;
+  let data = null;
+  let error: any = null;
+  let usedGeoRpc = false;
+  let rpcMetric: any = null;
+
+  const geoData = geoResponse.data as any[] | null;
+
+  if (geoData && geoData.length > 0) {
+    usedGeoRpc = true;
+    data = geoData.map((r) => ({
+      type: "library",
+      label: r.display_name,
+      slug: r.slug,
+      city: r.city,
+      distance_km: Math.round(r.distance_meters / 100) / 10,
+    }));
+  } else {
+    const { result: rpcResponse, metric: m } = await measureAsync(
+      "rpc",
+      () =>
+        supabaseServer.rpc("search_suggestions" as never, {
+          query_term: q,
+          city_filter: city || null,
+          max_results: 10,
+        } as never),
+    );
+    data = rpcResponse.data;
+    error = rpcResponse.error;
+    rpcMetric = m;
+  }
+
   let usedLegacyRpc = false;
 
   if (error && isMissingSuggestionFastPath(error.message)) {
@@ -141,11 +168,11 @@ export async function GET(req: NextRequest) {
         name: "total",
         duration: performance.now() - totalStart,
       };
-      const metrics = [rpcMetric, legacyMetric, totalMetric];
+      const metrics = [rpcMetric, legacyMetric, totalMetric].filter(Boolean);
       logPerf(
         "suggestions",
         metrics,
-        `q="${q}" city="${city || "all"}" legacyRpc=1 count=${suggestions.length}`,
+        `q="${q}" city="${city || "all"}" legacyRpc=1 geoRpc=0 count=${suggestions.length}`,
       );
 
       return NextResponse.json(
@@ -201,11 +228,11 @@ export async function GET(req: NextRequest) {
       name: "total",
       duration: performance.now() - totalStart,
     };
-    const metrics = [rpcMetric, fallbackMetric, totalMetric];
+    const metrics = [geoMetric, fallbackMetric, totalMetric].filter(Boolean);
     logPerf(
       "suggestions",
       metrics,
-      `q="${q}" city="${city || "all"}" fallback=1${usedLegacyRpc ? " legacyRpc=1" : ""}`,
+      `q="${q}" city="${city || "all"}" fallback=1${usedLegacyRpc ? " legacyRpc=1" : ""} geoRpc=${usedGeoRpc ? 1 : 0}`,
     );
 
     return NextResponse.json(
@@ -224,8 +251,8 @@ export async function GET(req: NextRequest) {
     name: "total",
     duration: performance.now() - totalStart,
   };
-  const metrics = [rpcMetric, totalMetric];
-  logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=0 count=${suggestions.length}`);
+  const metrics = [geoMetric, rpcMetric, totalMetric].filter(Boolean);
+  logPerf("suggestions", metrics, `q="${q}" city="${city || "all"}" fallback=0 geoRpc=${usedGeoRpc ? 1 : 0} count=${suggestions.length}`);
 
   return NextResponse.json(
     { suggestions, mode: "text" },

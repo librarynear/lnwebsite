@@ -80,18 +80,22 @@ export function LibraryReviews({
               <p className="text-gray-500 font-medium text-lg">No reviews yet. Be the first to review this library!</p>
             </div>
           ) : (
-            reviews.map((review) => (
+            reviews.map((review) => {
+              const avatarUrl = review.reviewer_photo_url || review.profiles?.avatar_url;
+              const authorName = review.reviewer_name || review.profiles?.full_name || "Anonymous Student";
+              
+              return (
               <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0">
                 <div className="flex items-center gap-4 mb-3">
                   <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-gray-200">
-                    {review.profiles?.avatar_url ? (
-                      <img src={review.profiles.avatar_url} alt={review.profiles.full_name || "User"} className="w-full h-full object-cover" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={authorName} className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-6 h-6 text-gray-400" />
                     )}
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900">{review.profiles?.full_name || "Anonymous Student"}</h4>
+                    <h4 className="font-bold text-gray-900">{authorName}</h4>
                     <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
                       <div className="flex text-amber-400">
                         {[1, 2, 3, 4, 5].map((i) => (

@@ -353,7 +353,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
   const feePlans = lib.library_fee_plans ?? [];
   const { data: reviewsData } = await supabaseServer
     .from("library_reviews")
-    .select("id, rating, review_text, created_at, profiles(full_name, avatar_url)")
+    .select("id, rating, review_text, created_at, reviewer_name, reviewer_photo_url, profiles(full_name, avatar_url)")
     .eq("library_branch_id", lib.id)
     .eq("status", "published")
     .order("created_at", { ascending: false });
