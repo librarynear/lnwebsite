@@ -10,6 +10,8 @@ export type ReviewType = {
   rating: number;
   review_text: string;
   created_at: string;
+  reviewer_name?: string | null;
+  reviewer_photo_url?: string | null;
   profiles: { full_name: string | null; avatar_url: string | null } | null;
 };
 
@@ -109,7 +111,8 @@ export function LibraryReviews({
                 </div>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap ml-16">{review.review_text}</p>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
