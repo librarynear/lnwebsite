@@ -1388,7 +1388,9 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 <Label>Assign Seat *</Label>
                 <Select value={renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined} onValueChange={(val) => setRenewSelectedSeatId(val)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a seat" />
+                    <SelectValue placeholder="Select a seat">
+                      {renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? seats.find(s => s.id === renewSelectedSeatId)?.name : "Select a seat"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {seats.map(s => (
