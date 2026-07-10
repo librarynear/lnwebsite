@@ -28,7 +28,7 @@ async function generateUniqueId() {
 
 export async function getStudentByPhoneOrAuthId(authId?: string, phone?: string) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   let student = null;
   if (authId) {
@@ -63,10 +63,10 @@ export async function getStudentByPhoneOrAuthId(authId?: string, phone?: string)
 
 export async function assignUniqueIdToStudent(studentId: string) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   const student = await prisma.user.findUnique({ where: { id: studentId } });
-  if (!student) throw new Error("Student not found");
+  if (!student) return { error: "Student not found" };
   if (student.uniqueId) return { success: true, uniqueId: student.uniqueId };
 
   const newId = await generateUniqueId();
@@ -81,17 +81,17 @@ export async function assignUniqueIdToStudent(studentId: string) {
 
 export async function approveReceptionPayment(bookingId: string, paymentMethod: string) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) throw new Error("Library not found");
+  if (!library) return { error: "Library not found" };
 
   const booking = await prisma.booking.findUnique({ 
     where: { id: bookingId },
     include: { plan: true } 
   });
-  if (!booking || booking.libraryId !== library.id) throw new Error("Invalid booking");
-  if (booking.status !== 'PENDING_PAYMENT') throw new Error("Booking is not pending payment");
+  if (!booking || booking.libraryId !== library.id) return { error: "Invalid booking" };
+  if (booking.status !== 'PENDING_PAYMENT') return { error: "Booking is not pending payment" };
 
   await prisma.$transaction(async (tx) => {
     const activeBooking = await tx.booking.findFirst({
@@ -153,13 +153,13 @@ export async function approveReceptionPayment(bookingId: string, paymentMethod: 
 
 export async function revokeBooking(bookingId: string, reason?: string) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) throw new Error("Library not found");
+  if (!library) return { error: "Library not found" };
 
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
-  if (!booking || booking.libraryId !== library.id) throw new Error("Invalid booking");
+  if (!booking || booking.libraryId !== library.id) return { error: "Invalid booking" };
 
   const needsRefund = booking.paymentRef &&
     !booking.paymentRef.startsWith('RECEPTION_') &&
@@ -211,7 +211,7 @@ export async function addStudentWithBooking(formData: FormData) {
   const library = await prisma.library.findFirst({ 
     where: { librarianId: session.userId } 
   });
-  if (!library) throw new Error("No library found.");
+  if (!library) return { error: "No library found." };
 
   // Create user (handle unique-constraint collisions gracefully)
   let student = null;
@@ -339,17 +339,17 @@ export async function addStudentWithBooking(formData: FormData) {
 
 export async function extendBookingExact(bookingId: string) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) throw new Error("Library not found");
+  if (!library) return { error: "Library not found" };
 
   const booking = await prisma.booking.findUnique({ 
     where: { id: bookingId },
     include: { plan: true }
   });
   
-  if (!booking || booking.libraryId !== library.id) throw new Error("Invalid booking");
+  if (!booking || booking.libraryId !== library.id) return { error: "Invalid booking" };
 
   const now = new Date();
   const baseDate = booking.endTime > now ? booking.endTime : now;
@@ -385,8 +385,8 @@ export async function extendBookingExact(bookingId: string) {
       });
     });
   } catch (e: any) {
-    if (e.message === 'SEAT_TAKEN') throw new Error("Cannot extend: Seat is already booked for the extended duration");
-    throw e;
+    if (e.message === 'SEAT_TAKEN') return { error: "Cannot extend: Seat is already booked for the extended duration" };
+    return { error: e.message || "Operation failed" };
   }
 
   revalidatePath("/dashboard/students");
@@ -397,23 +397,23 @@ export async function extendBookingExact(bookingId: string) {
 
 export async function renewPlan(bookingId: string, paymentMethod: string, newPlanId?: string, newSeatId?: string, startDate?: Date) {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
   const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) throw new Error("Library not found");
+  if (!library) return { error: "Library not found" };
 
   const booking = await prisma.booking.findUnique({ 
     where: { id: bookingId },
     include: { plan: true }
   });
   
-  if (!booking || booking.libraryId !== library.id) throw new Error("Invalid booking");
+  if (!booking || booking.libraryId !== library.id) return { error: "Invalid booking" };
 
   let targetPlan = booking.plan;
   if (newPlanId && newPlanId !== booking.planId) {
     // Scope the new plan to THIS library and only allow active plans.
     const p = await prisma.plan.findFirst({ where: { id: newPlanId, libraryId: library.id, isActive: true } });
-    if (!p) throw new Error("Invalid new plan");
+    if (!p) return { error: "Invalid new plan" };
     targetPlan = p as any;
   }
 
@@ -426,7 +426,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
 
   // Reserved (fixed-seat) plans must renew onto a seat.
   if (targetPlan.type !== 'FLEXIBLE' && !targetSeatId) {
-    throw new Error("Please select a seat for this reserved (fixed-seat) plan.");
+    return { error: "Please select a seat for this reserved (fixed-seat) plan." };
   }
 
   const startBase = startDate ? startDate : new Date();
@@ -472,8 +472,8 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
       });
     });
   } catch (e: any) {
-    if (e.message === 'SEAT_TAKEN') throw new Error("Cannot renew: Seat is already booked for the extended duration");
-    throw e;
+    if (e.message === 'SEAT_TAKEN') return { error: "Cannot renew: Seat is already booked for the extended duration" };
+    return { error: e.message || "Operation failed" };
   }
 
   revalidatePath("/dashboard/students");
