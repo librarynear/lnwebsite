@@ -22,19 +22,20 @@ const auth = new google.auth.GoogleAuth({
 });
 
 async function main() {
-  console.log("🚀 Starting Google Indexing API push...");
+  const offset = parseInt(process.argv[2] || "0", 10);
+  console.log(`🚀 Starting Google Indexing API push... (Offset: ${offset})`);
   
   // Get an authenticated client
   const authClient = await auth.getClient();
   const indexing = google.indexing({ version: "v3", auth: authClient as any });
 
-  // 1. Fetch the 200 most recently updated libraries
+  // 1. Fetch libraries with pagination
   const { data: libraries, error } = await supabase
     .from("library_branches")
     .select("slug, city, updated_at")
     .eq("is_active", true)
     .order("updated_at", { ascending: false })
-    .limit(200);
+    .range(offset, offset + 199);
 
   if (error || !libraries) {
     console.error("❌ Database error:", error);
