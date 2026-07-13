@@ -148,7 +148,7 @@ export default function SeatsManagerPage() {
     load();
   }, []);
 
-  // Sync grid when rows/cols change manually (adds/removes empty cells)
+  // Sync grid when rows/cols/naming change manually (adds/removes empty cells and recomputes IDs)
   useEffect(() => {
     if (isLoading) return;
     
@@ -159,7 +159,9 @@ export default function SeatsManagerPage() {
           const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
           const existing = prev.find(s => s.x === x && s.y === y);
           if (existing) {
-            newGrid.push(existing);
+            // Always update the ID to the newly computed one to instantly reflect format changes 
+            // and prevent duplicates when cols change.
+            newGrid.push({ ...existing, id });
           } else {
             newGrid.push({ id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" });
           }
