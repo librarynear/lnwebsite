@@ -143,6 +143,8 @@ model Seat {
   gridY     Int
   hasLocker Boolean  @default(false)
   lockerPriceMonthly Float?
+  premiumPriceMonthly Float?
+  syncPremiumOffers Boolean @default(true)
   
   bookings  Booking[]
 

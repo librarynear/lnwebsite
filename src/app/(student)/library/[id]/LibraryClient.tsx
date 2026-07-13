@@ -248,6 +248,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   // Calculate Prices
   let planPrice = 0;
   let lockerCost = 0;
+  let premiumSurcharge = 0;
   let hasLockerIncluded = false;
   
   if (selectedPlan) {
@@ -267,9 +268,17 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         lockerCost = locker.price * lockerMonths;
       }
     }
+    
+    if (selectedSeat?.type === 'PREMIUM' && selectedSeat?.premiumPriceMonthly) {
+      const premiumMultiplier = selectedPlan.validityDays / 30;
+      premiumSurcharge = selectedSeat.premiumPriceMonthly * premiumMultiplier;
+      if (selectedSeat.syncPremiumOffers !== false && selectedPlan.discount) {
+        premiumSurcharge -= (premiumSurcharge * selectedPlan.discount / 100);
+      }
+    }
   }
 
-  const totalAmount = planPrice + lockerCost;
+  const totalAmount = planPrice + lockerCost + premiumSurcharge;
 
   let startDate = new Date();
   if (dynamicState.currentPlanEndDate) {
@@ -700,6 +709,16 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                   />
                 </div>
               </>
+            )}
+
+            {/* Premium Seat UI */}
+            {selectedPlan && selectedSeat?.type === 'PREMIUM' && selectedSeat?.premiumPriceMonthly > 0 && (
+              <div className="p-4 rounded-xl border bg-amber-50 border-amber-200">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-sm text-amber-700 flex items-center gap-2">Premium Seat Surcharge</span>
+                  <span className="font-bold text-sm text-amber-700">+₹{premiumSurcharge.toFixed(0)}</span>
+                </div>
+              </div>
             )}
 
             {/* Locker Add-on UI */}

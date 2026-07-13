@@ -8,6 +8,9 @@ import { logout, getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { ExternalLink, Globe } from "lucide-react";
 import { Suspense } from "react";
+import { RealtimeProvider } from "@/components/RealtimeProvider";
+import { CommandMenu } from "@/components/CommandMenu";
+import { Search } from "lucide-react";
 
 async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
   const session = await getSession();
@@ -26,6 +29,13 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
             <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-xl font-heading font-bold text-sidebar-primary">FocusX</span>
           </Link>
+          <div className="mt-6 flex items-center justify-between px-3 py-2 bg-background/50 border border-border rounded-md text-sm text-muted-foreground shadow-sm">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 opacity-70" />
+              <span>Search...</span>
+            </div>
+            <kbd className="font-sans text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border tracking-widest opacity-70">⌘K</kbd>
+          </div>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -94,9 +104,13 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
         </header>
         
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-background">
-          {children}
+          <RealtimeProvider>
+            {children}
+          </RealtimeProvider>
         </div>
       </main>
+      
+      <CommandMenu />
     </div>
   );
 }

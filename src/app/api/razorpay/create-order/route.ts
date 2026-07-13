@@ -119,14 +119,28 @@ export async function POST(req: NextRequest) {
       : plan.price;
 
     let lockerCost = 0;
+    let premiumSurcharge = 0;
     const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28));
 
-    if (hasLocker && seatId) {
+    if (seatId) {
       const seat = await prisma.seat.findUnique({ where: { id: seatId } });
       if (seat) {
-        lockerCost = (seat.lockerPriceMonthly || 0) * lockerMonths;
+        if (hasLocker) {
+          lockerCost = (seat.lockerPriceMonthly || 0) * lockerMonths;
+        }
+        
+        if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
+          const premiumMultiplier = plan.validityDays / 30;
+          premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier;
+          
+          if (seat.syncPremiumOffers !== false && plan.discount) {
+            premiumSurcharge = premiumSurcharge - (premiumSurcharge * plan.discount / 100);
+          }
+        }
       }
-    } else if (standaloneLockerId) {
+    } 
+    
+    if (standaloneLockerId) {
       const existingLockerBooking = await prisma.booking.findFirst({
         where: {
           standaloneLockerId,
@@ -144,7 +158,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const totalAmount = planPrice + lockerCost;
+    const totalAmount = planPrice + lockerCost + premiumSurcharge;
 
     if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 1_000_000) {
       return NextResponse.json({ error: 'Invalid order amount' }, { status: 400 });

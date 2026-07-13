@@ -167,6 +167,16 @@ export async function POST(req: Request) {
     }, { isolationLevel: 'Serializable' });
 
     await redis.del(`library:${libraryId}`);
+    
+    // Purge caches so the librarian sees the pending approval instantly
+    try {
+      const { revalidatePath } = await import("next/cache");
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/approvals");
+      revalidatePath("/dashboard/students");
+    } catch(e) {
+      console.warn("Failed to revalidate paths:", e);
+    }
 
     return NextResponse.json({ success: true, booking });
   } catch (error: any) {

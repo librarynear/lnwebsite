@@ -61,6 +61,8 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
         gridY: s.y,
         hasLocker: s.hasLocker || false,
         lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
+        premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly) || null) : null,
+        syncPremiumOffers: s.syncPremiumOffers !== undefined ? s.syncPremiumOffers : true,
       }));
 
     // If naming convention changed, existing protected seats need to be renamed to match their grid coordinates in the new convention.
@@ -147,7 +149,9 @@ export async function getSeatLayoutAndLockers() {
       y: s.gridY,
       type: s.type,
       hasLocker: s.hasLocker,
-      lockerPriceMonthly: s.lockerPriceMonthly?.toString() || ""
+      lockerPriceMonthly: s.lockerPriceMonthly?.toString() || "",
+      premiumPriceMonthly: s.premiumPriceMonthly?.toString() || "",
+      syncPremiumOffers: s.syncPremiumOffers
     })),
     standaloneLockers: library.standaloneLockers.map(l => ({
       id: l.id,

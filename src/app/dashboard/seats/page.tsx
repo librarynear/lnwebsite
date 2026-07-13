@@ -280,6 +280,33 @@ export default function SeatsManagerPage() {
                   </select>
                 </div>
 
+                {selectedSeat.type === 'PREMIUM' && (
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-amber-600 flex items-center gap-2">
+                        Premium Price (Monthly ₹)
+                      </label>
+                      <input 
+                        type="number" 
+                        value={selectedSeat.premiumPriceMonthly || ''} 
+                        onChange={(e) => updateSelectedSeat('premiumPriceMonthly', e.target.value)}
+                        placeholder="e.g. 300"
+                        className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
+                      />
+                    </div>
+                    
+                    <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedSeat.syncPremiumOffers !== false} 
+                        onChange={(e) => updateSelectedSeat('syncPremiumOffers', e.target.checked)} 
+                        className="rounded text-amber-500 focus:ring-amber-500 accent-amber-500 w-4 h-4" 
+                      />
+                      Sync Offers with Plans
+                    </label>
+                  </div>
+                )}
+
                 {selectedSeat.type !== 'EMPTY' && selectedSeat.type !== 'NON_RESERVABLE' && (
                   <div className="space-y-3 pt-4 border-t border-border">
                     <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer">
@@ -387,6 +414,9 @@ export default function SeatsManagerPage() {
                     if (seat.type === 'RESERVED') {
                       bgClass = "bg-muted border-border/50 opacity-80";
                       textClass = "text-muted-foreground";
+                    } else if (seat.type === 'PREMIUM') {
+                      bgClass = "bg-amber-50 border-amber-400 border-2 hover:border-amber-500 shadow-sm";
+                      textClass = "text-amber-700";
                     } else if (seat.type === 'NON_RESERVABLE') {
                       bgClass = "bg-destructive/5 border-destructive/50 border-dashed";
                       textClass = "text-destructive";

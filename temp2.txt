@@ -121,7 +121,7 @@ export async function approveReceptionPayment(bookingId: string, paymentMethod: 
           endTime: { gt: startTime },
         },
       });
-      if (clash) throw new Error("Seat is no longer available");
+      if (clash) return { error: "Seat is no longer available" };
     }
 
     if (booking.standaloneLockerId) {
@@ -133,7 +133,7 @@ export async function approveReceptionPayment(bookingId: string, paymentMethod: 
           endTime: { gt: new Date() },
         },
       });
-      if (clash) throw new Error("Locker is no longer available");
+      if (clash) return { error: "Locker is no longer available" };
     }
 
     await tx.booking.update({
@@ -302,7 +302,7 @@ export async function addStudentWithBooking(formData: FormData) {
 
         if (!isFlexible) {
           seat = await tx.seat.findFirst({ where: { id: seatId, libraryId: library.id } });
-          if (!seat) throw new Error("Invalid seat");
+          if (!seat) return { error: "Invalid seat" };
 
           const clash = await tx.booking.findFirst({
             where: {
@@ -312,7 +312,7 @@ export async function addStudentWithBooking(formData: FormData) {
               endTime: { gt: startTime }
             }
           });
-          if (clash) throw new Error("SEAT_TAKEN");
+          if (clash) return { error: "SEAT_TAKEN" };
         }
 
         await tx.booking.create({
@@ -373,7 +373,7 @@ export async function extendBookingExact(bookingId: string) {
             id: { not: bookingId }
           }
         });
-        if (clash) throw new Error("SEAT_TAKEN");
+        if (clash) return { error: "SEAT_TAKEN" };
       }
 
       await tx.booking.update({
@@ -386,7 +386,7 @@ export async function extendBookingExact(bookingId: string) {
     });
   } catch (e: any) {
     if (e.message === 'SEAT_TAKEN') return { error: "Cannot extend: Seat is already booked for the extended duration" };
-    return { error: e.message || "Operation failed" };
+    throw e;
   }
 
   revalidatePath("/dashboard/students");
@@ -426,7 +426,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
 
   // Reserved (fixed-seat) plans must renew onto a seat.
   if (targetPlan.type !== 'FLEXIBLE' && !targetSeatId) {
-    return { error: "Please select a seat for this reserved (fixed-seat) plan." };
+    return { error: "Please select a seat for this reserved (fixed-seat } plan.");
   }
 
   const startBase = startDate ? startDate : new Date();
@@ -443,7 +443,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
       if (targetSeatId) {
         // The seat must belong to this library.
         const seat = await tx.seat.findFirst({ where: { id: targetSeatId, libraryId: library.id } });
-        if (!seat) throw new Error("Invalid seat");
+        if (!seat) return { error: "Invalid seat" };
 
         const clash = await tx.booking.findFirst({
           where: {
@@ -453,7 +453,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
             endTime: { gt: effectiveStart }
           }
         });
-        if (clash) throw new Error("SEAT_TAKEN");
+        if (clash) return { error: "SEAT_TAKEN" };
       }
 
       await tx.booking.create({
@@ -473,7 +473,7 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
     });
   } catch (e: any) {
     if (e.message === 'SEAT_TAKEN') return { error: "Cannot renew: Seat is already booked for the extended duration" };
-    return { error: e.message || "Operation failed" };
+    throw e;
   }
 
   revalidatePath("/dashboard/students");
@@ -565,17 +565,6 @@ export async function createOfflineStudentWithRFID(libraryId: string, name: stri
     return { error: 'Unauthorized' };
   }
 
-  if (session.role === 'RECEPTIONIST') {
-    if (!session.employerLibraryId || session.employerLibraryId !== libraryId) {
-      return { error: 'Unauthorized' };
-    }
-  } else if (session.role === 'LIBRARIAN') {
-    const controlled = await prisma.library.findFirst({
-      where: { id: libraryId, librarianId: session.userId }
-    });
-    if (!controlled) return { error: 'Unauthorized' };
-  }
-
   try {
     // Generate a unique 6-char ID
     let uniqueId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -661,138 +650,5 @@ export async function getUserBasicDetails(userId: string, libraryId: string) {
   } catch (error) {
     return { error: 'Failed to fetch user details' };
   }
-}
-export async function searchStudentsGlobal(query: string) {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
-    return { error: 'Unauthorized' };
-  }
-
-  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
-    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
-  )?.id;
-
-  if (!libraryId) return { error: 'Library not found' };
-
-  if (!query || query.trim().length < 2) return { students: [] };
-
-  const students = await prisma.user.findMany({
-    where: {
-      bookings: {
-        some: { libraryId }
-      },
-      OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { phone: { contains: query } },
-        { uniqueId: { contains: query, mode: 'insensitive' } }
-      ]
-    },
-    include: {
-      bookings: {
-        where: { libraryId, status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] } },
-        include: { plan: true, seat: true }
-      }
-    },
-    take: 5
-  });
-
-  return { students };
-}
-
-export async function updateBookingStartDate(bookingId: string, newStartDate: Date) {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
-    return { error: 'Unauthorized' };
-  }
-
-  const library = await prisma.library.findFirst({ where: { librarianId: session.userId } });
-  if (!library) return { error: 'Library not found' };
-
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: { plan: true }
-  });
-
-  if (!booking || booking.libraryId !== library.id) return { error: 'Invalid booking' };
-
-  const { endOfDayIST } = await import('@/lib/date-utils');
-  const newEndTime = endOfDayIST(newStartDate, booking.plan.validityDays - 1);
-
-  // Check seat clash if not flexible
-  if (booking.plan.type !== 'FLEXIBLE' && booking.seatId) {
-    const clash = await prisma.booking.findFirst({
-      where: {
-        seatId: booking.seatId,
-        id: { not: booking.id },
-        status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-        startTime: { lt: newEndTime },
-        endTime: { gt: newStartDate }
-      }
-    });
-
-    if (clash) return { error: 'Seat is already occupied during these new dates.' };
-  }
-
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data: {
-      startTime: newStartDate,
-      endTime: newEndTime
-    }
-  });
-
-  const { revalidatePath } = await import('next/cache');
-  revalidatePath('/dashboard/students');
-  return { success: true };
-}
-export async function getLibraryPlansForCmdk() {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
-    return { error: 'Unauthorized' };
-  }
-
-  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
-    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
-  )?.id;
-
-  if (!libraryId) return { error: 'Library not found' };
-
-  const plans = await prisma.plan.findMany({
-    where: { libraryId, isActive: true },
-    orderBy: { price: 'asc' }
-  });
-
-  return { plans };
-}
-
-export async function getAllStudentsLightweight() {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
-    return { error: 'Unauthorized' };
-  }
-
-  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
-    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
-  )?.id;
-
-  if (!libraryId) return { error: 'Library not found' };
-
-  const students = await prisma.user.findMany({
-    where: {
-      bookings: {
-        some: { libraryId }
-      }
-    },
-    include: {
-      bookings: {
-        where: { libraryId, status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] } },
-        orderBy: { startTime: 'desc' },
-        take: 1,
-        include: { plan: true, seat: true }
-      }
-    }
-  });
-
-  return { students };
 }
 

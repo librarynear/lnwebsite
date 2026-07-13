@@ -34,19 +34,14 @@ export async function POST(req: Request) {
 
     // Atomic transaction to ensure seat isn't stolen by someone else during approval
     const updatedBooking = await prisma.$transaction(async (tx) => {
-      // Calculate new timestamps starting from NOW
-      const startTime = new Date();
-      const endTime = new Date(startTime);
-      endTime.setDate(endTime.getDate() + booking.plan.validityDays);
-
-      // Re-check overlap for the seat
+      // Re-check overlap for the seat using the originally requested dates
       if (booking.seatId) {
         const existingSeatBooking = await tx.booking.findFirst({
           where: {
             seatId: booking.seatId,
             status: "CONFIRMED",
-            startTime: { lt: endTime },
-            endTime: { gt: startTime }
+            startTime: { lt: booking.endTime },
+            endTime: { gt: booking.startTime }
           }
         });
         if (existingSeatBooking) {
@@ -58,8 +53,6 @@ export async function POST(req: Request) {
         where: { id: bookingId },
         data: {
           status: "CONFIRMED",
-          startTime,
-          endTime,
           paymentRef: `RECEPTION_${paymentMethod}_${Date.now()}`
         }
       });

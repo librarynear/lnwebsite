@@ -65,7 +65,10 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/api/auth') ||
       pathname.startsWith('/api/razorpay') ||
       pathname.startsWith('/api/kyc') ||
-      pathname.startsWith('/api/checkout');
+      pathname.startsWith('/api/checkout') ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/signup') ||
+      pathname.startsWith('/sso');
 
     try {
       const ip = getClientIp(request);

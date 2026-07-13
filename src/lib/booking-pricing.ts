@@ -32,12 +32,28 @@ export async function computeExpectedAmountPaise(input: PricingInput): Promise<n
 
   const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28))
 
-  if (hasLocker && seatId) {
+  if (seatId) {
     const seat = await prisma.seat.findUnique({ where: { id: seatId } })
-    if (seat?.lockerPriceMonthly) {
-      expectedAmount += seat.lockerPriceMonthly * lockerMonths
+    if (seat) {
+      if (hasLocker && seat.lockerPriceMonthly) {
+        expectedAmount += seat.lockerPriceMonthly * lockerMonths
+      }
+      
+      if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
+        const premiumMultiplier = plan.validityDays / 30;
+        let premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier;
+        
+        // Sync plan discount with premium seat if checked
+        if (seat.syncPremiumOffers !== false && plan.discount) {
+          premiumSurcharge = premiumSurcharge - (premiumSurcharge * plan.discount / 100);
+        }
+        
+        expectedAmount += premiumSurcharge;
+      }
     }
-  } else if (standaloneLockerId) {
+  } 
+  
+  if (standaloneLockerId) {
     const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } })
     if (locker) {
       expectedAmount += locker.price * lockerMonths

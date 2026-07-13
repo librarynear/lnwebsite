@@ -224,16 +224,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Seat Category</Label>
-                    <Select name="seatCategory" value={editSeatCategory} onValueChange={(v:any) => setEditSeatCategory(v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GENERAL">General</SelectItem>
-                        <SelectItem value="PREMIUM">Premium</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
                   <div className="space-y-2">
                     <Label>Daily Duration</Label>
                     <Select name="durationHours" value={editHours} onValueChange={(v:any) => setEditHours(v || "FULL")}>
@@ -284,16 +275,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Seat Category</Label>
-                      <Select value={seatCategory} onValueChange={(v:any) => setSeatCategory(v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="GENERAL">General</SelectItem>
-                          <SelectItem value="PREMIUM">Premium</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     {planType === "FLEXIBLE" && (
                       <div className="space-y-2">
                         <Label>Allowed Hours</Label>

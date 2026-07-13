@@ -1,8 +1,8 @@
 'use client'
 import { formatStandardDate } from "@/lib/date-utils";
 
-import { useState, useEffect, Fragment } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useTransition, Fragment } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
@@ -46,10 +46,36 @@ import { Textarea } from "@/components/ui/textarea"
 import { AssignRFIDModal } from "@/components/AssignRFIDModal"
 import { StudentProfileModal } from "@/components/StudentProfileModal"
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [] }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[] }) {
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[], totalCount?: number, tabCounts?: { active: number, expiring: number, inactive: number, revoked: number }, currentPage?: number, searchQuery?: string }) {
   const router = useRouter()
+  const searchParamsHook = useSearchParams()
+  const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(searchQuery)
+
+  useEffect(() => {
+    const action = searchParamsHook.get('action');
+    const studentId = searchParamsHook.get('studentId');
+    if (action === 'add-student') {
+      setIsOpen(true);
+      window.history.replaceState(null, '', '/dashboard/students');
+    } else if (action === 'view-profile' && studentId) {
+      setProfileStudentId(studentId);
+      window.history.replaceState(null, '', '/dashboard/students');
+    }
+  }, [searchParamsHook]);
+
+  useEffect(() => {
+    if (search === searchQuery) return;
+    const timeout = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', '1');
+      if (search) params.set('query', search);
+      else params.delete('query');
+      router.replace(`?${params.toString()}`, { scroll: false });
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [search, router, searchQuery]);
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
@@ -79,7 +105,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
   // Tabs & Sorting
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING'>('ACTIVE')
+  const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING') || 'ACTIVE'
   const [sortMethod, setSortMethod] = useState<'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
@@ -97,8 +123,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 20
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', newPage.toString());
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
   const [otp, setOtp] = useState("")
   const [otpLoading, setOtpLoading] = useState(false)
   const [verificationObj, setVerificationObj] = useState<any>(null)
@@ -230,10 +263,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const now = new Date();
   now.setHours(0,0,0,0);
 
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, search, sortMethod, filterPlanId]);
+  // Handle URL updates for tabs
+  const handleTabChange = (tab: typeof activeTab) => {
+    startTransition(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', '1');
+      params.set('tab', tab);
+      router.replace(`?${params.toString()}`, { scroll: false });
+    });
+  };
 
   const searchedBookings = bookings.filter(b => 
     (b.student.name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -619,31 +657,36 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             </div>
           </div>
 
-          <div className="flex space-x-1 border-b border-border/50 overflow-x-auto">
+          <div className="flex space-x-1 border-b border-border/50 overflow-x-auto relative">
             <button
               className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'ACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setActiveTab('ACTIVE')}
+              onClick={() => handleTabChange('ACTIVE')}
             >
-              Active ({activeBookings.length})
+              Active ({tabCounts.active})
             </button>
             <button
               className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'EXPIRING' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setActiveTab('EXPIRING')}
+              onClick={() => handleTabChange('EXPIRING')}
             >
-              Expiring Soon ({expiringBookings.length})
+              Expiring Soon ({tabCounts.expiring})
             </button>
             <button
               className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'INACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setActiveTab('INACTIVE')}
+              onClick={() => handleTabChange('INACTIVE')}
             >
-              Inactive/Expired ({inactiveBookings.length})
+              Inactive/Expired ({tabCounts.inactive})
             </button>
             <button
               className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'REVOKED' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setActiveTab('REVOKED')}
+              onClick={() => handleTabChange('REVOKED')}
             >
-              Revoked ({revokedBookings.length})
+              Revoked ({tabCounts.revoked})
             </button>
+            {isPending && (
+              <div className="absolute right-2 top-0 flex items-center justify-center h-full">
+                <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></span>
+              </div>
+            )}
           </div>
 
         </div>
@@ -662,7 +705,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             </thead>
             <tbody className="divide-y divide-border">
               {displayedBookings.length > 0 ? (
-                displayedBookings.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((booking, index) => {
+                displayedBookings.map((booking, index) => {
                   const endOfDay = new Date(booking.endTime);
                   endOfDay.setHours(0,0,0,0);
                   const today = new Date();
@@ -747,9 +790,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                             disabled={loadingId === booking.student.id}
                             onClick={async () => {
                               setLoadingId(booking.student.id);
-                              await assignUniqueIdToStudent(booking.student.id);
-                              setLoadingId(null);
-                              router.refresh();
+                              try {
+                                const res = await assignUniqueIdToStudent(booking.student.id);
+                                if (res?.error) {
+                                  toast.error(res.error);
+                                } else {
+                                  toast.success("ID generated successfully");
+                                }
+                              } catch (e: any) {
+                                toast.error(e.message || "Failed to generate ID");
+                              } finally {
+                                setLoadingId(null);
+                                router.refresh();
+                              }
                             }}
                           >
                             {loadingId === booking.student.id ? "Generating..." : "Generate ID"}
@@ -949,15 +1002,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                     const basePrice = hist.plan.discount ? (hist.plan.price - (hist.plan.price * hist.plan.discount / 100)) : hist.plan.price;
                                     const lockerMonths = Math.max(1, Math.round(hist.plan.validityDays / 28));
                                     let lockerCost = 0;
-                                    if (hist.seatId && hist.hasLocker) {
+                                    let premiumCost = 0;
+                                    
+                                    if (hist.seatId) {
                                       const seat = seats.find(s => s.id === hist.seatId);
-                                      if (seat && seat.lockerPriceMonthly) {
-                                        lockerCost = seat.lockerPriceMonthly * lockerMonths;
+                                      if (seat) {
+                                        if (hist.hasLocker && seat.lockerPriceMonthly) {
+                                          lockerCost = seat.lockerPriceMonthly * lockerMonths;
+                                        }
+                                        if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
+                                          const premiumMultiplier = hist.plan.validityDays / 30;
+                                          premiumCost = seat.premiumPriceMonthly * premiumMultiplier;
+                                          if (seat.syncPremiumOffers !== false && hist.plan.discount) {
+                                            premiumCost -= (premiumCost * hist.plan.discount / 100);
+                                          }
+                                        }
                                       }
                                     } else if (hist.standaloneLocker) {
                                       lockerCost = hist.standaloneLocker.price * lockerMonths;
                                     }
-                                    displayAmount = Math.round(basePrice + lockerCost);
+                                    displayAmount = Math.round(basePrice + lockerCost + premiumCost);
                                   }
 
                                   return (
@@ -999,40 +1063,46 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
         </div>
 
         {/* Pagination Controls */}
-        {Math.ceil(displayedBookings.length / PAGE_SIZE) > 1 && (
+        {totalPages > 1 && (
           <div className="p-4 border-t border-border flex items-center justify-between bg-muted/10">
             <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, displayedBookings.length)} of {displayedBookings.length}
+              Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, totalCount)} of {totalCount}
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
               >
                 Previous
               </Button>
               <div className="flex items-center gap-1 px-2">
-                {Array.from({ length: Math.ceil(displayedBookings.length / PAGE_SIZE) }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
-                      currentPage === i + 1 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  if (totalPages > 7 && i !== 0 && i !== totalPages - 1 && Math.abs(i + 1 - currentPage) > 1) {
+                    if (i + 1 === currentPage - 2 || i + 1 === currentPage + 2) return <span key={i} className="text-muted-foreground px-1">...</span>;
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i + 1)}
+                      className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
+                        currentPage === i + 1 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'hover:bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={currentPage === Math.ceil(displayedBookings.length / PAGE_SIZE)}
-                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(displayedBookings.length / PAGE_SIZE), prev + 1))}
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
               >
                 Next
               </Button>
@@ -1085,7 +1155,11 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 if(paymentApprovalId && !approvalLoading) {
                   setApprovalLoading(true);
                   try {
-                    await approveReceptionPayment(paymentApprovalId, "CASH");
+                    const result = await approveReceptionPayment(paymentApprovalId, "CASH");
+                    if (result?.error) {
+                      toast.error(result.error);
+                      return;
+                    }
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
                     router.refresh();
@@ -1106,7 +1180,11 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 if(paymentApprovalId && !approvalLoading) {
                   setApprovalLoading(true);
                   try {
-                    await approveReceptionPayment(paymentApprovalId, "ONLINE");
+                    const result = await approveReceptionPayment(paymentApprovalId, "ONLINE");
+                    if (result?.error) {
+                      toast.error(result.error);
+                      return;
+                    }
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
                     router.refresh();
@@ -1262,19 +1340,24 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   return;
                 }
                 setLoadingId(revokeBookingId);
-                setRevokeModalOpen(false);
                 try {
-                  await revokeBooking(revokeBookingId!, revokeReason.trim());
+                  const result = await revokeBooking(revokeBookingId!, revokeReason.trim());
+                  if (result?.error) {
+                    toast.error(result.error);
+                    return;
+                  }
                   toast.success("Access revoked");
+                  setRevokeModalOpen(false);
                   router.refresh();
                 } catch (e: any) {
                   toast.error(e.message || "Failed to revoke");
+                } finally {
+                  setLoadingId(null);
                 }
-                setLoadingId(null);
               }}
-              disabled={!revokeReason || revokeReason.trim() === ""}
+              disabled={!revokeReason || revokeReason.trim() === "" || loadingId === revokeBookingId}
             >
-              Revoke Access
+              {loadingId === revokeBookingId ? "Revoking..." : "Revoke Access"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1351,8 +1434,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
             <div className="flex bg-muted p-1 rounded-lg">
               <button 
-                onClick={() => setRenewPlanMode('SAME')}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'SAME' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setRenewPlanMode('SAME')} className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'SAME' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 Renew Same Plan
               </button>
@@ -1407,8 +1489,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <label className="text-sm font-medium text-foreground block">Start Date (Optional)</label>
             <Input 
               type="date" 
-              value={renewStartDate ? renewStartDate.toISOString().split('T')[0] : ''}
-              onChange={(e) => setRenewStartDate(e.target.value ? new Date(e.target.value) : undefined)}
+              value={renewStartDate ? `${renewStartDate.getFullYear()}-${String(renewStartDate.getMonth() + 1).padStart(2, '0')}-${String(renewStartDate.getDate()).padStart(2, '0')}` : ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [y, m, d] = e.target.value.split('-').map(Number);
+                  setRenewStartDate(new Date(y, m - 1, d));
+                } else {
+                  setRenewStartDate(undefined);
+                }
+              }}
             />
             <p className="text-xs text-muted-foreground">If left blank, defaults to today (or appends to current active plan).</p>
           </div>
@@ -1417,19 +1506,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <Button 
               onClick={async () => {
                 if (!renewModalBookingId) return;
+                if (renewPlanMode === 'CHANGE' && !renewSelectedPlanId) {
+                  toast.error("Please select a plan first.");
+                  return;
+                }
                 if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
                   toast.error("Please select a seat for this reserved (fixed-seat) plan.");
                   return;
                 }
                 setRenewLoadingMethod('CASH');
                 try {
-                  await renewPlan(
+                  const result = await renewPlan(
                     renewModalBookingId, 
                     "CASH", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
                     renewStartDate
                   );
+                  if (result?.error) {
+                    toast.error(result.error);
+                    return;
+                  }
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
                   router.refresh();
@@ -1447,19 +1544,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <Button 
               onClick={async () => {
                 if (!renewModalBookingId) return;
+                if (renewPlanMode === 'CHANGE' && !renewSelectedPlanId) {
+                  toast.error("Please select a plan first.");
+                  return;
+                }
                 if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
                   toast.error("Please select a seat for this reserved (fixed-seat) plan.");
                   return;
                 }
                 setRenewLoadingMethod('ONLINE');
                 try {
-                  await renewPlan(
+                  const result = await renewPlan(
                     renewModalBookingId, 
                     "ONLINE", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
                     renewStartDate
                   );
+                  if (result?.error) {
+                    toast.error(result.error);
+                    return;
+                  }
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
                   router.refresh();

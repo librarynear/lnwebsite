@@ -55,14 +55,14 @@ export default function LiveSeatMap({
       }
     } else {
       // Interactive mode (booking flow)
-      const isPremiumMismatch = seat.type === 'PREMIUM' && selectedPlan?.seatCategory !== 'PREMIUM';
-      const isGeneralMismatch = seat.type === 'NORMAL' && selectedPlan?.seatCategory === 'PREMIUM';
-      const isDisabled = !adminMode && (isOccupied || seat.type === 'NON_RESERVABLE' || isPremiumMismatch || isGeneralMismatch);
+      const isDisabled = !adminMode && (isOccupied || seat.type === 'NON_RESERVABLE');
       
       if (isDisabled) {
         seatClass = "bg-muted border-border/50 text-muted-foreground opacity-50 cursor-not-allowed shadow-none";
       } else if (isSelected) {
         seatClass = "bg-primary border-primary text-primary-foreground shadow-[2px_8px_0px_0px_rgba(0,0,0,0.2)] -translate-y-2";
+      } else if (seat.type === 'PREMIUM') {
+        seatClass = "bg-amber-50 border-amber-400 border-2 hover:border-amber-500 cursor-pointer text-amber-700 shadow-[2px_4px_0px_0px_rgba(251,191,36,0.2)] hover:shadow-[4px_8px_0px_0px_rgba(251,191,36,0.3)] hover:-translate-y-2";
       } else {
         seatClass = "bg-background border-border hover:border-primary cursor-pointer text-foreground shadow-[2px_4px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_8px_0px_0px_rgba(0,0,0,0.1)] hover:-translate-y-2";
       }
@@ -77,20 +77,12 @@ export default function LiveSeatMap({
           } else if (interactive && !isOccupied && seat.type !== 'NON_RESERVABLE') {
             if (onSeatSelect) onSeatSelect(seat);
           } else {
-            // Show toast notifications for seat status on click
-            const isPremiumMismatch = seat.type === 'PREMIUM' && selectedPlan?.seatCategory !== 'PREMIUM';
-            const isGeneralMismatch = seat.type === 'NORMAL' && selectedPlan?.seatCategory === 'PREMIUM';
-            
             if (isTarget) {
               toast(`This is your reserved seat (${seat.name})`, { icon: '🎯' });
             } else if (isOccupied) {
               toast(`Seat ${seat.name} is currently occupied by a student`, { icon: '👤' });
             } else if (seat.type === 'NON_RESERVABLE') {
               toast(`Seat ${seat.name} is not reservable`, { icon: '🚫' });
-            } else if (isPremiumMismatch) {
-              toast.error(`Seat ${seat.name} is a Premium Seat. You must select a Premium Plan.`, { icon: '🌟' });
-            } else if (isGeneralMismatch) {
-              toast.error(`Seat ${seat.name} is a General Seat. You have selected a Premium Plan.`, { icon: '🚫' });
             } else if (isFlexible && seat.hasLocker) {
               toast(`Seat ${seat.name} has an attached locker, so it's unavailable for flexible plans.`, { icon: '🔒' });
             } else if (isFlexible && !seat.hasLocker) {
