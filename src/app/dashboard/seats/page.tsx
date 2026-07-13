@@ -10,6 +10,7 @@ export default function SeatsManagerPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [rows, setRows] = useState(5);
   const [cols, setCols] = useState(8);
+  const [seatNaming, setSeatNaming] = useState<'ALPHANUMERIC' | 'NUMERIC'>('ALPHANUMERIC');
   
   const [seats, setSeats] = useState<any[]>([]);
   const [standaloneLockers, setStandaloneLockers] = useState<any[]>([]);
@@ -96,6 +97,9 @@ export default function SeatsManagerPage() {
             const liveData = await res.json();
             setInitialOccupied(liveData.occupiedSeatIds || []);
           }
+          if ((data as any).seatNaming) {
+            setSeatNaming((data as any).seatNaming);
+          }
         }
       
         let finalRows = 5;
@@ -117,10 +121,11 @@ export default function SeatsManagerPage() {
 
       // Initialize grid, filling in gaps with EMPTY
       const grid: any[] = [];
+      const currentNaming = data.libraryId ? ((data as any).seatNaming || 'ALPHANUMERIC') : 'ALPHANUMERIC';
       for (let i = 0; i < finalRows * finalCols; i++) {
         const x = i % finalCols;
         const y = Math.floor(i / finalCols);
-        const id = `${String.fromCharCode(65 + y)}${x + 1}`;
+        const id = currentNaming === 'NUMERIC' ? ((y * finalCols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
         
         const existing = data.seats.find(s => s.x === x && s.y === y);
         if (existing) {
@@ -151,7 +156,7 @@ export default function SeatsManagerPage() {
       const newGrid: any[] = [];
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-          const id = `${String.fromCharCode(65 + y)}${x + 1}`;
+          const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
           const existing = prev.find(s => s.x === x && s.y === y);
           if (existing) {
             newGrid.push(existing);
@@ -162,7 +167,7 @@ export default function SeatsManagerPage() {
       }
       return newGrid;
     });
-  }, [rows, cols, isLoading]);
+  }, [rows, cols, isLoading, seatNaming]);
 
   const handleSeatClick = (id: string) => {
     setSelectedSeatId(id);
@@ -179,7 +184,7 @@ export default function SeatsManagerPage() {
         Array.from({ length: rows * cols }, (_, i) => {
           const x = i % cols;
           const y = Math.floor(i / cols);
-          const id = `${String.fromCharCode(65 + y)}${x + 1}`;
+          const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
           return { id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" };
         })
       );
@@ -202,7 +207,7 @@ export default function SeatsManagerPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveSeatLayoutAndLockers(seats, standaloneLockers, true);
+      await saveSeatLayoutAndLockers(seats, standaloneLockers, true, seatNaming);
       alert("Layout & Lockers saved successfully!");
     } catch (e) {
       alert("Failed to save layout.");
@@ -224,7 +229,15 @@ export default function SeatsManagerPage() {
           <h1 className="text-3xl font-heading font-bold text-foreground">Seat Plan & Lockers</h1>
           <p className="text-muted-foreground mt-1">Design your library layout and manage locker pricing.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <select 
+            value={seatNaming}
+            onChange={(e) => setSeatNaming(e.target.value as any)}
+            className="bg-card text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted transition-colors outline-none cursor-pointer"
+          >
+            <option value="ALPHANUMERIC">Alphanumeric (A1, B2)</option>
+            <option value="NUMERIC">Numeric (1, 2, 3)</option>
+          </select>
           <button onClick={handleReset} className="bg-card text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted transition-colors flex items-center gap-2">
             <Undo2 className="w-4 h-4" /> Reset Grid
           </button>

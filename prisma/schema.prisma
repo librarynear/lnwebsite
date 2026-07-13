@@ -54,6 +54,9 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([phone])
 }
 
 model Library {
@@ -84,6 +87,8 @@ model Library {
   facilities    String[] 
   
   compactSeatMap Boolean @default(false)
+  seatNaming     SeatNaming @default(ALPHANUMERIC)
+
   
   // Banking/KYC
   paymentAccountId String? // Handled by Razorpay (Legacy/Coming soon)
@@ -121,6 +126,11 @@ enum SeatType {
   NORMAL
   PREMIUM
   NON_RESERVABLE
+}
+
+enum SeatNaming {
+  ALPHANUMERIC
+  NUMERIC
 }
 
 model Seat {
@@ -227,6 +237,7 @@ model Booking {
   @@index([libraryId, startTime])
   @@index([libraryId, status, isPaused])
   @@index([studentId])
+  @@index([studentId, status])
   @@index([seatId])
   @@index([standaloneLockerId])
   @@index([endTime])

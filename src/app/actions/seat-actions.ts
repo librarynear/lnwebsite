@@ -10,7 +10,7 @@ import { redis } from "@/lib/redis"
 const MAX_SEATS = 2000;
 const MAX_LOCKERS = 1000;
 
-export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: any[], compactSeatMap: boolean = false) {
+export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: any[], compactSeatMap: boolean = false, seatNaming: string = 'ALPHANUMERIC') {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -41,7 +41,7 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
           some: { status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] }, endTime: { gt: now } },
         },
       },
-      select: { name: true },
+      select: { id: true, name: true, gridX: true, gridY: true },
     });
     const protectedSeatNames = new Set(bookedSeats.map((s) => s.name));
 
@@ -62,6 +62,24 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
         hasLocker: s.hasLocker || false,
         lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
       }));
+
+    // If naming convention changed, existing protected seats need to be renamed to match their grid coordinates in the new convention.
+    // The frontend sends the correct new generated name as `s.id` in `activeSeats`.
+    // We update all protected seats if their computed name (from frontend) differs from their current name.
+    if ((seatNaming as any) !== library.seatNaming) {
+      for (const bookedSeat of bookedSeats) {
+        const matchingActiveSeat = activeSeats.find(s => s.x === bookedSeat.gridX && s.y === bookedSeat.gridY);
+        if (matchingActiveSeat && matchingActiveSeat.id !== bookedSeat.name) {
+          await tx.seat.update({
+            where: { id: bookedSeat.id },
+            data: { name: matchingActiveSeat.id }
+          });
+          // Update the Set so we don't accidentally delete or re-create it under the new name
+          protectedSeatNames.delete(bookedSeat.name);
+          protectedSeatNames.add(matchingActiveSeat.id);
+        }
+      }
+    }
 
     if (seatData.length > 0) {
       await tx.seat.createMany({ data: seatData, skipDuplicates: true });
@@ -97,7 +115,7 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
 
     await tx.library.update({
       where: { id: library.id },
-      data: { compactSeatMap }
+      data: { compactSeatMap, seatNaming: seatNaming as any }
     });
   });
 
@@ -136,6 +154,7 @@ export async function getSeatLayoutAndLockers() {
       name: l.name,
       price: l.price.toString()
     })),
-    compactSeatMap: library.compactSeatMap
+    compactSeatMap: library.compactSeatMap,
+    seatNaming: library.seatNaming
   };
 }
