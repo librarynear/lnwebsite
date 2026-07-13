@@ -148,20 +148,33 @@ export default function SeatsManagerPage() {
     load();
   }, []);
 
+  const prevNamingRef = useRef(seatNaming);
+
   // Sync grid when rows/cols/naming change manually (adds/removes empty cells and recomputes IDs)
   useEffect(() => {
     if (isLoading) return;
     
     setSeats(prev => {
+      const isFormatChange = prevNamingRef.current !== seatNaming;
+      prevNamingRef.current = seatNaming;
+
       const newGrid: any[] = [];
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
-          const existing = prev.find(s => s.x === x && s.y === y);
+          
+          let existing;
+          if (isFormatChange) {
+            // If changing formats (A1 to 1), preserve the physical grid layout
+            existing = prev.find(s => s.x === x && s.y === y);
+          } else {
+            // If changing dimensions, reflow seats by their unique ID to preserve properties
+            existing = prev.find(s => s.id === id);
+          }
+
           if (existing) {
-            // Always update the ID to the newly computed one to instantly reflect format changes 
-            // and prevent duplicates when cols change.
-            newGrid.push({ ...existing, id });
+            // Update the ID (if format changed) and update x,y to instantly reflect reflow changes
+            newGrid.push({ ...existing, id, x, y });
           } else {
             newGrid.push({ id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" });
           }
