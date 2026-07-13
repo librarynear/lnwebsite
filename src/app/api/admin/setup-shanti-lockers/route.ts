@@ -20,26 +20,18 @@ export async function GET() {
 
     // 1 to 30 for Rs. 150
     for (let i = 1; i <= 30; i++) {
-      lockersData.push({
-        libraryId: library.id,
-        name: i.toString(),
-        price: 150,
-      });
+      lockersData.push({ libraryId: library.id, name: i.toString(), price: 150 });
     }
 
     // 41 to 70 for Rs. 100
     for (let i = 41; i <= 70; i++) {
-      lockersData.push({
-        libraryId: library.id,
-        name: i.toString(),
-        price: 100,
-      });
+      lockersData.push({ libraryId: library.id, name: i.toString(), price: 100 });
     }
 
     let updatedCount = 0;
     let createdCount = 0;
 
-    for (const locker of lockersData) {
+    await Promise.all(lockersData.map(async (locker) => {
       const existing = await prisma.standaloneLocker.findFirst({
         where: { libraryId: library.id, name: locker.name }
       });
@@ -56,7 +48,7 @@ export async function GET() {
         });
         createdCount++;
       }
-    }
+    }));
 
     return NextResponse.json({ 
       success: true, 
