@@ -16,6 +16,11 @@ export async function GET() {
       return NextResponse.json({ error: "Shanti Library not found!" }, { status: 404 });
     }
 
+    // Clean up existing lockers first to avoid duplicates
+    await prisma.standaloneLocker.deleteMany({
+      where: { libraryId: library.id }
+    });
+
     const lockersData = [];
 
     // 1 to 30 for Rs. 150

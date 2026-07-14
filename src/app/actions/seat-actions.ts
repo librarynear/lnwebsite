@@ -87,6 +87,23 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
       await tx.seat.createMany({ data: seatData, skipDuplicates: true });
     }
 
+    // UPDATE the protected seats to reflect any changes in properties (gridX, gridY, hasLocker, etc)
+    const protectedActiveSeats = activeSeats.filter((s) => protectedSeatNames.has(s.id));
+    for (const pSeat of protectedActiveSeats) {
+      await tx.seat.updateMany({
+        where: { libraryId: library.id, name: pSeat.id },
+        data: {
+          type: pSeat.type as SeatType,
+          gridX: pSeat.x,
+          gridY: pSeat.y,
+          hasLocker: pSeat.hasLocker || false,
+          lockerPriceMonthly: pSeat.hasLocker ? (parseFloat(pSeat.lockerPriceMonthly) || null) : null,
+          premiumPriceMonthly: pSeat.type === 'PREMIUM' ? (parseFloat(pSeat.premiumPriceMonthly) || null) : null,
+          syncPremiumOffers: pSeat.syncPremiumOffers !== undefined ? pSeat.syncPremiumOffers : true,
+        }
+      });
+    }
+
     // Same protection for standalone lockers.
     const bookedLockers = await tx.standaloneLocker.findMany({
       where: {
@@ -113,6 +130,17 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
 
     if (lockerData.length > 0) {
       await tx.standaloneLocker.createMany({ data: lockerData, skipDuplicates: true });
+    }
+
+    // UPDATE the protected standalone lockers to reflect any changes in price
+    const protectedActiveLockers = standaloneLockers.filter((l) => l && typeof l.name === 'string' && protectedLockerNames.has(l.name));
+    for (const pLocker of protectedActiveLockers) {
+      await tx.standaloneLocker.updateMany({
+        where: { libraryId: library.id, name: pLocker.name },
+        data: {
+          price: parseFloat(pLocker.price) || 0,
+        }
+      });
     }
 
     await tx.library.update({
