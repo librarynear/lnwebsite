@@ -3,7 +3,8 @@
 import prisma from "@/lib/prisma"
 import { getSession } from "./auth-actions"
 import { revalidatePath, updateTag } from "next/cache"
-import { redis, deleteByPattern } from "@/lib/redis"
+import { deleteByPattern } from "@/lib/redis"
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache"
 import { parseSafeUrl } from "@/lib/validation"
 
 async function requireAdmin() {
@@ -18,7 +19,7 @@ async function clearLibraryCache(libraryId?: string) {
     // SCAN-based delete (non-blocking) instead of KEYS.
     await deleteByPattern('libraries:search:*');
     if (libraryId) {
-      await redis.del(`library:${libraryId}`);
+      await invalidateLibraryRuntimeCache(libraryId);
     }
   } catch (e) {
     console.error("Failed to clear redis cache:", e);
@@ -85,8 +86,6 @@ export async function updateLibraryDetails(libraryId: string, formData: FormData
   const metroStation = formData.get("metroStation") as string;
   
   const seatsAvailableStr = formData.get("seatsAvailable") as string;
-  const latitudeStr = formData.get("latitude") as string;
-  const longitudeStr = formData.get("longitude") as string;
   const metroDistanceStr = formData.get("metroDistance") as string;
 
   if (!name || !address) throw new Error("Name and Address are required");

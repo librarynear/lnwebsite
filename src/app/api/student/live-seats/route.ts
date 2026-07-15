@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/app/actions/auth-actions';
+import { LeaseResourceType } from '@prisma/client';
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -33,20 +34,29 @@ export async function GET(req: Request) {
 
     // Get currently occupied seats
     const now = new Date();
-    const activeBookings = await prisma.booking.findMany({
-      where: {
-        libraryId,
-        status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-        endTime: { gt: now }
-      },
-      select: {
-        seatId: true,
-      }
-    });
+    const [activeBookings, activeLeases] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          libraryId,
+          status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+          endTime: { gt: now }
+        },
+        select: { seatId: true },
+      }),
+      prisma.resourceLease.findMany({
+        where: {
+          libraryId,
+          resourceType: LeaseResourceType.SEAT,
+          expiresAt: { gt: now },
+        },
+        select: { resourceId: true },
+      }),
+    ]);
 
-    const occupiedSeatIds = activeBookings
-      .map(b => b.seatId)
-      .filter(Boolean) as string[];
+    const occupiedSeatIds = Array.from(new Set([
+      ...activeBookings.map(({ seatId }) => seatId).filter(Boolean),
+      ...activeLeases.map(({ resourceId }) => resourceId),
+    ])) as string[];
 
     return NextResponse.json({
       library,

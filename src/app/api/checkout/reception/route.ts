@@ -1,16 +1,46 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 import { getSession } from "@/app/actions/auth-actions";
-import { endOfDayIST } from "@/lib/date-utils";
 import { adminAuth } from "@/lib/firebase/firebaseAdmin";
+import { BookingIntentSource } from "@prisma/client";
+import {
+  BookingAuthorityError,
+  cancellationRevokesLibraryAccess,
+  createManualConfirmedBooking,
+  createPendingReceptionBooking,
+  manualPaymentReference,
+} from "@/lib/booking-authority";
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache";
+import {
+  getPrismaErrorCode,
+  isPrismaSchemaUnavailable,
+  isPrismaTemporarilyUnavailable,
+} from "@/lib/prisma-errors";
 
 export async function POST(req: Request) {
+  const requestId = crypto.randomUUID();
   try {
     const body = await req.json();
-    let { studentId, libraryId, seatId, planId, hasLocker, standaloneLockerId, idToken } = body;
+    let { studentId } = body;
+    const {
+      libraryId,
+      seatId,
+      planId,
+      hasLocker,
+      standaloneLockerId,
+      idToken,
+    } = body;
+    const idempotencyKey =
+      req.headers.get("idempotency-key")?.trim().slice(0, 128) ?? "";
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { error: "Idempotency-Key is required" },
+        { status: 400 },
+      );
+    }
 
-    let session = await getSession();
+    const session = await getSession();
     let authUserId = session?.userId;
     let authRole = session?.role;
     let authEmployerLibraryId = session?.employerLibraryId ?? null;
@@ -94,79 +124,40 @@ export async function POST(req: Request) {
     if (!isLibrarianOrAdmin) {
       const lastBooking = await prisma.booking.findFirst({
         where: { studentId, libraryId },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        select: { status: true, revokedReason: true },
       });
-      if (lastBooking && lastBooking.status === 'CANCELLED') {
+      if (lastBooking && cancellationRevokesLibraryAccess(lastBooking)) {
         return NextResponse.json({ error: 'Your access to this library has been revoked. Please contact the librarian.' }, { status: 403 });
       }
     }
 
-    // Atomic transaction to prevent race conditions on seat/locker booking
-    const booking = await prisma.$transaction(async (tx) => {
-      // Check for an existing active booking (extension logic)
-      const activeBooking = await tx.booking.findFirst({
-        where: {
-          studentId,
-          libraryId,
-          status: "CONFIRMED",
-          endTime: { gt: new Date() }
-        },
-        orderBy: { endTime: 'desc' }
-      });
-
-      const startTime = activeBooking ? new Date(activeBooking.endTime) : new Date();
-      const endTime = endOfDayIST(startTime, (plan?.validityDays || 30) - 1);
-
-      // Prevent double booking of seat. For same-student extensions, the
-      // current fixed-seat booking ends exactly when the future booking starts,
-      // so it is allowed because the intervals do not overlap.
-      if (seatId) {
-        const existingSeatBooking = await tx.booking.findFirst({
-          where: {
-            seatId,
-            status: { in: ["CONFIRMED"] },
-            startTime: { lt: endTime },
-            endTime: { gt: startTime }
-          }
+    const selection = {
+      studentId,
+      libraryId,
+      seatId: seatId || null,
+      planId,
+      hasLocker: Boolean(hasLocker),
+      standaloneLockerId: standaloneLockerId || null,
+    };
+    const staffPaymentRef = idempotencyKey
+      ? `RECEPTION_CASH_${crypto
+          .createHash("sha256")
+          .update(`${studentId}:${idempotencyKey}`)
+          .digest("hex")}`
+      : manualPaymentReference("RECEPTION_CASH");
+    const booking = isLibrarianOrAdmin
+      ? await createManualConfirmedBooking({
+          ...selection,
+          source: BookingIntentSource.RECEPTION,
+          paymentRef: staffPaymentRef,
+        })
+      : await createPendingReceptionBooking({
+          ...selection,
+          idempotencyKey,
         });
-        if (existingSeatBooking) {
-          throw new Error("SEAT_TAKEN");
-        }
-      }
 
-      // Prevent standalone locker double booking
-      if (standaloneLockerId) {
-        const existingLockerBooking = await tx.booking.findFirst({
-          where: {
-            standaloneLockerId,
-            status: { in: ["CONFIRMED"] },
-            endTime: { gt: new Date() }
-          }
-        });
-        if (existingLockerBooking) {
-          throw new Error("LOCKER_TAKEN");
-        }
-      }
-
-      return await tx.booking.create({
-        data: {
-          studentId,
-          libraryId,
-          seatId: seatId || null,
-          planId,
-          startTime,
-          endTime,
-          hasLocker: hasLocker || false,
-          standaloneLockerId: standaloneLockerId || null,
-          status: isLibrarianOrAdmin ? "CONFIRMED" : "PENDING_PAYMENT",
-          paymentRef: isLibrarianOrAdmin 
-            ? `RECEPTION_CASH_${Date.now()}` 
-            : `RECEPTION_PENDING_${Date.now()}`
-        }
-      });
-    }, { isolationLevel: 'Serializable' });
-
-    await redis.del(`library:${libraryId}`);
+    await invalidateLibraryRuntimeCache(libraryId);
     
     // Purge caches so the librarian sees the pending approval instantly
     try {
@@ -179,16 +170,58 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, booking });
-  } catch (error: any) {
-    console.error("Reception Checkout Error:", error);
-    
-    if (error.message === "SEAT_TAKEN") {
-      return NextResponse.json({ success: false, error: 'This seat has just been reserved by someone else.' }, { status: 409 });
-    }
-    if (error.message === "LOCKER_TAKEN") {
-      return NextResponse.json({ success: false, error: 'This locker has just been reserved by someone else.' }, { status: 409 });
+  } catch (error: unknown) {
+    console.error("Reception Checkout Error:", {
+      requestId,
+      prismaCode: getPrismaErrorCode(error),
+      error,
+    });
+
+    if (error instanceof BookingAuthorityError) {
+      const status =
+        error.code === "RESOURCE_TAKEN"
+        || error.code === "BOOKING_IN_PROGRESS"
+        || error.code === "IDEMPOTENCY_CONFLICT"
+          ? 409
+          : 400;
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status },
+      );
     }
 
-    return NextResponse.json({ success: false, error: 'An error occurred' }, { status: 500 });
+    if (isPrismaSchemaUnavailable(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "BOOKING_SCHEMA_NOT_READY",
+          error:
+            "Booking is temporarily unavailable because the latest booking database migration has not been deployed.",
+          requestId,
+        },
+        { status: 503 },
+      );
+    }
+
+    if (isPrismaTemporarilyUnavailable(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "BOOKING_DATABASE_UNAVAILABLE",
+          error: "Booking is temporarily unavailable. Please retry shortly.",
+          requestId,
+        },
+        { status: 503, headers: { "Retry-After": "5" } },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Booking failed. Please retry or contact support.",
+        requestId,
+      },
+      { status: 500 },
+    );
   }
 }

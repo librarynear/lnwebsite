@@ -12,8 +12,9 @@ import {
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { logout } from "@/app/actions/auth-actions"
+import type { User as UserRecord } from "@prisma/client"
 
-export function UserNav({ user }: { user: any }) {
+export function UserNav({ user }: { user: UserRecord }) {
   const router = useRouter();
   const initials = user?.name ? user.name.substring(0, 1).toUpperCase() : "U";
   const isStaff = user?.role === 'LIBRARIAN' || user?.role === 'ADMIN' || user?.role === 'RECEPTIONIST';

@@ -5,6 +5,15 @@ import { getSession } from "./auth-actions"
 import Razorpay from "razorpay"
 import { headers } from "next/headers"
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getRazorpayErrorDescription(value: unknown): string | undefined {
+  if (!isRecord(value) || !isRecord(value.error)) return undefined;
+  return typeof value.error.description === "string" ? value.error.description : undefined;
+}
+
 function getRazorpayClient(): Razorpay {
   const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
@@ -14,7 +23,7 @@ function getRazorpayClient(): Razorpay {
   return new Razorpay({ key_id, key_secret });
 }
 
-export async function createRazorpayLinkedAccount() {
+export async function createRazorpayLinkedAccount(): Promise<string> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
@@ -51,7 +60,7 @@ export async function createRazorpayLinkedAccount() {
       notes: {
         libraryId: library.id
       }
-    }) as any;
+    });
 
     await prisma.library.update({
       where: { id: library.id },
@@ -59,13 +68,16 @@ export async function createRazorpayLinkedAccount() {
     });
 
     return account.id;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Razorpay account creation failed:", error);
-    throw new Error(error?.error?.description || "Failed to create Razorpay account. Check if Route is enabled.");
+    throw new Error(
+      getRazorpayErrorDescription(error) ||
+        "Failed to create Razorpay account. Check if Route is enabled.",
+    );
   }
 }
 
-export async function getRazorpayOnboardingLink() {
+export async function getRazorpayOnboardingLink(): Promise<string> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
@@ -101,11 +113,15 @@ export async function getRazorpayOnboardingLink() {
     })
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   
   if (!response.ok) {
     console.error("Failed to generate onboarding link:", data);
-    throw new Error(data?.error?.description || "Failed to generate onboarding link");
+    throw new Error(getRazorpayErrorDescription(data) || "Failed to generate onboarding link");
+  }
+
+  if (!isRecord(data) || typeof data.short_url !== "string") {
+    throw new Error("Razorpay returned an invalid onboarding link");
   }
 
   return data.short_url;

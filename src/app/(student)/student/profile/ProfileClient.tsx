@@ -1,15 +1,38 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { updateStudentProfile } from "@/app/actions/student-profile-actions"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { User, Camera, ShieldCheck, Loader2 } from "lucide-react"
+import type { User as UserRecord } from "@prisma/client"
 
 import { UpdatePhoneModal } from "./UpdatePhoneModal"
-export function ProfileClient({ user: initialUser }: { user: any }) {
+
+type ProfileUser = Omit<
+  Pick<
+    UserRecord,
+    | "address"
+    | "digilockerVerified"
+    | "dob"
+    | "email"
+    | "gender"
+    | "locality"
+    | "name"
+    | "organization"
+    | "phone"
+    | "profilePhotoUrl"
+    | "qualification"
+    | "uniqueId"
+  >,
+  "dob"
+> & {
+  dob: Date | string | null;
+};
+
+export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
   const [user, setUser] = useState(initialUser)
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -17,15 +40,7 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
   const [photoUrl, setPhotoUrl] = useState(user.profilePhotoUrl || "")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
-  useEffect(() => {
-    // Check if returning from Cashfree OKYC
-    const verificationId = localStorage.getItem("cashfreeVerificationId");
-    if (verificationId) {
-      verifyCashfreeReturn(verificationId);
-    }
-  }, []);
-
-  async function verifyCashfreeReturn(verification_id: string) {
+  const verifyCashfreeReturn = useCallback(async (verification_id: string) => {
     setVerifying(true);
     localStorage.removeItem("cashfreeVerificationId"); // Clear it so we don't verify again on refresh
 
@@ -35,11 +50,14 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verification_id })
       });
-      const data = await res.json();
+      const data = await res.json() as {
+        success?: boolean;
+        user?: Partial<ProfileUser>;
+      };
 
-      if (res.ok && data.success) {
-        setUser({ ...user, ...data.user });
-        setPhotoUrl(data.user.profilePhotoUrl);
+      if (res.ok && data.success && data.user) {
+        setUser((currentUser) => ({ ...currentUser, ...data.user }));
+        setPhotoUrl(data.user.profilePhotoUrl ?? "");
       } else {
         alert("DigiLocker verification failed or was cancelled.");
       }
@@ -49,7 +67,18 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
     } finally {
       setVerifying(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    // Check if returning from Cashfree OKYC.
+    const verificationId = localStorage.getItem("cashfreeVerificationId");
+    if (!verificationId) return;
+    const timer = window.setTimeout(
+      () => void verifyCashfreeReturn(verificationId),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [verifyCashfreeReturn]);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -103,6 +132,8 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
         <div className="flex flex-col md:flex-row items-center gap-6 pb-8 border-b border-border">
           <div className={`w-32 h-32 rounded-full border-4 border-muted flex items-center justify-center bg-muted/30 overflow-hidden relative shrink-0 ${user.digilockerVerified ? 'opacity-80' : 'group'}`}>
             {photoUrl ? (
+              // Profile photos may use arbitrary user-provided providers.
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <User className="w-12 h-12 text-muted-foreground" />
@@ -160,7 +191,7 @@ export function ProfileClient({ user: initialUser }: { user: any }) {
             
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" name="email" defaultValue={user.email} placeholder="your@email.com" />
+              <Input id="email" name="email" defaultValue={user.email ?? ""} placeholder="your@email.com" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>

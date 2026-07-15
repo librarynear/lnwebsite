@@ -1,14 +1,8 @@
 import Link from "next/link";
 import { ReactNode } from "react";
-import { logout } from "@/app/actions/auth-actions";
-
-import { getSession } from "@/app/actions/auth-actions";
 import Image from "next/image";
 import { ScrollDirection } from "@/components/scroll-direction";
-import { UserNav } from "@/components/user-nav";
 import { Footer } from "@/components/footer";
-import prisma from "@/lib/prisma";
-import { Plus } from "lucide-react";
 import { EmbedStyles } from "@/components/EmbedStyles";
 
 import { Suspense } from "react";

@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma"
 import { revalidatePath, updateTag } from "next/cache"
 import { getSession } from "./auth-actions"
-import { redis } from "@/lib/redis"
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache"
 import { parseSafeUrl } from "@/lib/validation"
 
 export async function updateLibrarySettings(formData: FormData) {
@@ -99,7 +99,7 @@ export async function updateLibrarySettings(formData: FormData) {
     }
   });
 
-  await redis.del(`library:${id}`);
+  await invalidateLibraryRuntimeCache(id);
   updateTag(`library:${id}`);
   updateTag('libraries:featured');
   revalidatePath("/dashboard/settings");

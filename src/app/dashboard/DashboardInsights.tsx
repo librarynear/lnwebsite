@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowUpRight, Zap, Info } from "lucide-react"
+import { AlertCircle, Zap, Info } from "lucide-react"
 
 interface Insight {
   id: string;

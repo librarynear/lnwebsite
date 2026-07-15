@@ -52,7 +52,7 @@ async function main() {
 
   // 3. Create a few dummy students
   const studentNames = ["Alice Smith", "Bob Johnson", "Charlie Davis"];
-  let studentList = [];
+  const studentList = [];
   for (const name of studentNames) {
     const email = name.toLowerCase().replace(' ', '.') + "@example.com";
     let student = await prisma.user.findUnique({ where: { email } });

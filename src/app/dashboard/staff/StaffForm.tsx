@@ -4,12 +4,27 @@ import { useState } from "react";
 import { addReceptionist } from "@/app/actions/staff-actions";
 import { Loader2 } from "lucide-react";
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import {
+  getAuth,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+} from "firebase/auth"
 import { firebaseConfig } from "@/lib/firebase/clientApp"
 import toast from "react-hot-toast"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+
+declare global {
+  interface Window {
+    staffRecaptchaVerifier?: RecaptchaVerifier | null;
+  }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 export function StaffForm() {
   const [loading, setLoading] = useState(false);
@@ -20,7 +35,7 @@ export function StaffForm() {
   const [phone, setPhone] = useState("+91 ")
   const [otp, setOtp] = useState("")
   const [otpLoading, setOtpLoading] = useState(false)
-  const [verificationObj, setVerificationObj] = useState<any>(null)
+  const [verificationObj, setVerificationObj] = useState<ConfirmationResult | null>(null)
   const [verifiedIdToken, setVerifiedIdToken] = useState<string | null>(null)
 
   const handleSendOTP = async () => {
@@ -32,30 +47,35 @@ export function StaffForm() {
       
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
       
-      if ((window as any).staffRecaptchaVerifier) {
+      if (window.staffRecaptchaVerifier) {
         try {
-          (window as any).staffRecaptchaVerifier.clear();
-        } catch(e) {}
-        (window as any).staffRecaptchaVerifier = null;
+          window.staffRecaptchaVerifier.clear();
+        } catch {}
+        window.staffRecaptchaVerifier = null;
       }
       
       const appVerifier = new RecaptchaVerifier(secondaryAuth, 'staff-recaptcha', { size: 'invisible' });
-      (window as any).staffRecaptchaVerifier = appVerifier;
+      window.staffRecaptchaVerifier = appVerifier;
       
       const confirmation = await signInWithPhoneNumber(secondaryAuth, formattedPhone, appVerifier);
       
       setVerificationObj(confirmation);
       setStep(2);
       toast.success('OTP sent successfully!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to send OTP");
+      setError(getErrorMessage(err, "Failed to send OTP"));
     } finally {
       setOtpLoading(false);
     }
   }
 
   const handleVerifyOTP = async () => {
+    if (!verificationObj) {
+      setError("Please request a new OTP.");
+      return;
+    }
+
     try {
       setOtpLoading(true);
       setError(null);
@@ -64,12 +84,14 @@ export function StaffForm() {
       // to prove this phone was really OTP-verified.
       const token = await result.user.getIdToken();
       setVerifiedIdToken(token);
-      const secondaryAuth = getAuth(getApps().find(app => app.name === 'Secondary')!);
-      await secondaryAuth.signOut();
+      const secondaryApp = getApps().find(app => app.name === 'Secondary');
+      if (secondaryApp) {
+        await getAuth(secondaryApp).signOut();
+      }
       toast.success("Phone verified!");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Invalid OTP");
+      setError(getErrorMessage(err, "Invalid OTP"));
     } finally {
       setOtpLoading(false);
     }
@@ -100,8 +122,8 @@ export function StaffForm() {
         setOtp("");
         setVerifiedIdToken(null);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to add receptionist");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to add receptionist"));
     } finally {
       setLoading(false);
     }

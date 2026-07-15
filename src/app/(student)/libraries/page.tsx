@@ -1,28 +1,44 @@
 import prisma from "@/lib/prisma"
 import Link from "next/link"
-import { Star, Heart, MapPin } from "lucide-react"
+import { MapPin } from "lucide-react"
 import { HomeSearchShell } from "@/components/home-search-shell"
 import Image from "next/image"
 import { SaveButton } from "@/components/save-button"
+import type { Prisma } from "@prisma/client"
 
 import { redis } from "@/lib/redis"
 
 
 import { Suspense } from "react";
-export default async function LibrariesPage(props: any) {
+
+type LibraryWithPlans = Prisma.LibraryGetPayload<{
+  include: {
+    plans: true;
+  };
+}>;
+
+type LibrariesPageProps = {
+  searchParams: Promise<{
+    query?: string;
+    lat?: string;
+    lng?: string;
+  }>;
+};
+
+export default async function LibrariesPage({ searchParams }: LibrariesPageProps) {
   // Consumer surface is role-agnostic: any visitor (including librarians/admins
   // who want to browse/book like a regular user) can view this page.
-  const searchParams = await props.searchParams;
-  const query = searchParams?.query || "";
-  const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams.query || "";
+  const isNearMe = !!resolvedSearchParams.lat && !!resolvedSearchParams.lng;
 
   // We construct a cache key based on the search query.
   // If `isNearMe` is active, we bypass cache because location sorting is highly dynamic per user.
   const cacheKey = `libraries:search:${query}`;
-  let libraries: any = null;
+  let libraries: LibraryWithPlans[] | string | null = null;
 
   if (!isNearMe) {
-    libraries = await redis.get(cacheKey);
+    libraries = await redis.get<LibraryWithPlans[] | string>(cacheKey);
   }
 
   if (!libraries) {
@@ -50,11 +66,14 @@ export default async function LibrariesPage(props: any) {
       await redis.set(cacheKey, JSON.stringify(libraries), { ex: 60 * 60 });
     }
   } else if (typeof libraries === 'string') {
-    libraries = JSON.parse(libraries);
+    const parsed: unknown = JSON.parse(libraries);
+    libraries = Array.isArray(parsed) ? parsed as LibraryWithPlans[] : [];
   }
 
+  const visibleLibraries = libraries ?? [];
+
   // Sort by distance if Near Me is active
-  libraries.sort((a: any, b: any) => {
+  visibleLibraries.sort((a, b) => {
     if (isNearMe) {
       const distA = a.metroDistance || 999;
       const distB = b.metroDistance || 999;
@@ -75,7 +94,7 @@ export default async function LibrariesPage(props: any) {
           <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">
             {query
               ? `Results for "${query}"`
-              : `${libraries.length > 0 ? libraries.length : "0"} libraries in Delhi`}
+              : `${visibleLibraries.length > 0 ? visibleLibraries.length : "0"} libraries in Delhi`}
           </h2>
           {query && (
             <Link href="/" className="text-sm text-primary font-medium hover:underline">
@@ -84,7 +103,7 @@ export default async function LibrariesPage(props: any) {
           )}
         </div>
 
-        {libraries.length === 0 ? (
+        {visibleLibraries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <MapPin className="h-10 w-10 mb-3 opacity-30" />
             <p className="text-lg font-medium">No libraries found</p>
@@ -92,11 +111,11 @@ export default async function LibrariesPage(props: any) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-            {libraries.map((library: any, index: number) => {
-              const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+            {visibleLibraries.map((library, index) => {
+              const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
               const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
               const minPrice = plansToUse.length > 0 
-                ? Math.min(...plansToUse.map((p: any) => p.price)) 
+                ? Math.min(...plansToUse.map((plan) => plan.price))
                 : 0;
 
               const locality = library.locality || library.address.split(',')[0];

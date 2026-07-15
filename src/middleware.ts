@@ -72,10 +72,40 @@ export async function middleware(request: NextRequest) {
 
     try {
       const ip = getClientIp(request);
-      const { success } = await (isSensitive ? rateLimiters.sensitive : rateLimiters.api).limit(ip);
+      const isAvailabilityRead =
+        request.method === 'GET'
+        && pathname === '/api/library/dynamic-data';
+      const limiter = isAvailabilityRead
+        ? rateLimiters.availability
+        : isSensitive
+          ? rateLimiters.sensitive
+          : rateLimiters.api;
+      const libraryId = isAvailabilityRead
+        ? request.nextUrl.searchParams.get('libraryId') ?? 'missing'
+        : null;
+      const rateLimitKey = isAvailabilityRead
+        ? `${ip}:${libraryId}`
+        : ip;
+      const { success, limit, remaining, reset } =
+        await limiter.limit(rateLimitKey);
 
       if (!success) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        const retryAfter = Math.max(
+          1,
+          Math.ceil((reset - Date.now()) / 1000),
+        );
+        return NextResponse.json(
+          { error: 'Too many requests', retryAfter },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+              'X-RateLimit-Limit': String(limit),
+              'X-RateLimit-Remaining': String(remaining),
+              'X-RateLimit-Reset': String(reset),
+            },
+          },
+        );
       }
     } catch (e) {
       console.error('Rate limit error:', e);

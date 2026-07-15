@@ -24,7 +24,7 @@ export default async function StaffManagerPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-heading font-bold text-foreground">Staff & Roles</h1>
-        <p className="text-muted-foreground mt-1">Manage who has access to your library's dashboard.</p>
+        <p className="text-muted-foreground mt-1">Manage who has access to your library&apos;s dashboard.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

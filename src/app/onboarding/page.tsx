@@ -5,6 +5,10 @@ import { CheckCircle2, ChevronRight, Building2, MapPin, CreditCard, Loader2, Ima
 import { completeOnboarding } from "@/app/actions/onboarding-actions";
 import { ImageKitProvider, IKUpload } from "imagekitio-next";
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 const authenticator = async () => {
   try {
     const response = await fetch("/api/imagekit/auth");
@@ -33,8 +37,8 @@ export default function LibrarianOnboarding() {
         setLibraryId(res.libraryId);
         setStep(4); // Move to KYC step
       }
-    } catch (e: any) {
-      setError(e.message || "Failed to complete onboarding");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Failed to complete onboarding"));
     } finally {
       setLoading(false);
     }
@@ -51,8 +55,8 @@ export default function LibrarianOnboarding() {
       const { uploadPassbook } = await import('@/app/actions/library-actions');
       await uploadPassbook(libraryId, passbookUrl);
       window.location.href = '/dashboard';
-    } catch (e: any) {
-      setError(e.message || "Failed to submit KYC. You can try again from settings.");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Failed to submit KYC. You can try again from settings."));
     } finally {
       setLoading(false);
     }
@@ -99,7 +103,7 @@ export default function LibrarianOnboarding() {
                     <Building2 className="w-8 h-8 text-primary" />
                     <div>
                       <h2 className="text-2xl font-heading font-bold text-foreground">Library Details</h2>
-                      <p className="text-muted-foreground">Let's start with the basics of your establishment.</p>
+                      <p className="text-muted-foreground">Let&apos;s start with the basics of your establishment.</p>
                     </div>
                   </div>
 
@@ -238,7 +242,7 @@ export default function LibrarianOnboarding() {
                           fileName="passbook_kyc"
                           tags={["kyc"]}
                           onUploadStart={() => setUploadingImage(true)}
-                          onError={(err) => { setUploadingImage(false); setError("Upload failed"); }}
+                          onError={() => { setUploadingImage(false); setError("Upload failed"); }}
                           onSuccess={(res) => { setUploadingImage(false); setPassbookUrl(res.url); }}
                           accept="image/*"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"

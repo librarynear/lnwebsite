@@ -154,8 +154,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
 
-  } catch (error: any) {
-    console.error('Cashfree Verify Error:', error?.message || 'unknown error');
+  } catch (error: unknown) {
+    console.error(
+      'Cashfree Verify Error:',
+      error instanceof Error ? error.message : 'unknown error',
+    );
     return NextResponse.json({ error: 'An error occurred during verification' }, { status: 500 });
   }
 }

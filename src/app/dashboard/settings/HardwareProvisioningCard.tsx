@@ -31,8 +31,8 @@ export function HardwareProvisioningCard({ libraryId }: { libraryId: string }) {
       } else if (res.qrPayload) {
         setQrPayload(res.qrPayload);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to generate QR");
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : "Failed to generate QR");
     } finally {
       setIsLoading(false);
     }

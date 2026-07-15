@@ -1,8 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth'
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  updateProfile,
+  type ConfirmationResult,
+  type User,
+} from 'firebase/auth'
 import { auth } from '@/lib/firebase/clientApp'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,19 +18,24 @@ import toast from 'react-hot-toast'
 
 declare global {
   interface Window {
-    recaptchaVerifier: any;
-    grecaptcha: any;
+    recaptchaVerifier?: RecaptchaVerifier;
+    grecaptcha?: {
+      reset(widgetId?: number): void;
+    };
   }
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 export default function LoginPage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'PHONE' | 'OTP' | 'NAME'>('PHONE')
-  const [confirmationResult, setConfirmationResult] = useState<any>(null)
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   
   // Resend OTP state
   const [resendTimer, setResendTimer] = useState(0)
@@ -36,7 +46,7 @@ export default function LoginPage() {
       if (window.recaptchaVerifier) {
         try {
           window.recaptchaVerifier.clear();
-        } catch (e) {}
+        } catch {}
       }
       
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -51,8 +61,8 @@ export default function LoginPage() {
       if (window.recaptchaVerifier) {
         try {
           window.recaptchaVerifier.clear();
-        } catch (e) {}
-        window.recaptchaVerifier = null;
+        } catch {}
+        window.recaptchaVerifier = undefined;
       }
     };
   }, []);
@@ -69,10 +79,11 @@ export default function LoginPage() {
 
   // Auto-submit OTP
   const lastSubmittedOtp = useRef('');
+  const otpFormRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (step === 'OTP' && otp.length === 6 && !loading && otp !== lastSubmittedOtp.current) {
       lastSubmittedOtp.current = otp;
-      handleVerifyOtp(new Event('submit') as unknown as React.FormEvent);
+      otpFormRef.current?.requestSubmit();
     }
   }, [otp, step, loading]);
 
@@ -96,12 +107,12 @@ export default function LoginPage() {
       setStep('OTP')
       setResendTimer(60) // Start 60s cooldown
       toast.success('OTP sent successfully!')
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Failed to send OTP. Please try again.")
+    } catch (error: unknown) {
+      console.error(error)
+      toast.error(getErrorMessage(error, "Failed to send OTP. Please try again."))
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then((widgetId: any) => {
-          window.grecaptcha.reset(widgetId);
+        window.recaptchaVerifier.render().then((widgetId) => {
+          window.grecaptcha?.reset(widgetId);
         });
       }
     } finally {
@@ -120,6 +131,9 @@ export default function LoginPage() {
     const formattedPhone = getFormattedPhone()
 
     try {
+      if (!confirmationResult) {
+        throw new Error("OTP session expired. Please request a new code.")
+      }
       const result = await confirmationResult.confirm(otp)
       const user = result.user
 
@@ -132,8 +146,8 @@ export default function LoginPage() {
         setStep('NAME')
         setLoading(false)
       }
-    } catch (err: any) {
-      console.error(err)
+    } catch (error: unknown) {
+      console.error(error)
       toast.error("Invalid OTP code.")
       setLoading(false)
     } finally {
@@ -157,14 +171,14 @@ export default function LoginPage() {
       const formattedPhone = getFormattedPhone();
       
       await completeLogin(currentUser, formattedPhone, name);
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Failed to save profile.")
+    } catch (error: unknown) {
+      console.error(error)
+      toast.error(getErrorMessage(error, "Failed to save profile."))
       setLoading(false)
     }
   }
 
-  async function completeLogin(firebaseUser: any, phone: string, userName: string) {
+  async function completeLogin(firebaseUser: User, phone: string, userName: string) {
     try {
       const idToken = await firebaseUser.getIdToken()
 
@@ -206,8 +220,8 @@ export default function LoginPage() {
         toast.error("Verified, but failed to create secure session")
         setLoading(false)
       }
-    } catch (e: any) {
-      console.error(e)
+    } catch (error: unknown) {
+      console.error(error)
       toast.error("Failed to complete login.")
       setLoading(false)
     }
@@ -255,7 +269,7 @@ export default function LoginPage() {
         )}
 
         {step === 'OTP' && (
-          <form onSubmit={handleVerifyOtp} className="space-y-6">
+          <form ref={otpFormRef} onSubmit={handleVerifyOtp} className="space-y-6">
             <div className="space-y-2 text-center">
               <Label htmlFor="otp">Enter the 6-digit code sent to +91 {phone}</Label>
               <Input 
@@ -308,7 +322,7 @@ export default function LoginPage() {
           <form onSubmit={handleSaveName} className="space-y-6">
             <div className="space-y-2 text-center">
               <Label htmlFor="name" className="text-lg">What should we call you?</Label>
-              <p className="text-sm text-muted-foreground pb-2">Looks like you're new here!</p>
+              <p className="text-sm text-muted-foreground pb-2">Looks like you&apos;re new here!</p>
               <Input 
                 id="name" 
                 type="text" 

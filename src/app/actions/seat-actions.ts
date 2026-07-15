@@ -2,15 +2,40 @@
 
 import prisma from "@/lib/prisma"
 import { revalidatePath, updateTag } from "next/cache"
-import { SeatType } from "@prisma/client"
+import { SeatNaming, SeatType } from "@prisma/client"
 import { getSession } from "./auth-actions"
-import { redis } from "@/lib/redis"
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache"
 
 // Reasonable upper bounds to reject malformed/abusive payloads.
 const MAX_SEATS = 2000;
 const MAX_LOCKERS = 1000;
 
-export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: any[], compactSeatMap: boolean = false, seatNaming: string = 'ALPHANUMERIC') {
+export type SeatNamingValue = "ALPHANUMERIC" | "NUMERIC";
+
+export type SeatLayoutItem = {
+  id: string;
+  databaseId?: string;
+  x: number;
+  y: number;
+  type: SeatType | "EMPTY";
+  hasLocker: boolean;
+  lockerPriceMonthly: string;
+  premiumPriceMonthly?: string;
+  syncPremiumOffers?: boolean;
+};
+
+export type StandaloneLockerLayoutItem = {
+  id: string;
+  name: string;
+  price: string;
+};
+
+export async function saveSeatLayoutAndLockers(
+  seats: SeatLayoutItem[],
+  standaloneLockers: StandaloneLockerLayoutItem[],
+  compactSeatMap: boolean = false,
+  seatNaming: SeatNamingValue = "ALPHANUMERIC",
+) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -37,23 +62,58 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
     const bookedSeats = await tx.seat.findMany({
       where: {
         libraryId: library.id,
-        bookings: {
-          some: { status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] }, endTime: { gt: now } },
-        },
+        OR: [
+          {
+            bookings: {
+              some: { status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] }, endTime: { gt: now } },
+            },
+          },
+          {
+            bookingIntents: {
+              some: {
+                status: { in: ['HOLDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT'] },
+                holdExpiresAt: { gt: now },
+              },
+            },
+          },
+        ],
       },
       select: { id: true, name: true, gridX: true, gridY: true },
     });
-    const protectedSeatNames = new Set(bookedSeats.map((s) => s.name));
+    const protectedSeatIds = new Set(bookedSeats.map((s) => s.id));
 
-    // Delete only seats that are NOT protected.
+    const seatsToUpdate = activeSeats.filter(s => s.databaseId);
+    const seatsToInsert = activeSeats.filter(s => !s.databaseId);
+    const activeDatabaseIds = new Set(seatsToUpdate.map(s => s.databaseId!));
+
+    // Delete seats that are NOT in the active payload AND NOT protected.
     await tx.seat.deleteMany({
-      where: { libraryId: library.id, name: { notIn: Array.from(protectedSeatNames) } },
+      where: {
+        libraryId: library.id,
+        id: { notIn: Array.from(new Set([...activeDatabaseIds, ...protectedSeatIds])) }
+      },
     });
 
-    // Insert the new layout, skipping any name that is still protected (kept above).
-    const seatData = activeSeats
-      .filter((s) => !protectedSeatNames.has(s.id))
-      .map((s) => ({
+    // Update existing seats (this naturally handles name changes if the format changed)
+    for (const s of seatsToUpdate) {
+      await tx.seat.update({
+        where: { id: s.databaseId! },
+        data: {
+          name: s.id,
+          type: s.type as SeatType,
+          gridX: s.x,
+          gridY: s.y,
+          hasLocker: s.hasLocker || false,
+          lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
+          premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly || "") || null) : null,
+          syncPremiumOffers: s.syncPremiumOffers !== undefined ? s.syncPremiumOffers : true,
+        },
+      });
+    }
+
+    // Insert new seats
+    if (seatsToInsert.length > 0) {
+      const seatData = seatsToInsert.map((s) => ({
         libraryId: library.id,
         name: s.id,
         type: s.type as SeatType,
@@ -61,56 +121,31 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
         gridY: s.y,
         hasLocker: s.hasLocker || false,
         lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
-        premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly) || null) : null,
+        premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly || "") || null) : null,
         syncPremiumOffers: s.syncPremiumOffers !== undefined ? s.syncPremiumOffers : true,
       }));
-
-    // If naming convention changed, existing protected seats need to be renamed to match their grid coordinates in the new convention.
-    // The frontend sends the correct new generated name as `s.id` in `activeSeats`.
-    // We update all protected seats if their computed name (from frontend) differs from their current name.
-    if ((seatNaming as any) !== library.seatNaming) {
-      for (const bookedSeat of bookedSeats) {
-        const matchingActiveSeat = activeSeats.find(s => s.x === bookedSeat.gridX && s.y === bookedSeat.gridY);
-        if (matchingActiveSeat && matchingActiveSeat.id !== bookedSeat.name) {
-          await tx.seat.update({
-            where: { id: bookedSeat.id },
-            data: { name: matchingActiveSeat.id }
-          });
-          // Update the Set so we don't accidentally delete or re-create it under the new name
-          protectedSeatNames.delete(bookedSeat.name);
-          protectedSeatNames.add(matchingActiveSeat.id);
-        }
-      }
-    }
-
-    if (seatData.length > 0) {
       await tx.seat.createMany({ data: seatData, skipDuplicates: true });
-    }
-
-    // UPDATE the protected seats to reflect any changes in properties (gridX, gridY, hasLocker, etc)
-    const protectedActiveSeats = activeSeats.filter((s) => protectedSeatNames.has(s.id));
-    for (const pSeat of protectedActiveSeats) {
-      await tx.seat.updateMany({
-        where: { libraryId: library.id, name: pSeat.id },
-        data: {
-          type: pSeat.type as SeatType,
-          gridX: pSeat.x,
-          gridY: pSeat.y,
-          hasLocker: pSeat.hasLocker || false,
-          lockerPriceMonthly: pSeat.hasLocker ? (parseFloat(pSeat.lockerPriceMonthly) || null) : null,
-          premiumPriceMonthly: pSeat.type === 'PREMIUM' ? (parseFloat(pSeat.premiumPriceMonthly) || null) : null,
-          syncPremiumOffers: pSeat.syncPremiumOffers !== undefined ? pSeat.syncPremiumOffers : true,
-        }
-      });
     }
 
     // Same protection for standalone lockers.
     const bookedLockers = await tx.standaloneLocker.findMany({
       where: {
         libraryId: library.id,
-        bookings: {
-          some: { status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] }, endTime: { gt: now } },
-        },
+        OR: [
+          {
+            bookings: {
+              some: { status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] }, endTime: { gt: now } },
+            },
+          },
+          {
+            bookingIntents: {
+              some: {
+                status: { in: ['HOLDING', 'AWAITING_PAYMENT', 'AWAITING_MANUAL_PAYMENT'] },
+                holdExpiresAt: { gt: now },
+              },
+            },
+          },
+        ],
       },
       select: { name: true },
     });
@@ -145,11 +180,11 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
 
     await tx.library.update({
       where: { id: library.id },
-      data: { compactSeatMap, seatNaming: seatNaming as any }
+      data: { compactSeatMap, seatNaming: seatNaming as SeatNaming }
     });
   });
 
-  await redis.del(`library:${library.id}`);
+  await invalidateLibraryRuntimeCache(library.id);
   updateTag(`library:${library.id}`);
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/seats");
@@ -157,7 +192,15 @@ export async function saveSeatLayoutAndLockers(seats: any[], standaloneLockers: 
 
 export async function getSeatLayoutAndLockers() {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { seats: [], standaloneLockers: [], compactSeatMap: false };
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
+    return {
+      libraryId: null,
+      seats: [] as SeatLayoutItem[],
+      standaloneLockers: [] as StandaloneLockerLayoutItem[],
+      compactSeatMap: false,
+      seatNaming: "ALPHANUMERIC" as SeatNamingValue,
+    };
+  }
 
   const library = await prisma.library.findFirst({
     where: session.role === 'ADMIN' ? {} : { librarianId: session.userId },
@@ -167,11 +210,20 @@ export async function getSeatLayoutAndLockers() {
     }
   });
 
-  if (!library) return { seats: [], standaloneLockers: [], compactSeatMap: false };
+  if (!library) {
+    return {
+      libraryId: null,
+      seats: [] as SeatLayoutItem[],
+      standaloneLockers: [] as StandaloneLockerLayoutItem[],
+      compactSeatMap: false,
+      seatNaming: "ALPHANUMERIC" as SeatNamingValue,
+    };
+  }
 
   return {
     libraryId: library.id,
     seats: library.seats.map(s => ({
+      databaseId: s.id,
       id: s.name,
       x: s.gridX,
       y: s.gridY,

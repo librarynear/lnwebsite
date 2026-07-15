@@ -239,7 +239,7 @@ export default async function FinancialsPage({
                   <div>
                     <div className="font-bold text-foreground">{b.student?.name} <span className="text-muted-foreground font-mono text-xs ml-2">{b.student?.uniqueId}</span></div>
                     <div className="text-sm text-muted-foreground mt-1">Plan: <span className="font-semibold text-foreground">{b.plan?.name}</span> (₹{price})</div>
-                    <div className="text-sm text-muted-foreground mt-1">Reason: <span className="italic">"{b.revokedReason || 'No reason provided'}"</span></div>
+                    <div className="text-sm text-muted-foreground mt-1">Reason: <span className="italic">&ldquo;{b.revokedReason || 'No reason provided'}&rdquo;</span></div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="font-bold text-destructive bg-destructive/10 px-3 py-1 rounded-full text-xs">

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
+import {
+  BookingAuthorityError,
+  cancelPendingReceptionBooking,
+} from "@/lib/booking-authority";
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache";
 
 export async function POST(req: Request) {
   try {
@@ -32,16 +37,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Booking is not pending' }, { status: 400 });
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: {
-        status: "CANCELLED"
-      }
-    });
+    const updatedBooking = await cancelPendingReceptionBooking(
+      bookingId,
+      "RECEPTION_PAYMENT_REJECTED",
+    );
+    await invalidateLibraryRuntimeCache(updatedBooking.libraryId);
 
     return NextResponse.json({ success: true, booking: updatedBooking });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Booking Rejection Error:", error);
+    if (error instanceof BookingAuthorityError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

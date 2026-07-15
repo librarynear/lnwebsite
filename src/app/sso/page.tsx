@@ -11,14 +11,10 @@ function SSOContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const redirectUri = searchParams.get('redirect_uri');
 
   useEffect(() => {
-    const redirectUri = searchParams.get('redirect_uri');
-    
-    if (!redirectUri) {
-      setError('Missing redirect_uri parameter');
-      return;
-    }
+    if (!redirectUri) return;
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -48,20 +44,24 @@ function SSOContent() {
         url.searchParams.set('token', data.customToken);
         window.location.href = url.toString();
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('SSO Error:', err);
-        setError(err.message || 'Authentication handoff failed');
+        setError(
+          err instanceof Error ? err.message : 'Authentication handoff failed',
+        );
       }
     });
 
     return () => unsubscribe();
-  }, [searchParams, router]);
+  }, [redirectUri, router]);
 
-  if (error) {
+  if (!redirectUri || error) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center p-4 text-center">
         <h1 className="text-2xl font-bold text-red-500 mb-2">Authentication Error</h1>
-        <p className="text-gray-600 max-w-md">{error}</p>
+        <p className="text-gray-600 max-w-md">
+          {error || 'Missing redirect_uri parameter'}
+        </p>
       </div>
     );
   }

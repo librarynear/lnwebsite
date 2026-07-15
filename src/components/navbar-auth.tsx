@@ -4,10 +4,11 @@ import { UserNav } from "@/components/user-nav";
 import Link from "next/link";
 import { NotificationBell } from "./NotificationBell";
 import { AccessQRModal } from "./AccessQRModal";
+import type { Notification } from "@prisma/client";
 
 export async function NavbarAuth() {
   const session = await getSession();
-  let notifications: any[] = [];
+  let notifications: Notification[] = [];
   let user = null;
   let activeBooking = null;
 

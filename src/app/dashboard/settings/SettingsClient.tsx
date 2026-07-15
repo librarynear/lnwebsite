@@ -1,22 +1,51 @@
 'use client'
 
 import { useState } from "react"
-import { Save, Loader2, Library, MapPin, Phone, Building, Clock, Navigation, Image as ImageIcon, Trash2, CreditCard } from "lucide-react"
+import { Save, Loader2, MapPin, Phone, Building, Clock, Image as ImageIcon, Trash2, CreditCard } from "lucide-react"
 import { updateLibrarySettings } from "@/app/actions/library-actions"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageKitProvider, IKUpload } from "imagekitio-next"
 import { HardwareProvisioningCard } from "./HardwareProvisioningCard"
+import Image from "next/image"
+import type { Library as LibraryRecord } from "@prisma/client"
+
+interface ImageKitAuthResponse {
+  signature: string;
+  expire: number;
+  token: string;
+}
+
+interface UploadResult {
+  url: string;
+}
+
+function isImageKitAuthResponse(value: unknown): value is ImageKitAuthResponse {
+  if (typeof value !== "object" || value === null) return false;
+
+  const response = value as Record<string, unknown>;
+  return (
+    typeof response.signature === "string" &&
+    typeof response.expire === "number" &&
+    typeof response.token === "string"
+  );
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 const authenticator = async () => {
   try {
     const response = await fetch("/api/imagekit/auth");
     if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
-    const data = await response.json();
-    const { signature, expire, token } = data;
-    return { signature, expire, token };
+    const data: unknown = await response.json();
+    if (!isImageKitAuthResponse(data)) {
+      throw new Error("Authentication response was invalid.");
+    }
+    return data;
   } catch (error) {
-    throw new Error(`Authentication request failed: ${error}`);
+    throw new Error(`Authentication request failed: ${getErrorMessage(error, "Unknown error")}`);
   }
 };
 
@@ -26,7 +55,7 @@ const facilityOptions = [
   "Security Guard", "Charging Points", "Silent Zone"
 ]
 
-export function SettingsClient({ library }: { library: any }) {
+export function SettingsClient({ library }: { library: LibraryRecord }) {
   const [isSaving, setIsSaving] = useState(false)
   const [photos, setPhotos] = useState<string[]>(library.photos || []);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -42,7 +71,7 @@ export function SettingsClient({ library }: { library: any }) {
       formData.append("whatsapp", sameAsPhone ? phone : whatsapp);
       await updateLibrarySettings(formData)
       alert("Settings saved successfully!")
-    } catch (error) {
+    } catch {
       alert("Failed to save settings.")
     } finally {
       setIsSaving(false)
@@ -52,11 +81,11 @@ export function SettingsClient({ library }: { library: any }) {
   const [uploadingPassbook, setUploadingPassbook] = useState(false);
 
   const onUploadStart = () => setUploadingImage(true);
-  const onUploadSuccess = (res: any) => {
+  const onUploadSuccess = (res: UploadResult) => {
     setPhotos(prev => [...prev, res.url].slice(0, 3));
     setUploadingImage(false);
   };
-  const onUploadError = (err: any) => {
+  const onUploadError = (err: unknown) => {
     console.error(err);
     alert("Image upload failed.");
     setUploadingImage(false);
@@ -66,7 +95,7 @@ export function SettingsClient({ library }: { library: any }) {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   }
 
-  const handlePassbookUploadSuccess = async (res: any) => {
+  const handlePassbookUploadSuccess = async (res: UploadResult) => {
     setUploadingPassbook(false);
     setIsKycLoading(true);
     try {
@@ -74,8 +103,8 @@ export function SettingsClient({ library }: { library: any }) {
       await uploadPassbook(library.id, res.url);
       alert("Passbook uploaded successfully. Your library is now pending review.");
       // The page will revalidate automatically
-    } catch (e: any) {
-      alert(e.message || "Failed to update KYC status.");
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "Failed to update KYC status."));
     } finally {
       setIsKycLoading(false);
     }
@@ -85,7 +114,7 @@ export function SettingsClient({ library }: { library: any }) {
     <div className="max-w-4xl mx-auto space-y-8 pb-10">
       <div>
         <h1 className="text-3xl font-heading font-bold text-foreground">Library Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your library's public profile and facilities.</p>
+        <p className="text-muted-foreground mt-1">Manage your library&apos;s public profile and facilities.</p>
       </div>
 
       <form action={handleSave} className="space-y-8">
@@ -230,7 +259,7 @@ export function SettingsClient({ library }: { library: any }) {
           <div className="flex flex-wrap gap-4 mb-6">
             {photos.map((url, i) => (
               <div key={i} className="relative w-32 h-32 rounded-xl overflow-hidden border border-border group">
-                <img src={url} alt="Library" className="object-cover w-full h-full" />
+                <Image src={url} alt="Library" fill sizes="128px" className="object-cover" />
                 <button 
                   type="button" 
                   onClick={() => removePhoto(i)}
@@ -298,7 +327,7 @@ export function SettingsClient({ library }: { library: any }) {
                       fileName="passbook_kyc"
                       tags={["kyc"]}
                       onUploadStart={() => setUploadingPassbook(true)}
-                      onError={(err) => { setUploadingPassbook(false); alert("Upload failed"); }}
+                      onError={() => { setUploadingPassbook(false); alert("Upload failed"); }}
                       onSuccess={handlePassbookUploadSuccess}
                       accept="image/*"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"

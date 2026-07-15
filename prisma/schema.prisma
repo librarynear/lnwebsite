@@ -14,41 +14,42 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  authId    String?  @unique // Supabase auth user ID
-  role      Role     @default(STUDENT)
-  email     String?  @unique
-  password  String?  // Hashed password for MVP auth
-  name      String
-  phone     String?  @unique
-  area      String?
-  uniqueId  String?  @unique // 6-character alphanumeric
-  
+  id       String  @id @default(uuid())
+  authId   String? @unique // Supabase auth user ID
+  role     Role    @default(STUDENT)
+  email    String? @unique
+  password String? // Hashed password for MVP auth
+  name     String
+  phone    String? @unique
+  area     String?
+  uniqueId String? @unique // 6-character alphanumeric
+
   // KYC/Admission Details
-  dob       DateTime?
-  gender    String?
-  address   String?
-  locality  String?
-  qualification String?
-  organization  String?
-  profilePhotoUrl String?
-  digilockerVerified Boolean @default(false)
-  
+  dob                DateTime?
+  gender             String?
+  address            String?
+  locality           String?
+  qualification      String?
+  organization       String?
+  profilePhotoUrl    String?
+  digilockerVerified Boolean   @default(false)
+
   // Relationships
-  libraries Library[]  @relation("LibrarianLibraries")
+  libraries         Library[]          @relation("LibrarianLibraries")
   employerLibraryId String?
-  employerLibrary   Library? @relation("LibraryStaff", fields: [employerLibraryId], references: [id])
-  bookings  Booking[]
-  queries   Query[]
-  checkins  CheckinLog[] @relation("StudentCheckins")
-  entryLogs EntryLog[]
+  employerLibrary   Library?           @relation("LibraryStaff", fields: [employerLibraryId], references: [id])
+  bookings          Booking[]
+  bookingIntents    BookingIntent[]
+  queries           Query[]
+  checkins          CheckinLog[]       @relation("StudentCheckins")
+  entryLogs         EntryLog[]
   platformFeedbacks PlatformFeedback[] @relation("SubmitterPlatformFeedback")
-  notifications Notification[]
-  
+  notifications     Notification[]
+
   // Hardware Access Tracking
-  rfidTag String? @unique
-  consecutiveFailures Int @default(0)
-  failureReasons String?
+  rfidTag             String? @unique
+  consecutiveFailures Int     @default(0)
+  failureReasons      String?
 
   canvasState CanvasState?
 
@@ -60,56 +61,56 @@ model User {
 }
 
 model Library {
-  id            String   @id @default(uuid())
-  librarianId   String
-  librarian     User     @relation("LibrarianLibraries", fields: [librarianId], references: [id])
-  name          String
-  managerName   String?
-  managerPhone  String?
-  address       String
-  locality      String?
-  city          String?
-  district      String?
-  state         String?
-  pinCode       String?
+  id           String  @id @default(uuid())
+  librarianId  String
+  librarian    User    @relation("LibrarianLibraries", fields: [librarianId], references: [id])
+  name         String
+  managerName  String?
+  managerPhone String?
+  address      String
+  locality     String?
+  city         String?
+  district     String?
+  state        String?
+  pinCode      String?
 
   metroStation  String?
   metroDistance Float?
   googleMapsUrl String?
-  
-  openingTime   String?
-  closingTime   String?
-  
-  whatsapp      String?
-  description   String?
+
+  openingTime String?
+  closingTime String?
+
+  whatsapp       String?
+  description    String?
   seatsAvailable Int?
-  photos        String[]
-  facilities    String[] 
-  
-  compactSeatMap Boolean @default(false)
+  photos         String[]
+  facilities     String[]
+
+  compactSeatMap Boolean    @default(false)
   seatNaming     SeatNaming @default(ALPHANUMERIC)
 
-  
   // Banking/KYC
   paymentAccountId String? // Handled by Razorpay (Legacy/Coming soon)
   passbookPhoto    String? // Manual verification upload
   kycStatus        KycStatus @default(PENDING)
 
-  seats         Seat[]
-  plans         Plan[]
+  seats             Seat[]
+  plans             Plan[]
   standaloneLockers StandaloneLocker[]
-  bookings      Booking[]
-  queries       Query[]
-  relays        Relay[]
-  checkinLogs   CheckinLog[]
-  entryLogs     EntryLog[]
-  expenses      Expense[]
-  inquiries     Inquiry[]
+  bookings          Booking[]
+  bookingIntents    BookingIntent[]
+  queries           Query[]
+  relays            Relay[]
+  checkinLogs       CheckinLog[]
+  entryLogs         EntryLog[]
+  expenses          Expense[]
+  inquiries         Inquiry[]
 
-  staff         User[] @relation("LibraryStaff")
+  staff User[] @relation("LibraryStaff")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([librarianId])
   @@index([kycStatus])
@@ -134,19 +135,20 @@ enum SeatNaming {
 }
 
 model Seat {
-  id        String   @id @default(uuid())
-  libraryId String
-  library   Library  @relation(fields: [libraryId], references: [id])
-  name      String   // e.g., "A1", "B2"
-  type      SeatType @default(NORMAL)
-  gridX     Int      // For the visual Instagram-style grid
-  gridY     Int
-  hasLocker Boolean  @default(false)
-  lockerPriceMonthly Float?
+  id                  String   @id @default(uuid())
+  libraryId           String
+  library             Library  @relation(fields: [libraryId], references: [id])
+  name                String // e.g., "A1", "B2"
+  type                SeatType @default(NORMAL)
+  gridX               Int // For the visual Instagram-style grid
+  gridY               Int
+  hasLocker           Boolean  @default(false)
+  lockerPriceMonthly  Float?
   premiumPriceMonthly Float?
-  syncPremiumOffers Boolean @default(true)
-  
-  bookings  Booking[]
+  syncPremiumOffers   Boolean  @default(true)
+
+  bookings       Booking[]
+  bookingIntents BookingIntent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,34 +167,36 @@ enum PlanSeatCategory {
 }
 
 model Plan {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   libraryId     String
-  library       Library  @relation(fields: [libraryId], references: [id])
-  name          String   // e.g., "Monthly Fixed", "6-Hour Flexible"
+  library       Library          @relation(fields: [libraryId], references: [id])
+  name          String // e.g., "Monthly Fixed", "6-Hour Flexible"
   type          PlanType
-  durationHours Int?     // Null for fixed whole-day/monthly
-  validityDays  Int      // 1 for daily, 30 for monthly, etc.
+  durationHours Int? // Null for fixed whole-day/monthly
+  validityDays  Int // 1 for daily, 30 for monthly, etc.
   price         Float
   discount      Float?
-  isActive      Boolean  @default(true)
+  isActive      Boolean          @default(true)
   seatCategory  PlanSeatCategory @default(GENERAL)
-  
-  bookings      Booking[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  bookings       Booking[]
+  bookingIntents BookingIntent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([libraryId])
 }
 
 model StandaloneLocker {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   libraryId String
-  library   Library  @relation(fields: [libraryId], references: [id])
-  name      String   // e.g. "L1"
+  library   Library @relation(fields: [libraryId], references: [id])
+  name      String // e.g. "L1"
   price     Float
-  
-  bookings  Booking[]
+
+  bookings       Booking[]
+  bookingIntents BookingIntent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -208,34 +212,40 @@ enum BookingStatus {
 }
 
 model Booking {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   studentId String
-  student   User     @relation(fields: [studentId], references: [id])
+  student   User    @relation(fields: [studentId], references: [id])
   libraryId String
-  library   Library  @relation(fields: [libraryId], references: [id])
+  library   Library @relation(fields: [libraryId], references: [id])
   seatId    String?
-  seat      Seat?    @relation(fields: [seatId], references: [id])
+  seat      Seat?   @relation(fields: [seatId], references: [id])
   planId    String
-  plan      Plan     @relation(fields: [planId], references: [id])
-  
-  hasLocker Boolean  @default(false)
+  plan      Plan    @relation(fields: [planId], references: [id])
+
+  hasLocker          Boolean           @default(false)
   standaloneLockerId String?
   standaloneLocker   StandaloneLocker? @relation(fields: [standaloneLockerId], references: [id])
-  
-  startTime DateTime
-  endTime   DateTime
-  status    BookingStatus @default(PENDING_PAYMENT)
-  paymentRef String? @unique // Razorpay order ID — unique to prevent replay
 
-  isPaused  Boolean @default(false)
-  pausedAt  DateTime?
-  totalPausedDays Int @default(0)
-  revokedReason String?
+  startTime  DateTime
+  endTime    DateTime
+  status     BookingStatus @default(PENDING_PAYMENT)
+  paymentRef String?       @unique // Razorpay order ID — unique to prevent replay
+
+  isPaused        Boolean   @default(false)
+  pausedAt        DateTime?
+  totalPausedDays Int       @default(0)
+  revokedReason   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  bookingIntent BookingIntent?
+  refundTasks   RefundTask[]
+
   @@index([libraryId, status])
+  @@index([libraryId, status, endTime])
+  @@index([libraryId, studentId])
+  @@index([libraryId, studentId, createdAt])
   @@index([libraryId, startTime])
   @@index([libraryId, status, isPaused])
   @@index([studentId])
@@ -245,6 +255,131 @@ model Booking {
   @@index([endTime])
 }
 
+enum BookingIntentSource {
+  RAZORPAY
+  RECEPTION
+  MANUAL
+  HARDWARE
+  RENEWAL
+}
+
+enum BookingIntentStatus {
+  HOLDING
+  AWAITING_PAYMENT
+  AWAITING_MANUAL_PAYMENT
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+  FAILED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum LeaseResourceType {
+  SEAT
+  STANDALONE_LOCKER
+}
+
+enum RefundTaskStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model BookingIntent {
+  id             String              @id @default(uuid())
+  referenceId    String              @unique
+  idempotencyKey String?             @unique
+  source         BookingIntentSource
+  status         BookingIntentStatus @default(HOLDING)
+
+  studentId          String
+  student            User              @relation(fields: [studentId], references: [id])
+  libraryId          String
+  library            Library           @relation(fields: [libraryId], references: [id])
+  planId             String
+  plan               Plan              @relation(fields: [planId], references: [id])
+  seatId             String?
+  seat               Seat?             @relation(fields: [seatId], references: [id])
+  standaloneLockerId String?
+  standaloneLocker   StandaloneLocker? @relation(fields: [standaloneLockerId], references: [id])
+  hasLocker          Boolean           @default(false)
+
+  expectedAmountPaise Int
+  currency            String    @default("INR")
+  startsAt            DateTime
+  endsAt              DateTime
+  holdExpiresAt       DateTime?
+
+  providerLinkId    String?   @unique
+  providerShortUrl  String?
+  providerPaymentId String?   @unique
+  providerPaidAt    DateTime?
+
+  bookingId     String?  @unique
+  booking       Booking? @relation(fields: [bookingId], references: [id])
+  failureReason String?
+
+  leases      ResourceLease[]
+  refundTasks RefundTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([libraryId, status])
+  @@index([studentId, createdAt])
+  @@index([holdExpiresAt])
+}
+
+model ResourceLease {
+  resourceType LeaseResourceType
+  resourceId   String
+  intentId     String
+  intent       BookingIntent     @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  libraryId    String
+  studentId    String
+  expiresAt    DateTime
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@id([resourceType, resourceId])
+  @@index([intentId])
+  @@index([libraryId, expiresAt])
+}
+
+model RefundTask {
+  id               String           @id @default(uuid())
+  paymentId        String           @unique
+  amountPaise      Int
+  currency         String           @default("INR")
+  reason           String
+  status           RefundTaskStatus @default(PENDING)
+  attempts         Int              @default(0)
+  nextAttemptAt    DateTime         @default(now())
+  lockedAt         DateTime?
+  lastError        String?
+  providerRefundId String?          @unique
+  completedAt      DateTime?
+
+  intentId  String?
+  intent    BookingIntent? @relation(fields: [intentId], references: [id], onDelete: SetNull)
+  bookingId String?
+  booking   Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, nextAttemptAt])
+}
+
+model ProcessedWebhookEvent {
+  id          String   @id
+  eventType   String
+  payloadHash String
+  processedAt DateTime @default(now())
+}
+
 enum QueryType {
   FEEDBACK
   COMPLAINT
@@ -252,15 +387,15 @@ enum QueryType {
 }
 
 model Query {
-  id        String   @id @default(uuid())
-  type      QueryType
-  content   String
-  rating    Int?     // For REVIEW type
-  
+  id      String    @id @default(uuid())
+  type    QueryType
+  content String
+  rating  Int? // For REVIEW type
+
   studentId String
-  student   User     @relation(fields: [studentId], references: [id])
+  student   User    @relation(fields: [studentId], references: [id])
   libraryId String
-  library   Library  @relation(fields: [libraryId], references: [id])
+  library   Library @relation(fields: [libraryId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -269,18 +404,18 @@ model Query {
 }
 
 model Relay {
-  id          String   @id @default(uuid())
-  libraryId   String
-  library     Library  @relation(fields: [libraryId], references: [id])
-  macAddress  String?  
-  nfcTagId    String   @unique 
-  status      String   @default("ONLINE")
-  lastSync    DateTime @default(now())
+  id         String   @id @default(uuid())
+  libraryId  String
+  library    Library  @relation(fields: [libraryId], references: [id])
+  macAddress String?
+  nfcTagId   String   @unique
+  status     String   @default("ONLINE")
+  lastSync   DateTime @default(now())
 
-  logs        CheckinLog[]
+  logs CheckinLog[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([libraryId])
 }
@@ -291,34 +426,34 @@ enum CheckinStatus {
 }
 
 model CheckinLog {
-  id          String   @id @default(uuid())
-  studentId   String
-  student     User     @relation("StudentCheckins", fields: [studentId], references: [id])
-  libraryId   String
-  library     Library  @relation(fields: [libraryId], references: [id])
-  relayId     String?
-  relay       Relay?   @relation(fields: [relayId], references: [id])
-  
-  status      CheckinStatus
-  timestamp   DateTime @default(now())
-  isOfflineSync Boolean @default(false)
+  id        String  @id @default(uuid())
+  studentId String
+  student   User    @relation("StudentCheckins", fields: [studentId], references: [id])
+  libraryId String
+  library   Library @relation(fields: [libraryId], references: [id])
+  relayId   String?
+  relay     Relay?  @relation(fields: [relayId], references: [id])
 
-  createdAt   DateTime @default(now())
+  status        CheckinStatus
+  timestamp     DateTime      @default(now())
+  isOfflineSync Boolean       @default(false)
+
+  createdAt DateTime @default(now())
 
   @@index([libraryId, timestamp])
   @@index([studentId, libraryId])
 }
 
 model PlatformFeedback {
-  id           String   @id @default(uuid())
-  targetType   String   // 'WEBSITE', 'LIBRARY', 'STUDENT'
-  libraryId    String?  // Optional, if target is library
-  
-  submitterId  String
-  submitter    User     @relation("SubmitterPlatformFeedback", fields: [submitterId], references: [id])
-  
-  studentName  String?  // Optional, if target is student
-  studentPhone String?  // Optional, if target is student
+  id         String  @id @default(uuid())
+  targetType String // 'WEBSITE', 'LIBRARY', 'STUDENT'
+  libraryId  String? // Optional, if target is library
+
+  submitterId String
+  submitter   User   @relation("SubmitterPlatformFeedback", fields: [submitterId], references: [id])
+
+  studentName  String? // Optional, if target is student
+  studentPhone String? // Optional, if target is student
   content      String
   createdAt    DateTime @default(now())
 
@@ -327,15 +462,15 @@ model PlatformFeedback {
 }
 
 model Expense {
-  id          String   @id @default(uuid())
-  libraryId   String
-  library     Library  @relation(fields: [libraryId], references: [id])
-  name        String   // e.g. "Rent", "Electricity", "Staff"
-  amount      Float
-  date        DateTime @default(now())
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  libraryId String
+  library   Library  @relation(fields: [libraryId], references: [id])
+  name      String // e.g. "Rent", "Electricity", "Staff"
+  amount    Float
+  date      DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([libraryId])
 }
@@ -348,16 +483,16 @@ enum InquiryStatus {
 }
 
 model Inquiry {
-  id          String   @id @default(uuid())
-  libraryId   String
-  library     Library  @relation(fields: [libraryId], references: [id])
-  name        String
-  phone       String
-  message     String?
-  status      InquiryStatus @default(NEW)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String        @id @default(uuid())
+  libraryId String
+  library   Library       @relation(fields: [libraryId], references: [id])
+  name      String
+  phone     String
+  message   String?
+  status    InquiryStatus @default(NEW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([libraryId])
   @@index([status])
@@ -372,13 +507,14 @@ model EntryLog {
   doorId    String?
   timestamp DateTime
 
-  status    String   @default("SUCCESS") // "SUCCESS" or "DENIED"
-  reason    String?  // E.g., "Invalid Signature", "Expired", "Replay Attack"
+  status String  @default("SUCCESS") // "SUCCESS" or "DENIED"
+  reason String? // E.g., "Invalid Signature", "Expired", "Replay Attack"
 
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([libraryId])
+  @@index([libraryId, timestamp])
   @@index([timestamp])
 }
 
@@ -395,18 +531,18 @@ model Notification {
 }
 
 model CanvasState {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
   // JSON field containing widget configurations (positions, sizes, types, colors)
-  widgets   Json     @default("[]")
-  
+  widgets Json @default("[]")
+
   // Aesthetic preferences
-  theme     String   @default("pastel-pink")
-  font      String   @default("inter")
-  bgUrl     String?  // Custom background image URL
-  
+  theme String  @default("pastel-pink")
+  font  String  @default("inter")
+  bgUrl String? // Custom background image URL
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

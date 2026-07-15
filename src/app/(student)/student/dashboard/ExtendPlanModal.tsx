@@ -28,6 +28,7 @@ export default function ExtendPlanModal({
   const [step, setStep] = useState<"CHOICE" | "PAYMENT_METHOD">("CHOICE");
   const [isProcessing, setIsProcessing] = useState(false);
   const checkoutLockRef = useRef(false);
+  const checkoutIdempotencyRef = useRef<string | null>(null);
   const router = useRouter();
 
   const handleChooseAnother = () => {
@@ -39,12 +40,17 @@ export default function ExtendPlanModal({
     if (checkoutLockRef.current) return;
     checkoutLockRef.current = true;
     setIsProcessing(true);
+    checkoutIdempotencyRef.current ??= crypto.randomUUID();
+    const idempotencyKey = checkoutIdempotencyRef.current;
 
     if (mode === "RECEPTION") {
       try {
         const res = await fetch('/api/checkout/reception', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
           body: JSON.stringify({
             studentId,
             libraryId,
@@ -62,7 +68,7 @@ export default function ExtendPlanModal({
         } else {
           toast.error(data.error || "Failed to initiate booking");
         }
-      } catch (e) {
+      } catch {
         toast.error("An error occurred during booking");
       } finally {
         setIsProcessing(false);
@@ -74,7 +80,10 @@ export default function ExtendPlanModal({
     try {
       const orderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify({
           planId,
           seatId: isFlexible ? null : seatId,
@@ -85,13 +94,18 @@ export default function ExtendPlanModal({
       const data = await orderRes.json();
 
       if (!data.payment_url) {
+        if (data.retryable !== true) {
+          checkoutIdempotencyRef.current = null;
+        }
         throw new Error(data.error || "Failed to create payment");
       }
 
       window.location.href = data.payment_url;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "Error initiating checkout");
+      toast.error(
+        error instanceof Error ? error.message : "Error initiating checkout",
+      );
       setIsProcessing(false);
       checkoutLockRef.current = false;
     }

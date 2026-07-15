@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, Banknote, CreditCard, Loader2 } from "lucide-react";
+import { XCircle, Banknote, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+
+function getApiError(payload: unknown) {
+  if (typeof payload !== "object" || payload === null) return null;
+
+  const error = (payload as Record<string, unknown>).error;
+  return typeof error === "string" ? error : null;
+}
 
 export default function ApprovalActions({ bookingId }: { bookingId: string }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,14 +24,14 @@ export default function ApprovalActions({ bookingId }: { bookingId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId, paymentMethod: method })
       });
-      const data = await res.json();
+      const data: unknown = await res.json();
       if (res.ok) {
         toast.success("Booking approved and activated successfully!");
         router.refresh();
       } else {
-        toast.error(data.error || "Failed to approve booking.");
+        toast.error(getApiError(data) ?? "Failed to approve booking.");
       }
-    } catch (e: any) {
+    } catch {
       toast.error("An error occurred");
     } finally {
       setIsProcessing(false);
@@ -40,14 +47,14 @@ export default function ApprovalActions({ bookingId }: { bookingId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId })
       });
-      const data = await res.json();
+      const data: unknown = await res.json();
       if (res.ok) {
         toast.success("Booking rejected.");
         router.refresh();
       } else {
-        toast.error(data.error || "Failed to reject booking.");
+        toast.error(getApiError(data) ?? "Failed to reject booking.");
       }
-    } catch (e: any) {
+    } catch {
       toast.error("An error occurred");
     } finally {
       setIsProcessing(false);

@@ -1,7 +1,5 @@
 import prisma from "@/lib/prisma"
 import Link from "next/link"
-import { redirect } from "next/navigation"
-import { getSession } from "@/app/actions/auth-actions"
 import { ArrowRight } from "lucide-react"
 import { InteractivePhoneMockup } from "@/components/InteractivePhoneMockup"
 

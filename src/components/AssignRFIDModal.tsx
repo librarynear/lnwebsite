@@ -17,8 +17,19 @@ interface AssignRFIDModalProps {
   onSuccess?: () => void;
 }
 
+type ActiveStudent = {
+  id: string;
+  name: string;
+  phone: string | null;
+  uniqueId: string | null;
+  rfidTag: string | null;
+  bookings: Array<{
+    endTime: Date | string;
+  }>;
+};
+
 export function AssignRFIDModal({ rfidTag, open, onOpenChange, onSuccess }: AssignRFIDModalProps) {
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<ActiveStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -26,14 +37,6 @@ export function AssignRFIDModal({ rfidTag, open, onOpenChange, onSuccess }: Assi
   const [tab, setTab] = useState<'SEARCH' | 'CREATE'>('SEARCH');
   const [newName, setNewName] = useState("");
   const [newGender, setNewGender] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      setQrPayload(null);
-      setSearch("");
-      loadStudents();
-    }
-  }, [open]);
 
   async function loadStudents() {
     setLoading(true);
@@ -46,13 +49,26 @@ export function AssignRFIDModal({ rfidTag, open, onOpenChange, onSuccess }: Assi
     setLoading(false);
   }
 
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => {
+      setQrPayload(null);
+      setSearch("");
+      void loadStudents();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
   const filtered = students.filter(s => 
     s.name?.toLowerCase().includes(search.toLowerCase()) || 
     s.phone?.includes(search) ||
     s.uniqueId?.toLowerCase().includes(search.toLowerCase())
   );
 
-  async function handleAssign(studentId: string, bookings?: any[]) {
+  async function handleAssign(
+    studentId: string,
+    bookings?: ActiveStudent["bookings"],
+  ) {
     if (assigning) return;
     setAssigning(true);
     try {
@@ -69,7 +85,7 @@ export function AssignRFIDModal({ rfidTag, open, onOpenChange, onSuccess }: Assi
         setQrPayload(res.qrPayload);
         if (onSuccess) onSuccess();
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to assign RFID");
     } finally {
       setAssigning(false);
@@ -89,7 +105,7 @@ export function AssignRFIDModal({ rfidTag, open, onOpenChange, onSuccess }: Assi
         setQrPayload(res.qrPayload);
         if (onSuccess) onSuccess();
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to create student");
     } finally {
       setAssigning(false);

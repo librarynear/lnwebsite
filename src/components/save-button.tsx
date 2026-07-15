@@ -7,24 +7,34 @@ export interface SavedLibrary {
   id: string;
   name: string;
   locality: string;
-  city: string;
+  city: string | null;
   metroStation: string | null;
   metroDistance: number | null;
   minPrice: number;
   imageUrl: string | null;
 }
 
+function readSavedLibraries(): SavedLibrary[] {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem("savedLibraries") || "[]",
+    );
+    return Array.isArray(parsed) ? parsed as SavedLibrary[] : [];
+  } catch {
+    return [];
+  }
+}
+
 export function SaveButton({ library }: { library: SavedLibrary }) {
   const [isSaved, setIsSaved] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    try {
-      const savedLibraries = JSON.parse(localStorage.getItem("savedLibraries") || "[]");
-      setIsSaved(savedLibraries.some((l: SavedLibrary) => l.id === library.id));
-    } catch (e) {
-      // ignore
-    }
+    const timer = window.setTimeout(() => {
+      setIsSaved(
+        readSavedLibraries().some((saved) => saved.id === library.id),
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [library.id]);
 
   const toggleSave = (e: React.MouseEvent) => {
@@ -32,7 +42,7 @@ export function SaveButton({ library }: { library: SavedLibrary }) {
     e.stopPropagation();
 
     try {
-      let savedLibraries = JSON.parse(localStorage.getItem("savedLibraries") || "[]");
+      let savedLibraries = readSavedLibraries();
       if (isSaved) {
         savedLibraries = savedLibraries.filter((l: SavedLibrary) => l.id !== library.id);
         setIsSaved(false);
@@ -51,8 +61,6 @@ export function SaveButton({ library }: { library: SavedLibrary }) {
   return (
     <button
       onClick={toggleSave}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className="absolute top-3 right-3 text-white/80 hover:text-white hover:scale-110 transition-all drop-shadow-md z-10"
       aria-label={isSaved ? "Remove from saved" : "Save library"}
     >

@@ -34,7 +34,7 @@ export default function DesignSamplePage() {
       <div className="max-w-2xl mx-auto space-y-12">
         <header className="mb-8">
           <h1 className="text-3xl font-black text-foreground tracking-tight">Plan Card Redesign</h1>
-          <p className="text-muted-foreground mt-2">A comparison between the current layout and the proposed "Flight Ticket" layouts.</p>
+          <p className="text-muted-foreground mt-2">A comparison between the current layout and the proposed &ldquo;Flight Ticket&rdquo; layouts.</p>
         </header>
 
         {/* CURRENT DESIGN (Approximation) */}

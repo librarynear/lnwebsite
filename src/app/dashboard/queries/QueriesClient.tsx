@@ -1,20 +1,32 @@
 'use client'
 import { formatStandardDate } from "@/lib/date-utils";
 
-import { MessageSquare, Star, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { MessageSquare, Star, AlertTriangle } from "lucide-react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { sendNotification } from "@/app/actions/notification-actions"
 
-export function QueriesClient({ queries }: { queries: any[] }) {
+interface DashboardQuery {
+  id: string;
+  studentId: string;
+  type: "FEEDBACK" | "COMPLAINT" | "REVIEW";
+  content: string;
+  rating: number | null;
+  createdAt: Date;
+  student: {
+    name: string;
+  };
+}
+
+export function QueriesClient({ queries }: { queries: DashboardQuery[] }) {
   const [replyOpen, setReplyOpen] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [replyingTo, setReplyingTo] = useState<DashboardQuery | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [sending, setSending] = useState(false);
 
-  const handleReplyClick = (query: any) => {
+  const handleReplyClick = (query: DashboardQuery) => {
     setReplyingTo(query);
     setReplyMessage("");
     setReplyOpen(true);
@@ -74,7 +86,7 @@ export function QueriesClient({ queries }: { queries: any[] }) {
               )}
               
               <p className="text-foreground leading-relaxed bg-muted/30 p-4 rounded-xl border border-border/50 mt-2">
-                "{query.content}"
+                &ldquo;{query.content}&rdquo;
               </p>
             </div>
             
@@ -94,7 +106,7 @@ export function QueriesClient({ queries }: { queries: any[] }) {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-2 font-semibold">Their message:</p>
-            <p className="text-sm bg-muted/30 p-3 rounded-lg border border-border mb-4 italic">"{replyingTo?.content}"</p>
+            <p className="text-sm bg-muted/30 p-3 rounded-lg border border-border mb-4 italic">&ldquo;{replyingTo?.content}&rdquo;</p>
             <Textarea
               placeholder="Type your reply here. They will receive it as an in-app notification..."
               value={replyMessage}

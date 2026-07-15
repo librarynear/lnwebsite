@@ -30,7 +30,7 @@ export default async function ApprovalsPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-heading font-bold text-foreground">Pending Approvals</h1>
-        <p className="text-muted-foreground mt-1">Review and approve "Pay at Reception" requests.</p>
+        <p className="text-muted-foreground mt-1">Review and approve &ldquo;Pay at Reception&rdquo; requests.</p>
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
@@ -40,7 +40,7 @@ export default async function ApprovalsPage() {
               <Clock className="w-8 h-8 opacity-50" />
             </div>
             <h3 className="text-xl font-bold text-foreground mb-2">No pending requests</h3>
-            <p className="text-muted-foreground">When students request a seat via "Pay at Reception", it will appear here for your approval.</p>
+            <p className="text-muted-foreground">When students request a seat via &ldquo;Pay at Reception&rdquo;, it will appear here for your approval.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

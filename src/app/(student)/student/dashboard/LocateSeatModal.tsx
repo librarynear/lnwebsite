@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, MapPin, Loader2 } from "lucide-react";
-import LiveSeatMap from "@/components/LiveSeatMap";
+import LiveSeatMap, { type LiveSeat } from "@/components/LiveSeatMap";
 import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 
 interface LocateSeatModalProps {
@@ -14,28 +14,49 @@ interface LocateSeatModalProps {
 export default function LocateSeatModal({ libraryId, targetSeatId, isFlexible }: LocateSeatModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<{ library: any; occupiedSeatIds: string[] } | null>(null);
+  const [data, setData] = useState<{
+    library: {
+      seats?: LiveSeat[] | null;
+    };
+    occupiedSeatIds: string[];
+  } | null>(null);
   const realtimeOccupiedSeatIds = useRealtimeSeats(libraryId, data?.occupiedSeatIds || []);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && !data) {
-      setLoading(true);
-      fetch(`/api/student/live-seats?libraryId=${libraryId}`)
-        .then(res => res.json())
-        .then(resData => {
-          if (resData.error) throw new Error(resData.error);
-          setData(resData);
-        })
-        .catch(err => setError(err.message))
-        .finally(() => setLoading(false));
+  const handleOpen = async () => {
+    setIsOpen(true);
+    if (data) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/student/live-seats?libraryId=${libraryId}`,
+      );
+      const responseData = await response.json() as {
+        error?: string;
+        library: {
+          seats?: LiveSeat[] | null;
+        };
+        occupiedSeatIds: string[];
+      };
+      if (responseData.error) throw new Error(responseData.error);
+      setData(responseData);
+    } catch (loadError: unknown) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load the seat map",
+      );
+    } finally {
+      setLoading(false);
     }
-  }, [isOpen, libraryId, data]);
+  };
 
   return (
     <>
       <button 
-        onClick={() => setIsOpen(true)}
+        onClick={() => void handleOpen()}
         className="w-full text-foreground/80 hover:text-foreground text-sm font-medium py-2 rounded-xl transition-colors flex items-center justify-center gap-2 hover:bg-muted/50 border border-border"
       >
         <MapPin className="w-4 h-4" /> Locate My Seat

@@ -19,9 +19,19 @@ export function getCashfreeBaseUrl(): string {
 const SUCCESS_STATUSES = new Set(['SUCCESS', 'VALID', 'VERIFIED', 'COMPLETED']);
 
 /** True only when the verification response represents a real success. */
-export function isCashfreeSuccess(data: any): boolean {
+export function isCashfreeSuccess(data: unknown): boolean {
   if (!data || typeof data !== 'object') return false;
-  const candidates = [data.status, data.verification_status, data.document?.status];
+  const response = data as Record<string, unknown>;
+  const document = (
+    response.document && typeof response.document === 'object'
+      ? response.document
+      : {}
+  ) as Record<string, unknown>;
+  const candidates = [
+    response.status,
+    response.verification_status,
+    document.status,
+  ];
   return candidates.some(
     (s) => typeof s === 'string' && SUCCESS_STATUSES.has(s.trim().toUpperCase()),
   );

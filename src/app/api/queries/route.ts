@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, query });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Feedback submission error:", error);
     return NextResponse.json({ error: 'Failed to submit feedback' }, { status: 500 });
   }

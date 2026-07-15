@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyRelayKey } from "@/lib/relay-auth";
 
+type HardwareLog = {
+  uid?: string;
+  doorId?: string;
+  timestamp: number;
+  status?: string;
+  reason?: string;
+};
+
 export async function POST(request: Request) {
   try {
     // Authenticate the ESP32 using the standard hardware API key
@@ -9,7 +17,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json() as {
+      libraryId?: string;
+      logs?: HardwareLog[];
+    };
     const { libraryId, logs } = body;
 
     if (!libraryId || !Array.isArray(logs)) {
@@ -27,7 +38,7 @@ export async function POST(request: Request) {
     const isUUID = (str: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
     // Parse the logs. The ESP32 sends: [{ uid: "...", doorId: "...", timestamp: 1718790000 }]
-    const insertData = await Promise.all(logs.map(async (log: any) => {
+    const insertData = await Promise.all(logs.map(async (log) => {
       let finalUserId = log.uid !== "UNKNOWN" && log.uid ? log.uid : null;
       let finalReason = log.reason || null;
 
@@ -66,7 +77,7 @@ export async function POST(request: Request) {
       }
 
       return {
-        libraryId: body.libraryId,
+        libraryId,
         userId: finalUserId,
         doorId: log.doorId || "MAIN_GATE",
         timestamp: new Date(log.timestamp * 1000),
@@ -156,7 +167,7 @@ export async function POST(request: Request) {
     // Return a solid HTTP 200 to act as an ACK so the ESP32 knows it can delete the logs from flash/RAM
     return NextResponse.json({ success: true, inserted: finalInsertData.length });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to process hardware entry logs:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

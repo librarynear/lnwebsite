@@ -6,16 +6,94 @@ import { HomeSearchShell } from "@/components/home-search-shell"
 import Image from "next/image"
 import { SaveButton } from "@/components/save-button"
 import { redis } from "@/lib/redis"
-import { Metadata } from "next"
+import type { Metadata } from "next"
 
+type LocalityRouteParams = {
+  city: string;
+  locality: string;
+};
 
+type LibrarySearchParams = {
+  query?: string | string[];
+  lat?: string | string[];
+  lng?: string | string[];
+};
+
+type LibraryListItem = {
+  id: string;
+  name: string;
+  address: string;
+  locality: string | null;
+  city: string | null;
+  metroStation: string | null;
+  metroDistance: number | null;
+  photos: string[];
+  plans: Array<{
+    validityDays: number;
+    price: number;
+  }>;
+};
+
+type LocalityLibrariesPageProps = {
+  params: Promise<LocalityRouteParams>;
+  searchParams: Promise<LibrarySearchParams>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isLibraryListItem(value: unknown): value is LibraryListItem {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.address === "string" &&
+    isNullableString(value.locality) &&
+    isNullableString(value.city) &&
+    isNullableString(value.metroStation) &&
+    (value.metroDistance === null || typeof value.metroDistance === "number") &&
+    Array.isArray(value.photos) &&
+    value.photos.every((photo: unknown) => typeof photo === "string") &&
+    Array.isArray(value.plans) &&
+    value.plans.every(
+      (plan: unknown) =>
+        isRecord(plan) &&
+        typeof plan.validityDays === "number" &&
+        typeof plan.price === "number",
+    )
+  );
+}
+
+function parseCachedLibraries(value: unknown): LibraryListItem[] | null {
+  let parsed = value;
+
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  if (!Array.isArray(parsed)) return null;
+  const entries: unknown[] = parsed;
+  return entries.every(isLibraryListItem) ? entries : null;
+}
 
 function capitalize(str: string) {
   if (!str) return '';
   return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 }
 
-export async function generateMetadata(props: any): Promise<Metadata> {
+export async function generateMetadata(
+  props: Pick<LocalityLibrariesPageProps, "params">,
+): Promise<Metadata> {
   const params = await props.params;
   const city = capitalize(decodeURIComponent(params.city));
   const locality = capitalize(decodeURIComponent(params.locality));
@@ -32,7 +110,7 @@ export async function generateMetadata(props: any): Promise<Metadata> {
   }
 }
 
-export default async function LocalityLibrariesPage(props: any) {
+export default async function LocalityLibrariesPage(props: LocalityLibrariesPageProps) {
   const params = await props.params;
   const cityName = decodeURIComponent(params.city);
   const displayCity = capitalize(cityName);
@@ -65,20 +143,38 @@ export default async function LocalityLibrariesPage(props: any) {
   )
 }
 
-async function LibraryList({ city, displayCity, locality, displayLocality, searchParamsPromise, paramsCity }: { city: string, displayCity: string, locality: string, displayLocality: string, searchParamsPromise: Promise<any>, paramsCity: string }) {
+type LibraryListProps = {
+  city: string;
+  displayCity: string;
+  locality: string;
+  displayLocality: string;
+  searchParamsPromise: Promise<LibrarySearchParams>;
+  paramsCity: string;
+};
+
+async function LibraryList({
+  city,
+  displayCity,
+  locality,
+  displayLocality,
+  searchParamsPromise,
+  paramsCity,
+}: LibraryListProps) {
   const searchParams = await searchParamsPromise;
-  const query = searchParams?.query || "";
-  const isNearMe = !!searchParams?.lat && !!searchParams?.lng;
+  const queryParam = searchParams.query;
+  const query = typeof queryParam === "string" ? queryParam : queryParam?.[0] ?? "";
+  const isNearMe = Boolean(searchParams.lat && searchParams.lng);
 
   const cacheKey = `libraries:city:${city}:locality:${locality}:search:${query}`;
-  let libraries: any = null;
+  let libraries: LibraryListItem[] | null = null;
 
   if (!isNearMe) {
-    libraries = await redis.get(cacheKey);
+    const cachedLibraries = await redis.get<LibraryListItem[] | string>(cacheKey);
+    libraries = parseCachedLibraries(cachedLibraries);
   }
 
   if (!libraries) {
-    libraries = await prisma.library.findMany({
+    const fetchedLibraries = await prisma.library.findMany({
       where: {
         kycStatus: "APPROVED",
         city: { equals: city, mode: 'insensitive' },
@@ -96,15 +192,14 @@ async function LibraryList({ city, displayCity, locality, displayLocality, searc
       take: 60,
       orderBy: { createdAt: 'desc' }
     });
+    libraries = fetchedLibraries;
 
-    if (!isNearMe && libraries) {
+    if (!isNearMe) {
       await redis.set(cacheKey, JSON.stringify(libraries), { ex: 60 * 60 });
     }
-  } else if (typeof libraries === 'string') {
-    libraries = JSON.parse(libraries);
   }
 
-  libraries.sort((a: any, b: any) => {
+  libraries.sort((a, b) => {
     if (isNearMe) {
       const distA = a.metroDistance || 999;
       const distB = b.metroDistance || 999;
@@ -118,7 +213,7 @@ async function LibraryList({ city, displayCity, locality, displayLocality, searc
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": `Study Libraries in ${displayLocality}, ${displayCity}`,
-    "itemListElement": libraries.slice(0, 25).map((lib: any, i: number) => ({
+    "itemListElement": libraries.slice(0, 25).map((lib, i) => ({
       "@type": "ListItem",
       "position": i + 1,
       "url": `${appUrl}/library/${lib.id}`,
@@ -160,11 +255,11 @@ async function LibraryList({ city, displayCity, locality, displayLocality, searc
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
-          {libraries.map((library: any, index: number) => {
-            const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+          {libraries.map((library, index) => {
+            const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
             const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
             const minPrice = plansToUse.length > 0 
-              ? Math.min(...plansToUse.map((p: any) => p.price)) 
+              ? Math.min(...plansToUse.map((plan) => plan.price))
               : 0;
 
             const libraryLocality = library.locality || library.address.split(',')[0];
@@ -198,7 +293,7 @@ async function LibraryList({ city, displayCity, locality, displayLocality, searc
                       id: library.id,
                       name: library.name,
                       locality: libraryLocality,
-                      city: library.city,
+                      city: library.city || displayCity,
                       metroStation: library.metroStation,
                       metroDistance: library.metroDistance,
                       minPrice: minPrice,

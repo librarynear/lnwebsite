@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma"
 import { revalidatePath, updateTag } from "next/cache"
 import { PlanType } from "@prisma/client"
 import { getSession } from "./auth-actions"
-import { redis } from "@/lib/redis"
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache"
 import {
   parseMoney,
   parseDiscount,
@@ -13,19 +13,26 @@ import {
   requireString,
 } from "@/lib/validation"
 
-const VALID_PLAN_TYPES: PlanType[] = ['FIXED', 'FLEXIBLE'];
+const VALID_PLAN_TYPES = new Set<PlanType>(['FIXED', 'FLEXIBLE']);
 
-function parsePlanType(value: FormDataEntryValue | string | null): PlanType {
-  const t = typeof value === 'string' ? value : '';
-  if (!VALID_PLAN_TYPES.includes(t as PlanType)) {
+function isPlanType(value: unknown): value is PlanType {
+  return typeof value === 'string' && VALID_PLAN_TYPES.has(value as PlanType);
+}
+
+function parsePlanType(value: unknown): PlanType {
+  if (!isPlanType(value)) {
     throw new Error("Invalid plan type");
   }
-  return t as PlanType;
+  return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 const MAX_BATCH_PLANS = 100;
 
-export async function addPlan(formData: FormData) {
+export async function addPlan(formData: FormData): Promise<void> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -43,50 +50,55 @@ export async function addPlan(formData: FormData) {
     data: { name, type, validityDays, durationHours, price, discount, libraryId: library.id }
   });
 
-  await redis.del(`library:${library.id}`);
+  await invalidateLibraryRuntimeCache(library.id);
   updateTag(`library:${library.id}`);
   updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
 
-export async function batchAddPlans(plansData: string) {
+export async function batchAddPlans(plansData: string): Promise<void> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
   const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
   if (!library) throw new Error("No library found to attach the plan to.");
 
-  let plans: any[];
+  let parsedPlans: unknown;
   try {
-    plans = JSON.parse(plansData);
+    parsedPlans = JSON.parse(plansData) as unknown;
   } catch {
     throw new Error("Invalid plans payload");
   }
-  if (!Array.isArray(plans)) throw new Error("Invalid plans payload");
+  if (!Array.isArray(parsedPlans)) throw new Error("Invalid plans payload");
+  const plans: unknown[] = parsedPlans;
   if (plans.length === 0) return;
   if (plans.length > MAX_BATCH_PLANS) throw new Error(`Too many plans (max ${MAX_BATCH_PLANS})`);
 
-  const data = plans.map((p: any) => ({
-    name: requireString(p?.name, "Plan name", 120),
-    type: parsePlanType(p?.type),
-    validityDays: parsePositiveInt(String(p?.validityDays ?? ''), "Validity days", 1, 3650),
-    durationHours: parseOptionalInt(p?.durationHours != null ? String(p.durationHours) : '', "Duration hours", 1, 24),
-    price: parseMoney(String(p?.price ?? ''), "Price"),
-    discount: parseDiscount(p?.discount != null ? String(p.discount) : ''),
-    libraryId: library.id,
-  }));
+  const data = plans.map((plan) => {
+    if (!isRecord(plan)) throw new Error("Invalid plans payload");
+
+    return {
+      name: requireString(typeof plan.name === 'string' ? plan.name : null, "Plan name", 120),
+      type: parsePlanType(plan.type),
+      validityDays: parsePositiveInt(String(plan.validityDays ?? ''), "Validity days", 1, 3650),
+      durationHours: parseOptionalInt(plan.durationHours != null ? String(plan.durationHours) : '', "Duration hours", 1, 24),
+      price: parseMoney(String(plan.price ?? ''), "Price"),
+      discount: parseDiscount(plan.discount != null ? String(plan.discount) : ''),
+      libraryId: library.id,
+    };
+  });
 
   await prisma.plan.createMany({ data });
 
-  await redis.del(`library:${library.id}`);
+  await invalidateLibraryRuntimeCache(library.id);
   updateTag(`library:${library.id}`);
   updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
 
-export async function deletePlan(planId: string) {
+export async function deletePlan(planId: string): Promise<void> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -107,14 +119,14 @@ export async function deletePlan(planId: string) {
     await prisma.plan.delete({ where: { id: planId } });
   }
 
-  await redis.del(`library:${library.id}`);
+  await invalidateLibraryRuntimeCache(library.id);
   updateTag(`library:${library.id}`);
   updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);
   revalidatePath("/dashboard/plans");
 }
 
-export async function editPlan(formData: FormData) {
+export async function editPlan(formData: FormData): Promise<void> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
 
@@ -134,7 +146,7 @@ export async function editPlan(formData: FormData) {
     data: { name, type, validityDays, durationHours, price, discount }
   });
 
-  await redis.del(`library:${library.id}`);
+  await invalidateLibraryRuntimeCache(library.id);
   updateTag(`library:${library.id}`);
   updateTag('libraries:featured');
   revalidatePath(`/library/${library.id}`);

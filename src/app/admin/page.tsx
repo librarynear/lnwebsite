@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { approveLibrary, rejectLibrary } from "@/app/actions/admin-actions";
-import { Check, X, Edit, Eye, MapPin } from "lucide-react";
+import { Check, X, Eye, MapPin } from "lucide-react";
 import { getSession } from "@/app/actions/auth-actions";
 import { redirect } from "next/navigation";
 

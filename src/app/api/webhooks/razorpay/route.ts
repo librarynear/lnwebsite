@@ -1,212 +1,288 @@
-import { NextResponse } from "next/server";
-import crypto from "crypto";
-import prisma from "@/lib/prisma";
-import { computeExpectedAmountPaise, amountMatches } from "@/lib/booking-pricing";
+import crypto from "crypto"
+import { BookingIntentStatus } from "@prisma/client"
+import { NextResponse } from "next/server"
+import prisma from "@/lib/prisma"
+import {
+  BookingAuthorityError,
+  cancelBookingIntentByReference,
+  confirmOnlinePayment,
+  enqueueUnmatchedPaymentRefund,
+} from "@/lib/booking-authority"
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache"
+import { reconcileRefundStatus } from "@/lib/refund-worker"
+
+type PaymentLinkEntity = {
+  id?: string
+  reference_id?: string
+  status?: string
+}
+
+type PaymentEntity = {
+  id?: string
+  amount?: number
+  currency?: string
+  status?: string
+  created_at?: number
+}
+
+type AccountEntity = {
+  id?: string
+}
+
+type RefundEntity = {
+  id?: string
+  payment_id?: string
+  amount?: number
+  currency?: string
+  status?: "pending" | "processed" | "failed"
+  receipt?: string | null
+  notes?: Record<string, unknown>
+}
+
+type RazorpayWebhookEvent = {
+  event?: string
+  payload?: {
+    payment_link?: { entity?: PaymentLinkEntity }
+    payment?: { entity?: PaymentEntity }
+    account?: { entity?: AccountEntity }
+    refund?: { entity?: RefundEntity }
+  }
+}
+
+function signaturesMatch(expectedHex: string, providedHex: string): boolean {
+  const expected = Buffer.from(expectedHex, "hex")
+  const provided = Buffer.from(providedHex, "hex")
+  return expected.length === provided.length && crypto.timingSafeEqual(expected, provided)
+}
+
+async function recordProcessedEvent(
+  eventId: string,
+  eventType: string,
+  payloadHash: string,
+): Promise<void> {
+  await prisma.processedWebhookEvent.upsert({
+    where: { id: eventId },
+    create: {
+      id: eventId,
+      eventType,
+      payloadHash,
+    },
+    update: {},
+  })
+}
+
+async function updateKycStatus(
+  accountId: string,
+  status: "APPROVED" | "REJECTED",
+): Promise<void> {
+  const libraries = await prisma.library.findMany({
+    where: { paymentAccountId: accountId },
+    select: { id: true },
+  })
+  await prisma.library.updateMany({
+    where: { paymentAccountId: accountId },
+    data: { kycStatus: status },
+  })
+  await Promise.all(
+    libraries.map(({ id }) => invalidateLibraryRuntimeCache(id)),
+  )
+}
 
 export async function POST(req: Request) {
+  const rawBody = await req.text()
+  const signature = req.headers.get("x-razorpay-signature")
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+  if (!webhookSecret || !signature) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex")
+  if (!signaturesMatch(expectedSignature, signature)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+  }
+
+  const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex")
+  const eventId = req.headers.get("x-razorpay-event-id") ?? payloadHash
+
   try {
-    const rawBody = await req.text();
-    const signature = req.headers.get("x-razorpay-signature");
-
-    // MANDATORY: Verify webhook signature
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!webhookSecret || !signature) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const existing = await prisma.processedWebhookEvent.findUnique({
+      where: { id: eventId },
+      select: { id: true, payloadHash: true },
+    })
+    if (existing) {
+      if (existing.payloadHash !== payloadHash) {
+        return NextResponse.json(
+          { error: "Webhook event ID payload mismatch" },
+          { status: 409 },
+        )
+      }
+      return NextResponse.json({ status: "duplicate" })
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", webhookSecret)
-      .update(rawBody)
-      .digest("hex");
+    const event = JSON.parse(rawBody) as RazorpayWebhookEvent
+    const eventType = event.event ?? "unknown"
 
-    // Timing-safe comparison to prevent timing attacks. Compare byte lengths
-    // first — timingSafeEqual throws on mismatched lengths, which would surface
-    // as a 500 and leak that the length was wrong.
-    const expectedBuf = Buffer.from(expectedSignature, 'hex');
-    const providedBuf = Buffer.from(signature, 'hex');
-    if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    if (
+      eventType === "account.instantiated"
+      || eventType === "account.funds_cleared"
+      || eventType === "account.activated"
+      || eventType === "account.rejected"
+    ) {
+      const accountId = event.payload?.account?.entity?.id
+      if (accountId) {
+        await updateKycStatus(
+          accountId,
+          eventType === "account.rejected" ? "REJECTED" : "APPROVED",
+        )
+      }
+      await recordProcessedEvent(eventId, eventType, payloadHash)
+      return NextResponse.json({ status: "ok" })
     }
 
-    const event = JSON.parse(rawBody);
-
-    if (event.event === "account.instantiated" || event.event === "account.funds_cleared" || event.event === "account.activated") {
-      const accountId = event.payload.account.entity.id;
-      if (accountId) {
-        const libraries = await prisma.library.findMany({ where: { paymentAccountId: accountId } });
-        await prisma.library.updateMany({
-          where: { paymentAccountId: accountId },
-          data: { kycStatus: "APPROVED" }
-        });
-        const { redis } = await import("@/lib/redis");
-        for (const lib of libraries) {
-          await redis.del(`library:${lib.id}`);
-        }
+    if (
+      eventType === "refund.created"
+      || eventType === "refund.processed"
+      || eventType === "refund.failed"
+    ) {
+      const refund = event.payload?.refund?.entity
+      const providerRefundId = refund?.id
+      const paymentId = refund?.payment_id
+      const amountPaise = Number(refund?.amount)
+      const currency = refund?.currency
+      const status = refund?.status
+      if (
+        !providerRefundId
+        || !paymentId
+        || !Number.isFinite(amountPaise)
+        || !currency
+        || !status
+      ) {
+        return NextResponse.json(
+          { error: "Incomplete refund payload" },
+          { status: 400 },
+        )
       }
-    } else if (event.event === "account.rejected") {
-      const accountId = event.payload.account.entity.id;
-      if (accountId) {
-        const libraries = await prisma.library.findMany({ where: { paymentAccountId: accountId } });
-        await prisma.library.updateMany({
-          where: { paymentAccountId: accountId },
-          data: { kycStatus: "REJECTED" }
-        });
-        const { redis } = await import("@/lib/redis");
-        for (const lib of libraries) {
-          await redis.del(`library:${lib.id}`);
-        }
+
+      const refundTaskId =
+        typeof refund.notes?.refundTaskId === "string"
+          ? refund.notes.refundTaskId
+          : refund.receipt
+      const matched = await reconcileRefundStatus({
+        providerRefundId,
+        paymentId,
+        amountPaise,
+        currency,
+        status,
+        refundTaskId,
+      })
+      await recordProcessedEvent(eventId, eventType, payloadHash)
+      return NextResponse.json({
+        status: matched ? "ok" : "ignored",
+      })
+    }
+
+    if (eventType === "payment_link.paid") {
+      const paymentLink = event.payload?.payment_link?.entity
+      const payment = event.payload?.payment?.entity
+      const referenceId = paymentLink?.reference_id
+      const providerLinkId = paymentLink?.id
+      const paymentId = payment?.id
+      const paidAmountPaise = Number(payment?.amount)
+      const currency = payment?.currency
+      const paidAtSeconds = Number(payment?.created_at)
+
+      if (
+        !referenceId
+        || !providerLinkId
+        || !paymentId
+        || !Number.isFinite(paidAmountPaise)
+        || !currency
+        || !Number.isFinite(paidAtSeconds)
+        || payment?.status !== "captured"
+        || paymentLink?.status !== "paid"
+      ) {
+        return NextResponse.json(
+          { error: "Incomplete paid Payment Link payload" },
+          { status: 400 },
+        )
       }
-    } else if (event.event === "payment.captured" || event.event === "order.paid") {
-      let orderId = event.event === "order.paid"
-        ? event.payload.order.entity.id
-        : event.payload.payment.entity.order_id;
 
-      // Amount actually paid, as reported by the (signature-verified) event.
-      const paidPaise = event.event === "order.paid"
-        ? Number(event.payload.payment?.entity?.amount ?? event.payload.order?.entity?.amount_paid)
-        : Number(event.payload.payment.entity.amount);
-
-      if (orderId) {
-        let bookingCreated = false;
-        try {
-          await prisma.$transaction(async (tx) => {
-            const existingByOrder = await tx.booking.findFirst({ where: { paymentRef: orderId } });
-            if (existingByOrder) {
-              bookingCreated = true;
-              return;
-            }
-
-            const { redis } = await import("@/lib/redis");
-            const intentStr = await redis.get(`razorpay:intent:${orderId}`);
-            if (!intentStr) return;
-
-            const intent = typeof intentStr === 'string' ? JSON.parse(intentStr) : intentStr;
-            const plan = await tx.plan.findUnique({ where: { id: intent.planId } });
-            if (!plan) {
-              throw new Error("PLAN_NOT_FOUND");
-            }
-
-            // Verify the paid amount matches the server-computed price before
-            // fulfilling. Without this, a tampered order amount would still get
-            // a CONFIRMED booking created here.
-            const expectedPaise = await computeExpectedAmountPaise({
-              planId: intent.planId,
-              libraryId: intent.libraryId,
-              seatId: intent.seatId,
-              hasLocker: intent.hasLocker,
-              standaloneLockerId: intent.standaloneLockerId,
-            });
-            if (expectedPaise === null || !Number.isFinite(paidPaise) || !amountMatches(paidPaise, expectedPaise)) {
-              throw new Error("AMOUNT_MISMATCH");
-            }
-
-            const activeBooking = await tx.booking.findFirst({
-              where: {
-                studentId: intent.studentId,
-                libraryId: intent.libraryId,
-                status: 'CONFIRMED',
-                endTime: { gt: new Date() },
-              },
-              orderBy: { endTime: 'desc' },
-            });
-
-            const startTime = activeBooking ? new Date(activeBooking.endTime) : new Date();
-            const endTime = new Date(startTime);
-            endTime.setDate(endTime.getDate() + plan.validityDays);
-
-            if (intent.seatId) {
-              const seatClash = await tx.booking.findFirst({
-                where: {
-                  seatId: intent.seatId,
-                  status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-                  startTime: { lt: endTime },
-                  endTime: { gt: startTime },
-                },
-              });
-              if (seatClash) throw new Error("SEAT_ALREADY_BOOKED");
-            }
-
-            if (intent.standaloneLockerId) {
-              const lockerClash = await tx.booking.findFirst({
-                where: {
-                  standaloneLockerId: intent.standaloneLockerId,
-                  status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-                  endTime: { gt: new Date() },
-                },
-              });
-              if (lockerClash) throw new Error("LOCKER_ALREADY_BOOKED");
-            }
-
-            await tx.booking.create({
-              data: {
-                studentId: intent.studentId,
-                libraryId: intent.libraryId,
-                planId: intent.planId,
-                seatId: intent.seatId,
-                hasLocker: intent.hasLocker,
-                standaloneLockerId: intent.standaloneLockerId,
-                startTime,
-                endTime,
-                status: "CONFIRMED",
-                paymentRef: orderId,
-              },
-            });
-
-            bookingCreated = true;
-
-            await redis.del(`razorpay:intent:${orderId}`);
-            if (intent.orderId && intent.orderId !== orderId) {
-              await redis.del(`razorpay:intent:${intent.orderId}`);
-            }
-          }, { isolationLevel: 'Serializable' });
-        } catch (err: any) {
-          if (err.message === "SEAT_ALREADY_BOOKED" || err.message === "LOCKER_ALREADY_BOOKED" || err.message === "AMOUNT_MISMATCH") {
-            try {
-              const Razorpay = require('razorpay');
-              const rzp = new Razorpay({
-                key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-                key_secret: process.env.RAZORPAY_KEY_SECRET!,
-              });
-              const paymentId = event.event === "order.paid"
-                ? event.payload.payment?.entity?.id
-                : event.payload.payment.entity.id;
-              if (paymentId) {
-                await rzp.payments.refund(paymentId, {});
-                console.log(`Refunded payment ${paymentId} due to ${err.message === "AMOUNT_MISMATCH" ? 'amount mismatch' : 'conflict'}`);
-              }
-            } catch (refundErr) {
-              console.error("Refund failed:", refundErr);
-            }
-          } else if (err.message === "PLAN_NOT_FOUND") {
-            return NextResponse.json({ error: "Plan not found" }, { status: 500 });
-          } else {
-            throw err;
-          }
-        }
-      }
-    } else if (event.event === "payment.authorized") {
-      const paymentId = event.payload.payment.entity.id;
-      const orderId = event.payload.payment.entity.order_id;
-      const amount = event.payload.payment.entity.amount;
-      const currency = event.payload.payment.entity.currency;
-      
+      let result: Awaited<ReturnType<typeof confirmOnlinePayment>>
       try {
-        const Razorpay = require('razorpay');
-        const rzp = new Razorpay({
-          key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-          key_secret: process.env.RAZORPAY_KEY_SECRET!
-        });
-        await rzp.payments.capture(paymentId, amount, currency);
-        console.log(`Webhook auto-captured payment ${paymentId} for order ${orderId}`);
-        // Once captured, Razorpay will fire payment.captured which will create the booking
-      } catch (err) {
-        console.error(`Failed to auto-capture payment ${paymentId}:`, err);
+        result = await confirmOnlinePayment({
+          referenceId,
+          providerLinkId,
+          paymentId,
+          paidAmountPaise,
+          paidAt: new Date(paidAtSeconds * 1000),
+          currency,
+        })
+      } catch (error) {
+        if (
+          error instanceof BookingAuthorityError
+          && error.code === "INTENT_NOT_FOUND"
+        ) {
+          const queued = await enqueueUnmatchedPaymentRefund({
+            paymentId,
+            amountPaise: paidAmountPaise,
+            currency,
+            reason: "BOOKING_INTENT_NOT_FOUND",
+          })
+          await recordProcessedEvent(eventId, eventType, payloadHash)
+          return NextResponse.json({
+            status: queued ? "refund_pending" : "ignored",
+            reason: error.code,
+          })
+        }
+        if (
+          error instanceof BookingAuthorityError
+          && error.code === "PAYMENT_ALREADY_USED"
+        ) {
+          await recordProcessedEvent(eventId, eventType, payloadHash)
+          return NextResponse.json({ status: "ignored", reason: error.code })
+        }
+        throw error
       }
+
+      if (result.status === "CONFIRMED") {
+        await invalidateLibraryRuntimeCache(result.booking.libraryId)
+      }
+      await recordProcessedEvent(eventId, eventType, payloadHash)
+      return NextResponse.json({
+        status: result.status === "CONFIRMED" ? "confirmed" : "refund_pending",
+      })
     }
 
-    return NextResponse.json({ status: "ok" });
+    if (
+      eventType === "payment_link.expired"
+      || eventType === "payment_link.cancelled"
+    ) {
+      const referenceId = event.payload?.payment_link?.entity?.reference_id
+      if (referenceId) {
+        await cancelBookingIntentByReference(
+          referenceId,
+          eventType === "payment_link.expired"
+            ? "PAYMENT_LINK_EXPIRED"
+            : "PAYMENT_LINK_CANCELLED",
+          eventType === "payment_link.expired"
+            ? BookingIntentStatus.EXPIRED
+            : BookingIntentStatus.CANCELLED,
+        )
+      }
+      await recordProcessedEvent(eventId, eventType, payloadHash)
+      return NextResponse.json({ status: "ok" })
+    }
+
+    await recordProcessedEvent(eventId, eventType, payloadHash)
+    return NextResponse.json({ status: "ignored" })
   } catch (error) {
-    console.error("Webhook error:", error);
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
+    console.error("Razorpay webhook processing failed:", error)
+    return NextResponse.json(
+      { error: "Webhook handler failed" },
+      { status: 500 },
+    )
   }
 }

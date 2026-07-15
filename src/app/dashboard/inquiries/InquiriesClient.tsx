@@ -19,6 +19,10 @@ interface Inquiry {
   createdAt: Date;
 }
 
+function isInquiryStatus(value: string): value is Inquiry["status"] {
+  return value === "NEW" || value === "CONTACTED" || value === "CONVERTED" || value === "CLOSED";
+}
+
 export function InquiriesClient({ initialInquiries, libraryId }: { initialInquiries: Inquiry[], libraryId: string }) {
   const [inquiries, setInquiries] = useState<Inquiry[]>(initialInquiries);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -44,7 +48,7 @@ export function InquiriesClient({ initialInquiries, libraryId }: { initialInquir
         status: 'NEW',
         createdAt: new Date(),
       };
-      setInquiries([newInquiry, ...inquiries]);
+      setInquiries(prev => [newInquiry, ...prev]);
     } else {
       toast.error("Failed to add inquiry");
     }
@@ -113,7 +117,7 @@ export function InquiriesClient({ initialInquiries, libraryId }: { initialInquir
               {inq.status === 'NEW' && <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full">NEW</span>}
             </div>
             <p className="text-sm font-medium text-foreground"><a href={`tel:${inq.phone}`} className="hover:underline">{inq.phone}</a></p>
-            {inq.message && <p className="text-sm text-muted-foreground mt-2 italic">"{inq.message}"</p>}
+            {inq.message && <p className="text-sm text-muted-foreground mt-2 italic">&ldquo;{inq.message}&rdquo;</p>}
             <p className="text-xs text-muted-foreground mt-2">
               Submitted on {formatStandardDate(inq.createdAt)} at {new Date(inq.createdAt).toLocaleTimeString()}
             </p>
@@ -123,7 +127,12 @@ export function InquiriesClient({ initialInquiries, libraryId }: { initialInquir
             <select
               disabled={updatingId === inq.id}
               value={inq.status}
-              onChange={(e) => handleStatusChange(inq.id, e.target.value as any)}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                if (isInquiryStatus(newStatus)) {
+                  void handleStatusChange(inq.id, newStatus);
+                }
+              }}
               className="text-sm border border-input rounded-md px-3 py-2 bg-background focus:ring-primary focus:border-primary"
             >
               <option value="NEW">New</option>

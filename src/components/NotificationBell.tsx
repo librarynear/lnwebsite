@@ -5,11 +5,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useState } from "react";
 import { markNotificationRead } from "@/app/actions/notification-actions";
 import { useRouter } from "next/navigation";
+import type { Notification } from "@prisma/client";
 
 export function NotificationBell({ 
   notifications 
 }: { 
-  notifications: any[] 
+  notifications: Notification[]
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

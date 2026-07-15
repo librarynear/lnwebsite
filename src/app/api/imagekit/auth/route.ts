@@ -21,7 +21,7 @@ export async function GET() {
 
     const authParams = getImageKitClient().getAuthenticationParameters();
     return NextResponse.json(authParams);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to generate auth params" }, { status: 500 });
   }
 }

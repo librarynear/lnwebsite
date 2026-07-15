@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const fs = require('fs');
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
   namedCurve: 'prime256v1', // Also known as secp256r1

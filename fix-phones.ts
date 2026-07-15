@@ -53,8 +53,9 @@ async function main() {
         } else {
           console.log(`User ${user.id} (${user.name}) does not have a phone number in Firebase either.`);
         }
-      } catch (err: any) {
-        console.error(`Error processing user ${user.id} (authId: ${user.authId}):`, err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Error processing user ${user.id} (authId: ${user.authId}):`, message);
       }
     }
     console.log(`Successfully fixed ${fixedCount} out of ${usersToFix.length} users.`);

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { getStudentProfile } from "@/app/actions/student-actions"
 import toast from "react-hot-toast"
 import { Loader2, ShieldCheck, CalendarClock, Clock } from "lucide-react"
+import type { Prisma } from "@prisma/client"
 
 interface StudentProfileModalProps {
   studentId: string | null;
@@ -16,30 +17,47 @@ interface StudentProfileModalProps {
   onRenewPlan?: (bookingId: string, planId: string, seatId: string) => void;
 }
 
+type ProfileStudent = Prisma.UserGetPayload<{
+  include: {
+    bookings: {
+      include: {
+        plan: true;
+      };
+    };
+  };
+}>;
+
 export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSeat, onRenewPlan }: StudentProfileModalProps) {
-  const [profileStudent, setProfileStudent] = useState<any>(null);
+  const [profileStudent, setProfileStudent] = useState<ProfileStudent | null>(null);
   const [loading, setLoading] = useState(false);
   const now = new Date();
 
   useEffect(() => {
-    if (open && studentId) {
-      loadProfile(studentId);
-    } else {
-      setProfileStudent(null);
-    }
-  }, [open, studentId]);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      if (!open || !studentId) {
+        setProfileStudent(null);
+        return;
+      }
 
-  async function loadProfile(id: string) {
-    setLoading(true);
-    const res = await getStudentProfile(id);
-    if (res.success && res.student) {
-      setProfileStudent(res.student);
-    } else {
-      toast.error("Failed to load profile");
-      onOpenChange(false);
-    }
-    setLoading(false);
-  }
+      setLoading(true);
+      const res = await getStudentProfile(studentId);
+      if (cancelled) return;
+
+      if (res.success && res.student) {
+        setProfileStudent(res.student);
+      } else {
+        toast.error("Failed to load profile");
+        onOpenChange(false);
+      }
+      setLoading(false);
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, studentId, onOpenChange]);
 
   function formatStandardDate(isoString: string | Date | undefined | null) {
     if (!isoString) return "N/A";
@@ -64,6 +82,8 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-primary/10 text-primary font-heading font-black text-2xl flex items-center justify-center rounded-full overflow-hidden shrink-0">
                 {profileStudent.profilePhotoUrl ? (
+                  // User profile photos may use arbitrary external providers.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={profileStudent.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   profileStudent.name?.charAt(0) || "U"
@@ -111,7 +131,7 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                 {profileStudent.bookings?.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No bookings found in this library.</p>
                 ) : (
-                  profileStudent.bookings?.map((b: any) => (
+                  profileStudent.bookings?.map((b) => (
                     <div key={b.id} className="bg-card rounded-2xl border border-border shadow-sm flex flex-col relative overflow-hidden group">
                       <div className={`absolute top-0 w-full h-1 ${b.plan.type === 'FIXED' ? 'bg-primary' : 'bg-warning'}`} />
                       

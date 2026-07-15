@@ -49,3 +49,5 @@ nodemcu_qr_access/config.h
 /scratch/
 /preserved_before_testing/
 .env*
+
+.env*

@@ -5,8 +5,15 @@ import { ArrowRight, Heart, Star, MapPin } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import type { Prisma } from "@prisma/client"
 
-export function FeaturedCarousel({ libraries }: { libraries: any[] }) {
+type FeaturedLibrary = Prisma.LibraryGetPayload<{
+  include: {
+    plans: true;
+  };
+}>;
+
+export function FeaturedCarousel({ libraries }: { libraries: FeaturedLibrary[] }) {
   const router = useRouter();
 
   if (!libraries || libraries.length === 0) return null;
@@ -52,9 +59,9 @@ export function FeaturedCarousel({ libraries }: { libraries: any[] }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {libraries.map((lib, idx) => {
-            const monthlyPlans = lib.plans?.filter((p: any) => p.validityDays >= 28) || [];
+            const monthlyPlans = lib.plans?.filter((plan) => plan.validityDays >= 28) || [];
             const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : (lib.plans || []);
-            const minPrice = plansToUse.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 500;
+            const minPrice = plansToUse.length > 0 ? Math.min(...plansToUse.map((plan) => plan.price)) : 500;
             const image = lib.photos?.[0] || "https://images.unsplash.com/photo-1568667256549-094345857637?w=800&q=80";
             
             return (

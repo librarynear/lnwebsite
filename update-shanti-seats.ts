@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, SeatType, type Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -25,14 +25,14 @@ async function main() {
   const COLS = 10;
   let currentIndex = 0; // To track grid position
 
-  const seatsData = [];
+  const seatsData: Prisma.SeatUncheckedCreateInput[] = [];
 
   // 1 to 87: Reservable (NORMAL)
   for (let i = 1; i <= 87; i++) {
     seatsData.push({
       libraryId: library.id,
       name: i.toString(),
-      type: "NORMAL" as any,
+      type: SeatType.NORMAL,
       gridX: currentIndex % COLS,
       gridY: Math.floor(currentIndex / COLS),
       hasLocker: false,
@@ -48,7 +48,7 @@ async function main() {
     seatsData.push({
       libraryId: library.id,
       name: i.toString(),
-      type: "PREMIUM" as any,
+      type: SeatType.PREMIUM,
       gridX: currentIndex % COLS,
       gridY: Math.floor(currentIndex / COLS),
       hasLocker: true,
@@ -64,7 +64,7 @@ async function main() {
     seatsData.push({
       libraryId: library.id,
       name: i.toString(),
-      type: "PREMIUM" as any,
+      type: SeatType.PREMIUM,
       gridX: currentIndex % COLS,
       gridY: Math.floor(currentIndex / COLS),
       hasLocker: false,

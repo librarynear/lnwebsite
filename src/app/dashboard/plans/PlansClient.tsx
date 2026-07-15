@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState } from "react"
 import { Plus, Edit2, Trash2, Tag, CalendarClock, CheckSquare, Square, Clock } from "lucide-react"
-import { deletePlan, addPlan, editPlan, batchAddPlans } from "@/app/actions/plan-actions"
+import { deletePlan, editPlan, batchAddPlans } from "@/app/actions/plan-actions"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,19 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+type PlanType = "FIXED" | "FLEXIBLE"
+type SeatCategory = "GENERAL" | "PREMIUM"
+
+type Plan = {
+  id: string;
+  name: string;
+  type: PlanType;
+  durationHours: number | null;
+  validityDays: number;
+  price: number;
+  discount: number | null;
+}
+
 type Row = {
   id: string;
   months: number;
@@ -26,6 +39,17 @@ type Row = {
   discountPercent: string;
 }
 
+type RowConfiguration = {
+  planType: PlanType;
+  hour6: boolean;
+  hour8: boolean;
+  hour12: boolean;
+  customHourEnabled: boolean;
+  customHourValue: string;
+}
+
+type EditableRowFields = Pick<Row, "included" | "basePriceOverride" | "discountPercent">
+
 const DURATIONS = [
   { months: 0, days: 1 },
   { months: 1, days: 28 },
@@ -34,76 +58,102 @@ const DURATIONS = [
   { months: 12, days: 336 }
 ]
 
-export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
+const DEFAULT_ROW_CONFIGURATION: RowConfiguration = {
+  planType: "FIXED",
+  hour6: false,
+  hour8: false,
+  hour12: false,
+  customHourEnabled: false,
+  customHourValue: ""
+}
+
+function buildRows(configuration: RowConfiguration, existingRows: Row[]): Row[] {
+  const activeHours: Array<number | null> = []
+
+  if (configuration.planType === "FIXED") {
+    activeHours.push(null)
+  } else {
+    if (configuration.hour6) activeHours.push(6)
+    if (configuration.hour8) activeHours.push(8)
+    if (configuration.hour12) activeHours.push(12)
+    if (configuration.customHourEnabled && configuration.customHourValue) {
+      const value = parseInt(configuration.customHourValue)
+      if (!isNaN(value) && value > 0 && value <= 24) {
+        activeHours.push(value)
+      }
+    }
+    if (activeHours.length === 0) activeHours.push(null)
+  }
+
+  return activeHours.flatMap(hours =>
+    DURATIONS.map(duration => {
+      const id = `${duration.months}m_${hours}`
+      const existing = existingRows.find(row => row.id === id)
+
+      return {
+        id,
+        months: duration.months,
+        days: duration.days,
+        hours,
+        included: existing?.included ?? true,
+        basePriceOverride: existing?.basePriceOverride ?? "",
+        discountPercent: existing?.discountPercent ?? ""
+      }
+    })
+  )
+}
+
+function isPlanType(value: unknown): value is PlanType {
+  return value === "FIXED" || value === "FLEXIBLE"
+}
+
+export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [editingPlan, setEditingPlan] = useState<any>(null)
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   
   // Bulk Add State
   const [basePlanName, setBasePlanName] = useState("")
   const [monthlyPrice, setMonthlyPrice] = useState("")
-  const [planType, setPlanType] = useState<"FIXED" | "FLEXIBLE">("FIXED")
-  const [seatCategory, setSeatCategory] = useState<"GENERAL" | "PREMIUM">("GENERAL")
+  const [planType, setPlanType] = useState<PlanType>("FIXED")
+  const [seatCategory, setSeatCategory] = useState<SeatCategory>("GENERAL")
   
   const [hour6, setHour6] = useState(false)
   const [hour8, setHour8] = useState(false)
   const [hour12, setHour12] = useState(false)
-  const [fullDay, setFullDay] = useState(true)
   
   const [customHourEnabled, setCustomHourEnabled] = useState(false)
   const [customHourValue, setCustomHourValue] = useState("")
 
-  const [rows, setRows] = useState<Row[]>([])
+  const [rows, setRows] = useState<Row[]>(() => buildRows(DEFAULT_ROW_CONFIGURATION, []))
 
-  // Initialize/Update Rows when configuration changes
-  useEffect(() => {
-    let newRows: Row[] = [];
-    
-    let activeHours: (number|null)[] = [];
-    if (planType === "FIXED") {
-      activeHours = [null]; // Fixed only supports full day
-    } else {
-      if (hour6) activeHours.push(6);
-      if (hour8) activeHours.push(8);
-      if (hour12) activeHours.push(12);
-      if (customHourEnabled && customHourValue) {
-        const val = parseInt(customHourValue);
-        if (!isNaN(val) && val > 0 && val <= 24) {
-          activeHours.push(val);
-        }
-      }
-      if (activeHours.length === 0) activeHours.push(null); // fallback
+  const rebuildRows = (overrides: Partial<RowConfiguration>) => {
+    const configuration: RowConfiguration = {
+      planType,
+      hour6,
+      hour8,
+      hour12,
+      customHourEnabled,
+      customHourValue,
+      ...overrides
     }
+    setRows(currentRows => buildRows(configuration, currentRows))
+  }
 
-    activeHours.forEach(hr => {
-      DURATIONS.forEach(dur => {
-        const id = `${dur.months}m_${hr}`;
-        const existing = rows.find(r => r.id === id);
-        newRows.push({
-          id,
-          months: dur.months,
-          days: dur.days,
-          hours: hr,
-          included: existing ? existing.included : true,
-          basePriceOverride: existing ? existing.basePriceOverride : "",
-          discountPercent: existing ? existing.discountPercent : ""
-        });
-      });
-    });
-
-    setRows(newRows);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planType, hour6, hour8, hour12, fullDay, customHourEnabled, customHourValue]);
-
-  const handleRowChange = (index: number, field: string, value: any) => {
-    const newRows = [...rows];
-    (newRows[index] as any)[field] = value;
-    setRows(newRows);
+  const handleRowChange = <Field extends keyof EditableRowFields>(
+    index: number,
+    field: Field,
+    value: EditableRowFields[Field]
+  ) => {
+    setRows(currentRows =>
+      currentRows.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [field]: value } : row
+      )
+    )
   }
 
   // Edit State
   const [editName, setEditName] = useState("")
-  const [editType, setEditType] = useState<"FIXED" | "FLEXIBLE">("FIXED")
-  const [editSeatCategory, setEditSeatCategory] = useState<"GENERAL" | "PREMIUM">("GENERAL")
+  const [editType, setEditType] = useState<PlanType>("FIXED")
   const [editPrice, setEditPrice] = useState("")
   const [editDiscount, setEditDiscount] = useState("")
   const [editValidity, setEditValidity] = useState("")
@@ -131,7 +181,7 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
       const pct = parseFloat(r.discountPercent);
       const discountPercent = (!isNaN(pct) && pct > 0 && pct <= 100) ? pct : 0;
       
-      let hourLabel = r.hours ? ` - ${r.hours}hr` : " - Full Day";
+      const hourLabel = r.hours ? ` - ${r.hours}hr` : " - Full Day";
 
       return {
         name: `${basePlanName} - ${r.months > 0 ? r.months + ' Month' + (r.months > 1 ? 's' : '') : r.days + ' Day'}${hourLabel}`,
@@ -154,6 +204,8 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
   }
 
   async function handleEditSubmit(formData: FormData) {
+    if (!editingPlan) return
+
     formData.append("id", editingPlan.id);
     if (editHours === "FULL") {
       formData.delete("durationHours"); // Set to null effectively
@@ -168,20 +220,19 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
     setMonthlyPrice("");
     setPlanType("FIXED");
     setSeatCategory("GENERAL");
-    setFullDay(true);
     setHour6(false);
     setHour8(false);
     setHour12(false);
     setCustomHourEnabled(false);
     setCustomHourValue("");
+    setRows(currentRows => buildRows(DEFAULT_ROW_CONFIGURATION, currentRows));
     setIsOpen(true);
   }
 
-  const openEdit = (plan: any) => {
+  const openEdit = (plan: Plan) => {
     setEditingPlan(plan);
     setEditName(plan.name);
     setEditType(plan.type);
-    setEditSeatCategory(plan.seatCategory || "GENERAL");
     setEditPrice(plan.price.toString());
     setEditDiscount(plan.discount?.toString() || "");
     setEditValidity(plan.validityDays.toString());
@@ -216,7 +267,13 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Seat Type</Label>
-                    <Select name="type" value={editType} onValueChange={(v:any) => setEditType(v)}>
+                    <Select
+                      name="type"
+                      value={editType}
+                      onValueChange={value => {
+                        if (isPlanType(value)) setEditType(value)
+                      }}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FIXED">Fixed Seat</SelectItem>
@@ -227,7 +284,11 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
 
                   <div className="space-y-2">
                     <Label>Daily Duration</Label>
-                    <Select name="durationHours" value={editHours} onValueChange={(v:any) => setEditHours(v || "FULL")}>
+                    <Select
+                      name="durationHours"
+                      value={editHours}
+                      onValueChange={value => setEditHours(typeof value === "string" ? value : "FULL")}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FULL">Full Day</SelectItem>
@@ -267,7 +328,14 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Seat Type</Label>
-                      <Select value={planType} onValueChange={(v:any) => setPlanType(v)}>
+                      <Select
+                        value={planType}
+                        onValueChange={value => {
+                          if (!isPlanType(value)) return
+                          setPlanType(value)
+                          rebuildRows({ planType: value })
+                        }}
+                      >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="FIXED">Fixed Seat</SelectItem>
@@ -280,13 +348,25 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                       <div className="space-y-2">
                         <Label>Allowed Hours</Label>
                         <div className="flex flex-wrap gap-4 items-center">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour6} onChange={e => setHour6(e.target.checked)} className="rounded" /> 6hr</label>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour8} onChange={e => setHour8(e.target.checked)} className="rounded" /> 8hr</label>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour12} onChange={e => setHour12(e.target.checked)} className="rounded" /> 12hr</label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour6} onChange={e => {
+                            setHour6(e.target.checked)
+                            rebuildRows({ hour6: e.target.checked })
+                          }} className="rounded" /> 6hr</label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour8} onChange={e => {
+                            setHour8(e.target.checked)
+                            rebuildRows({ hour8: e.target.checked })
+                          }} className="rounded" /> 8hr</label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={hour12} onChange={e => {
+                            setHour12(e.target.checked)
+                            rebuildRows({ hour12: e.target.checked })
+                          }} className="rounded" /> 12hr</label>
                           
                           <div className="flex items-center gap-2 ml-2 border-l border-border pl-4">
                             <label className="flex items-center gap-2 text-sm cursor-pointer">
-                              <input type="checkbox" checked={customHourEnabled} onChange={e => setCustomHourEnabled(e.target.checked)} className="rounded" /> Custom
+                              <input type="checkbox" checked={customHourEnabled} onChange={e => {
+                                setCustomHourEnabled(e.target.checked)
+                                rebuildRows({ customHourEnabled: e.target.checked })
+                              }} className="rounded" /> Custom
                             </label>
                             {customHourEnabled && (
                               <Input 
@@ -294,7 +374,10 @@ export function PlansClient({ initialPlans }: { initialPlans: any[] }) {
                                 min="1" 
                                 max="24" 
                                 value={customHourValue} 
-                                onChange={e => setCustomHourValue(e.target.value)} 
+                                onChange={e => {
+                                  setCustomHourValue(e.target.value)
+                                  rebuildRows({ customHourValue: e.target.value })
+                                }}
                                 placeholder="Max 24" 
                                 className="w-20 h-8 text-sm"
                               />

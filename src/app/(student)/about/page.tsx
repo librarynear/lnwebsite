@@ -14,7 +14,7 @@ export default function AboutPage() {
       
       <div className="prose prose-lg prose-slate max-w-none space-y-6">
         <p>
-          Welcome to <strong>FocusX</strong>, India's premier platform dedicated to helping students, professionals, and lifelong learners find their perfect study environment. We understand that in a bustling city, finding a quiet, dedicated space to focus can be challenging. That's why we created a seamless way to discover and reserve premium study libraries near you.
+          Welcome to <strong>FocusX</strong>, India&apos;s premier platform dedicated to helping students, professionals, and lifelong learners find their perfect study environment. We understand that in a bustling city, finding a quiet, dedicated space to focus can be challenging. That&apos;s why we created a seamless way to discover and reserve premium study libraries near you.
         </p>
 
         <h2 className="text-2xl font-bold mt-10 mb-4 text-slate-800">Our Mission</h2>

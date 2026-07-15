@@ -2,10 +2,12 @@ import prisma from "@/lib/prisma";
 import { StudentsClient } from "./StudentsClient";
 import { getSession } from "@/app/actions/auth-actions";
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 
 export default async function ManageStudentsPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
-  const page = parseInt(searchParams.page as string || "1", 10);
+  const requestedPage = parseInt(searchParams.page as string || "1", 10);
+  const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : 1;
   const query = (searchParams.query as string || "").trim();
   const tab = (searchParams.tab as string || "ACTIVE").toUpperCase();
   const PAGE_SIZE = 20;
@@ -22,87 +24,101 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
   const sevenDaysFromNow = new Date(now);
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
-  // Enterprise Grade: Always fetch LIVE data from the database.
-  // Instead of caching, we fetch all bookings for this library in ONE query
-  // and do in-memory filtering, which brings the DB queries from 5 down to 1.
-  const students = await prisma.user.findMany({
-    where: { bookings: { some: { libraryId: library.id } } },
+  const normalizedTab = ["ACTIVE", "EXPIRING", "INACTIVE", "REVOKED"].includes(tab)
+    ? tab
+    : "ACTIVE";
+  const tabPredicate =
+    normalizedTab === "EXPIRING"
+      ? Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now} AND b."endTime" <= ${sevenDaysFromNow}`
+      : normalizedTab === "INACTIVE"
+        ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now}`
+        : normalizedTab === "REVOKED"
+          ? Prisma.sql`b."status" = 'CANCELLED'`
+          : Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now}`;
+  const searchPredicate = query
+    ? Prisma.sql`AND (
+        u."name" ILIKE ${`%${query}%`}
+        OR u."phone" ILIKE ${`%${query}%`}
+        OR u."uniqueId" ILIKE ${`%${query}%`}
+      )`
+    : Prisma.empty;
+
+  const [pagedIds, countRows] = await Promise.all([
+    prisma.$queryRaw<Array<{ id: string; createdAt: Date }>>(Prisma.sql`
+      SELECT candidate."id", candidate."createdAt"
+      FROM (
+        SELECT DISTINCT ON (b."studentId")
+          b."id",
+          b."createdAt",
+          b."studentId"
+        FROM "Booking" b
+        INNER JOIN "User" u ON u."id" = b."studentId"
+        WHERE b."libraryId" = ${library.id}
+          AND ${tabPredicate}
+          ${searchPredicate}
+        ORDER BY b."studentId", b."createdAt" DESC
+      ) candidate
+      ORDER BY candidate."createdAt" DESC
+      LIMIT ${PAGE_SIZE}
+      OFFSET ${(page - 1) * PAGE_SIZE}
+    `),
+    prisma.$queryRaw<Array<{
+      active: number;
+      expiring: number;
+      inactive: number;
+      revoked: number;
+    }>>(Prisma.sql`
+      SELECT
+        COUNT(DISTINCT b."studentId") FILTER (
+          WHERE b."status" = 'CONFIRMED' AND b."endTime" >= ${now}
+        )::int AS "active",
+        COUNT(DISTINCT b."studentId") FILTER (
+          WHERE b."status" = 'CONFIRMED'
+            AND b."endTime" >= ${now}
+            AND b."endTime" <= ${sevenDaysFromNow}
+        )::int AS "expiring",
+        COUNT(DISTINCT b."studentId") FILTER (
+          WHERE b."status" <> 'CANCELLED' AND b."endTime" < ${now}
+        )::int AS "inactive",
+        COUNT(DISTINCT b."studentId") FILTER (
+          WHERE b."status" = 'CANCELLED'
+        )::int AS "revoked"
+      FROM "Booking" b
+      INNER JOIN "User" u ON u."id" = b."studentId"
+      WHERE b."libraryId" = ${library.id}
+      ${searchPredicate}
+    `),
+  ]);
+
+  const bookingIds = pagedIds.map(({ id }) => id);
+  const unorderedBookings = await prisma.booking.findMany({
+    where: { id: { in: bookingIds } },
     include: {
-      bookings: {
-        where: { libraryId: library.id },
-        orderBy: { createdAt: 'desc' },
-        include: { plan: true, standaloneLocker: true }
-      }
+      student: true,
+      plan: true,
+      seat: true,
+      standaloneLocker: true,
     },
-    orderBy: { createdAt: 'desc' }
   });
+  const bookingOrder = new Map(bookingIds.map((id, index) => [id, index]));
+  const bookings = unorderedBookings.sort(
+    (a, b) => (bookingOrder.get(a.id) ?? 0) - (bookingOrder.get(b.id) ?? 0),
+  );
 
-  const parsedBookings = students.flatMap(s => s.bookings.map(b => ({ ...b, student: { ...s, bookings: undefined } })));
-
-  const getTabFilterFn = (tabName: string) => {
-    return (b: any) => {
-      // Logic mapping to previous Prisma where clauses
-      if (tabName === 'ACTIVE') return b.status === 'CONFIRMED' && b.endTime >= now;
-      if (tabName === 'EXPIRING') return b.status === 'CONFIRMED' && b.endTime >= now && b.endTime <= sevenDaysFromNow;
-      if (tabName === 'INACTIVE') return b.status !== 'CANCELLED' && b.endTime < now;
-      if (tabName === 'REVOKED') return b.status === 'CANCELLED';
-      return true;
-    };
+  const counts = countRows[0] ?? {
+    active: 0,
+    expiring: 0,
+    inactive: 0,
+    revoked: 0,
   };
-
-  const getSearchFilterFn = (q: string) => {
-    if (!q) return () => true;
-    const lowerQ = q.toLowerCase();
-    return (b: any) => {
-      return (
-        b.student.name?.toLowerCase().includes(lowerQ) ||
-        b.student.phone?.includes(q) ||
-        b.student.uniqueId?.toLowerCase().includes(lowerQ)
-      );
-    };
-  };
-
-  const getFilteredBookingsForTab = (tabName: string) => {
-    const tabFilter = getTabFilterFn(tabName);
-    const searchFilter = getSearchFilterFn(query);
-    
-    const matchingBookings = parsedBookings.filter((b: any) => tabFilter(b) && searchFilter(b));
-    
-    // Group by studentId, taking the first (latest) booking since they are sorted desc
-    const seenStudents = new Set();
-    const finalBookings = [];
-    
-    for (const b of matchingBookings) {
-      if (!seenStudents.has(b.studentId)) {
-        seenStudents.add(b.studentId);
-        finalBookings.push(b);
-      }
-    }
-    
-    return finalBookings;
-  };
-
-  const activeBookings = getFilteredBookingsForTab('ACTIVE');
-  const expiringBookings = getFilteredBookingsForTab('EXPIRING');
-  const inactiveBookings = getFilteredBookingsForTab('INACTIVE');
-  const revokedBookings = getFilteredBookingsForTab('REVOKED');
-
-  const activeCount = activeBookings.length;
-  const expiringCount = expiringBookings.length;
-  const inactiveCount = inactiveBookings.length;
-  const revokedCount = revokedBookings.length;
-
-  let currentTabBookings: any[] = [];
-  if (tab === 'ACTIVE') currentTabBookings = activeBookings;
-  else if (tab === 'EXPIRING') currentTabBookings = expiringBookings;
-  else if (tab === 'INACTIVE') currentTabBookings = inactiveBookings;
-  else if (tab === 'REVOKED') currentTabBookings = revokedBookings;
-  else currentTabBookings = activeBookings;
-
-  const totalStudentsCount = currentTabBookings.length;
-  
-  // Paginate in memory
-  const bookings = currentTabBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalStudentsCount =
+    normalizedTab === "EXPIRING"
+      ? counts.expiring
+      : normalizedTab === "INACTIVE"
+        ? counts.inactive
+        : normalizedTab === "REVOKED"
+          ? counts.revoked
+          : counts.active;
 
   const plans = await prisma.plan.findMany({
     where: { libraryId: library.id, isActive: true }
@@ -141,7 +157,9 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
       studentId: log.userId || '',
       libraryId: log.libraryId,
       relayId: log.doorId,
-      status: log.status === 'DENIED' ? 'DENIED' : 'CHECK_IN' as any,
+      status: (log.status === 'DENIED' ? 'DENIED' : 'CHECK_IN') as
+        | 'DENIED'
+        | 'CHECK_IN',
       reason: log.reason,
       timestamp: log.timestamp,
       isOfflineSync: false,
@@ -169,7 +187,7 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
         relays={relays} 
         seats={seats} 
         totalCount={totalStudentsCount} 
-        tabCounts={{ active: activeCount, expiring: expiringCount, inactive: inactiveCount, revoked: revokedCount }}
+        tabCounts={counts}
         currentPage={page} 
         searchQuery={query} 
       />

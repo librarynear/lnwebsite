@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
   cacheComponents: true,
+  turbopack: {
+    root: process.cwd(),
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
   },

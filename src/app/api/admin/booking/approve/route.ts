@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
+import {
+  BookingAuthorityError,
+  confirmPendingReceptionBooking,
+} from "@/lib/booking-authority";
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache";
 
 export async function POST(req: Request) {
   try {
@@ -32,37 +37,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Booking is not pending' }, { status: 400 });
     }
 
-    // Atomic transaction to ensure seat isn't stolen by someone else during approval
-    const updatedBooking = await prisma.$transaction(async (tx) => {
-      // Re-check overlap for the seat using the originally requested dates
-      if (booking.seatId) {
-        const existingSeatBooking = await tx.booking.findFirst({
-          where: {
-            seatId: booking.seatId,
-            status: "CONFIRMED",
-            startTime: { lt: booking.endTime },
-            endTime: { gt: booking.startTime }
-          }
-        });
-        if (existingSeatBooking) {
-          throw new Error("SEAT_TAKEN");
-        }
-      }
-
-      return await tx.booking.update({
-        where: { id: bookingId },
-        data: {
-          status: "CONFIRMED",
-          paymentRef: `RECEPTION_${paymentMethod}_${Date.now()}`
-        }
-      });
-    }, { isolationLevel: 'Serializable' });
+    const updatedBooking = await confirmPendingReceptionBooking(
+      bookingId,
+      paymentMethod,
+    );
+    await invalidateLibraryRuntimeCache(updatedBooking.libraryId);
 
     return NextResponse.json({ success: true, booking: updatedBooking });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Booking Approval Error:", error);
-    if (error.message === "SEAT_TAKEN") {
-      return NextResponse.json({ error: 'Seat has been confirmed by someone else while pending.' }, { status: 409 });
+    if (error instanceof BookingAuthorityError) {
+      const status = error.code === "RESOURCE_TAKEN" ? 409 : 400;
+      return NextResponse.json({ error: error.message }, { status });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

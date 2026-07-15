@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       rejected_count: entries.length - validEntries.length,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Relay sync error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

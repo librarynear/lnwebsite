@@ -12,7 +12,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local tooling and third-party agent templates are not application code.
+    ".agents/**",
+    ".cursor/**",
+    "local-scripts/**",
+    "scratch/**",
+    "preserved_before_testing/**",
   ]),
+  {
+    files: ["*.js", "scripts/**/*.js"],
+    rules: {
+      // Operational Node scripts in this repository intentionally use CommonJS.
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

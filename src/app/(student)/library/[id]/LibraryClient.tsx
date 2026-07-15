@@ -2,20 +2,127 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { 
-  MapPin, Star, Check, Loader2, ArrowLeft, Clock, Phone, Navigation, Lock, Grid, X, ChevronLeft, ChevronRight, Share, Heart,
+  MapPin, Check, Loader2, Clock, Phone, Navigation, Lock, Share, Heart,
   Snowflake, Droplet, Video, Car, ShieldCheck, VolumeX, Wifi, Bath, Coffee, Plug, CheckCircle2 
 } from "lucide-react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
 import { InquiryForm } from "./InquiryForm";
 import dynamic from "next/dynamic"
 import { auth } from "@/lib/firebase/clientApp"
 
-import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 import { toast } from "react-hot-toast"
 import { formatStandardDate } from "@/lib/date-utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+
+type LibraryPlan = {
+  id: string
+  name: string
+  type: "FIXED" | "FLEXIBLE"
+  durationHours: number | null
+  validityDays: number
+  price: number
+  discount: number | null
+}
+
+type LibrarySeat = {
+  id: string
+  name: string
+  type: "RESERVED" | "NORMAL" | "PREMIUM" | "NON_RESERVABLE"
+  gridX: number
+  gridY: number
+  hasLocker: boolean
+  lockerPriceMonthly: number | null
+  premiumPriceMonthly: number | null
+  syncPremiumOffers: boolean
+}
+
+type StandaloneLocker = {
+  id: string
+  name: string
+  price: number
+}
+
+type LibraryDetails = {
+  id: string
+  name: string
+  address: string
+  locality: string | null
+  city: string | null
+  metroStation: string | null
+  metroDistance: number | null
+  openingTime: string | null
+  closingTime: string | null
+  managerPhone: string | null
+  seatsAvailable: number | null
+  description: string | null
+  photos: string[]
+  facilities: string[]
+  googleMapsUrl: string | null
+  plans: LibraryPlan[]
+  seats: LibrarySeat[]
+  standaloneLockers: StandaloneLocker[]
+}
+
+type SavedLibrary = {
+  id: string
+  name?: string
+  locality?: string
+  city?: string | null
+  metroStation?: string | null
+  metroDistance?: number | null
+  minPrice?: number
+  imageUrl?: string | null
+}
+
+type CheckoutDraft = {
+  planId?: string
+  seatId?: string
+  standaloneLockerId?: string
+  paymentMode?: "ONLINE" | "RECEPTION"
+}
+
+type DynamicDataResponse = {
+  occupiedSeatIds?: string[]
+  occupiedLockerIds?: string[]
+  currentPlanEndDate?: string | null
+  session?: {
+    userId?: string
+    phone?: string
+    email?: string
+  } | null
+}
+
+type LibraryClientProps = {
+  library: LibraryDetails
+  occupiedSeatIds: string[]
+  studentId: string
+  currentPlanEndDate?: string | null
+  studentPhone?: string
+  studentEmail?: string
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
+function readSavedLibraries(): SavedLibrary[] {
+  try {
+    const parsed: unknown = JSON.parse(
+      localStorage.getItem("savedLibraries") || "[]",
+    )
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (item): item is SavedLibrary =>
+        typeof item === "object"
+        && item !== null
+        && "id" in item
+        && typeof item.id === "string",
+    )
+  } catch {
+    return []
+  }
+}
 
 const facilityIconMap: Record<string, React.ElementType> = {
   "AC": Snowflake,
@@ -45,16 +152,14 @@ const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
     </div>
   ),
 })
-export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds, studentId: initialStudentId, currentPlanEndDate: initialCurrentPlanEndDate, studentPhone: initialStudentPhone, studentEmail: initialStudentEmail }: { library: any, occupiedSeatIds: string[], studentId: string, currentPlanEndDate?: string | null, studentPhone?: string, studentEmail?: string }) {
+export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds, studentId: initialStudentId, currentPlanEndDate: initialCurrentPlanEndDate, studentPhone: initialStudentPhone, studentEmail: initialStudentEmail }: LibraryClientProps) {
   const router = useRouter();
-  const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<LibrarySeat | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<LibraryPlan | null>(null);
   const [planFilter, setPlanFilter] = useState<number | null | "ALL">("ALL");
   const [monthFilter, setMonthFilter] = useState<number | null | "ALL">("ALL");
   
   const [selectedStandaloneLockerId, setSelectedStandaloneLockerId] = useState<string>("");
-  
-  const realtimeOccupiedSeatIds = useRealtimeSeats(library.id, initialOccupiedSeatIds);
   
   const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION">("ONLINE");
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
@@ -76,35 +181,88 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     hasError: false
   });
 
-  const loadDynamicData = useCallback(() => {
-    setDynamicState(s => ({ ...s, isLoading: true, hasError: false }));
-    fetch(`/api/library/dynamic-data?libraryId=${library.id}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        setDynamicState({
-          occupiedSeatIds: data.occupiedSeatIds || [],
-          occupiedLockerIds: data.occupiedLockerIds || [],
-          studentId: data.session?.userId || "",
-          currentPlanEndDate: data.currentPlanEndDate || null,
-          studentPhone: data.session?.phone || "",
-          studentEmail: data.session?.email || "",
+  const dynamicRetryAfterRef = useRef(0);
+  const dynamicRequestInFlightRef = useRef(false);
+  const realtimeOccupiedSeatIds = dynamicState.occupiedSeatIds;
+
+  const loadDynamicData = useCallback(async (showLoading = true) => {
+    if (
+      dynamicRequestInFlightRef.current
+      || Date.now() < dynamicRetryAfterRef.current
+    ) {
+      if (showLoading) {
+        setDynamicState((state) => ({ ...state, isLoading: false }));
+      }
+      return;
+    }
+
+    if (showLoading) {
+      setDynamicState(s => ({ ...s, isLoading: true, hasError: false }));
+    }
+    dynamicRequestInFlightRef.current = true;
+    try {
+      const response = await fetch(
+        `/api/library/dynamic-data?libraryId=${encodeURIComponent(library.id)}`,
+        { cache: "no-store" },
+      );
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(
+          response.headers.get("Retry-After") ?? "30",
+        );
+        dynamicRetryAfterRef.current =
+          Date.now()
+          + (Number.isFinite(retryAfterSeconds)
+            ? Math.max(1, retryAfterSeconds) * 1000
+            : 30_000);
+        // Keep the last server-rendered availability instead of clearing it or
+        // blocking checkout solely because a refresh was throttled.
+        setDynamicState((state) => ({
+          ...state,
           isLoading: false,
-          hasError: false
-        });
-      })
-      .catch(e => {
-        // Surface the failure instead of silently showing every seat as free
-        // (which would let a user pick a taken seat and hit a 409 at checkout).
-        console.error("Failed to fetch dynamic library data:", e);
-        setDynamicState(s => ({ ...s, occupiedSeatIds: [], occupiedLockerIds: [], isLoading: false, hasError: true }));
+          hasError: false,
+        }));
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const data = await response.json() as DynamicDataResponse;
+      dynamicRetryAfterRef.current = 0;
+      setDynamicState({
+        occupiedSeatIds: data.occupiedSeatIds || [],
+        occupiedLockerIds: data.occupiedLockerIds || [],
+        studentId: data.session?.userId || "",
+        currentPlanEndDate: data.currentPlanEndDate || null,
+        studentPhone: data.session?.phone || "",
+        studentEmail: data.session?.email || "",
+        isLoading: false,
+        hasError: false
       });
+    } catch (error) {
+      // Preserve the last known occupancy. Clearing it would make reserved
+      // resources appear free until the next successful refresh.
+      console.error("Failed to fetch dynamic library data:", error);
+      setDynamicState((state) => ({
+        ...state,
+        isLoading: false,
+        hasError: true,
+      }));
+    } finally {
+      dynamicRequestInFlightRef.current = false;
+    }
   }, [library.id]);
 
   useEffect(() => {
-    loadDynamicData();
+    const initialLoad = window.setTimeout(() => void loadDynamicData(), 0);
+    const interval = window.setInterval(
+      () => void loadDynamicData(false),
+      15_000,
+    );
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
   }, [loadDynamicData]);
 
   const handleFeedbackSubmit = async () => {
@@ -129,14 +287,18 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       alert("Submitted successfully!");
       setFeedbackType(null);
       setFeedbackContent("");
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error: unknown) {
+      alert(errorMessage(error, "Failed to submit"));
     } finally {
       setIsSubmittingFeedback(false);
     }
   };
   const [isProcessing, setIsProcessing] = useState(false);
   const checkoutLockRef = useRef(false);
+  const checkoutIdempotencyRef = useRef<{
+    fingerprint: string;
+    key: string;
+  } | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -147,20 +309,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     }, 150);
   };
 
-  // Derive recommended plans based on the selected plan's duration
-  const recommendedPlans = selectedPlan 
-    ? library.plans.filter((p: any) => p.durationHours === selectedPlan.durationHours && p.id !== selectedPlan.id).sort((a: any, b: any) => {
-      const priceA = a.discount ? a.price - (a.price * a.discount / 100) : a.price;
-      const priceB = b.discount ? b.price - (b.price * b.discount / 100) : b.price;
-      return priceA - priceB;
-    })
-    : [];
-
   useEffect(() => {
-    try {
-      const savedLibraries = JSON.parse(localStorage.getItem('savedLibraries') || '[]');
-      setIsSaved(savedLibraries.some((l: any) => l.id === library.id));
-    } catch (e) {}
+    const timer = window.setTimeout(() => {
+      setIsSaved(readSavedLibraries().some((item) => item.id === library.id));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [library.id]);
 
   const handleShare = async () => {
@@ -181,45 +334,50 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   };
 
   useEffect(() => {
-    try {
-      const savedCheckout = sessionStorage.getItem(`checkout_${library.id}`);
-      if (savedCheckout) {
-        const parsed = JSON.parse(savedCheckout);
+    const timer = window.setTimeout(() => {
+      try {
+        const savedCheckout = sessionStorage.getItem(`checkout_${library.id}`);
+        if (savedCheckout) {
+          const parsed = JSON.parse(savedCheckout) as CheckoutDraft;
         
-        if (parsed.planId) {
-          const plan = library.plans.find((p: any) => p.id === parsed.planId);
-          if (plan) setSelectedPlan(plan);
-        }
+          if (parsed.planId) {
+            const plan = library.plans.find((item) => item.id === parsed.planId);
+            if (plan) setSelectedPlan(plan);
+          }
         
-        if (parsed.seatId) {
-          const seat = library.seats.find((s: any) => s.id === parsed.seatId);
-          if (seat) setSelectedSeat(seat);
-        }
+          if (parsed.seatId) {
+            const seat = library.seats.find((item) => item.id === parsed.seatId);
+            if (seat) setSelectedSeat(seat);
+          }
         
-        if (parsed.standaloneLockerId) {
-          setSelectedStandaloneLockerId(parsed.standaloneLockerId);
-        }
+          if (parsed.standaloneLockerId) {
+            setSelectedStandaloneLockerId(parsed.standaloneLockerId);
+          }
 
-        if (parsed.paymentMode) {
-          setPaymentMode(parsed.paymentMode);
-        }
+          if (parsed.paymentMode) {
+            setPaymentMode(parsed.paymentMode);
+          }
         
-        sessionStorage.removeItem(`checkout_${library.id}`);
+          sessionStorage.removeItem(`checkout_${library.id}`);
+        }
+      } catch {
+        // Ignore malformed legacy checkout state.
       }
-    } catch (e) {}
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [library.id, library.plans, library.seats]);
 
   const handleSave = () => {
     try {
-      let savedLibraries = JSON.parse(localStorage.getItem('savedLibraries') || '[]');
+      let savedLibraries = readSavedLibraries();
       if (isSaved) {
-        savedLibraries = savedLibraries.filter((l: any) => l.id !== library.id);
+        savedLibraries = savedLibraries.filter((item) => item.id !== library.id);
         setIsSaved(false);
       } else {
-        const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+        const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
         const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
         const minPrice = plansToUse && plansToUse.length > 0 
-          ? Math.min(...plansToUse.map((p: any) => p.price)) 
+          ? Math.min(...plansToUse.map((plan) => plan.price))
           : 0;
 
         savedLibraries.push({
@@ -249,7 +407,6 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   let planPrice = 0;
   let lockerCost = 0;
   let premiumSurcharge = 0;
-  let hasLockerIncluded = false;
   
   if (selectedPlan) {
     planPrice = selectedPlan.discount 
@@ -259,11 +416,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     const lockerMonths = Math.max(1, Math.round(selectedPlan.validityDays / 28));
 
     if (seatHasMandatoryLocker) {
-      hasLockerIncluded = true;
       lockerCost = (selectedSeat.lockerPriceMonthly || 0) * lockerMonths;
     } else if (selectedStandaloneLockerId) {
-      hasLockerIncluded = true;
-      const locker = library.standaloneLockers.find((l:any) => l.id === selectedStandaloneLockerId);
+      const locker = library.standaloneLockers.find(
+        (item) => item.id === selectedStandaloneLockerId,
+      );
       if (locker) {
         lockerCost = locker.price * lockerMonths;
       }
@@ -284,7 +441,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   if (dynamicState.currentPlanEndDate) {
     startDate = new Date(dynamicState.currentPlanEndDate);
   }
-  let endDate = new Date(startDate);
+  const endDate = new Date(startDate);
   if (selectedPlan) {
     endDate.setDate(endDate.getDate() + selectedPlan.validityDays - 1);
   }
@@ -304,16 +461,38 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     setIsProcessing(true);
 
     const mode = overrideMode || paymentMode;
+    const checkoutSeatId = isFlexible ? null : selectedSeat?.id ?? null;
+    const checkoutFingerprint = JSON.stringify({
+      studentId: dynamicState.studentId,
+      libraryId: library.id,
+      planId: selectedPlan.id,
+      seatId: checkoutSeatId,
+      hasLocker: seatHasMandatoryLocker,
+      standaloneLockerId:
+        !seatHasMandatoryLocker && selectedStandaloneLockerId
+          ? selectedStandaloneLockerId
+          : null,
+    });
+    if (checkoutIdempotencyRef.current?.fingerprint !== checkoutFingerprint) {
+      checkoutIdempotencyRef.current = {
+        fingerprint: checkoutFingerprint,
+        key: crypto.randomUUID(),
+      };
+    }
+    const idempotencyKey = checkoutIdempotencyRef.current.key;
 
     if (mode === "RECEPTION") {
       try {
         const res = await fetch('/api/checkout/reception', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
           body: JSON.stringify({
             studentId: dynamicState.studentId,
             libraryId: library.id,
-            seatId: isFlexible ? null : selectedSeat.id,
+            seatId: checkoutSeatId,
             planId: selectedPlan.id,
             hasLocker: seatHasMandatoryLocker,
             standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
@@ -327,7 +506,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         } else {
           toast.error(data.error || "Failed to initiate booking");
         }
-      } catch (e) {
+      } catch {
         toast.error("An error occurred during booking");
       } finally {
         setIsProcessing(false);
@@ -339,10 +518,13 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     try {
       const orderRes = await fetch('/api/razorpay/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify({
           planId: selectedPlan.id,
-          seatId: isFlexible ? null : selectedSeat.id,
+          seatId: checkoutSeatId,
           hasLocker: seatHasMandatoryLocker,
           standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
           idToken
@@ -351,13 +533,16 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       const data = await orderRes.json();
 
       if (!data.payment_url) {
+        if (data.retryable !== true) {
+          checkoutIdempotencyRef.current = null;
+        }
         throw new Error(data.error || "Failed to create payment");
       }
 
       window.location.href = data.payment_url;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "Error initiating checkout");
+      toast.error(errorMessage(error, "Error initiating checkout"));
       setIsProcessing(false);
       checkoutLockRef.current = false;
     }
@@ -375,7 +560,9 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           standaloneLockerId: selectedStandaloneLockerId,
           paymentMode: paymentMode
         }));
-      } catch (e) {}
+      } catch {
+        // Storage can be unavailable in privacy-restricted embeds.
+      }
 
       const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
       if (isEmbed) {
@@ -386,11 +573,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         const top = window.screen.height / 2 - height / 2;
         window.open('/login?popup=true', 'Login', `width=${width},height=${height},top=${top},left=${left}`);
         
-        const listener = (e: MessageEvent) => {
+        const listener = (e: MessageEvent<{ type?: string; token?: string }>) => {
           // Only accept the login result from our own origin; ignore messages
           // injected by any other window/frame.
           if (e.origin !== window.location.origin) return;
-          if (e.data?.type === 'LOGIN_SUCCESS') {
+          if (e.data?.type === 'LOGIN_SUCCESS' && e.data.token) {
             window.removeEventListener('message', listener);
             executeCheckout(e.data.token);
           }
@@ -408,27 +595,33 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   }
 
   // Compute unique hours for filters
-  const availableHours = Array.from(new Set(library.plans.map((p:any) => p.durationHours)))
-    .sort((a:any, b:any) => {
+  const availableHours = Array.from(
+    new Set(library.plans.map((plan) => plan.durationHours)),
+  ).sort((a, b) => {
       if (a === null) return 1;
       if (b === null) return -1;
       return a - b;
     });
 
-  const availableMonths = Array.from(new Set(library.plans.map((p:any) => Math.max(1, Math.round(p.validityDays / 30)))))
-    .sort((a:any, b:any) => a - b);
+  const availableMonths = Array.from(
+    new Set(
+      library.plans.map((plan) =>
+        Math.max(1, Math.round(plan.validityDays / 30))),
+    ),
+  ).sort((a, b) => a - b);
 
   const filteredPlans = library.plans
-    .filter((p:any) => planFilter === "ALL" || p.durationHours === planFilter)
-    .filter((p:any) => monthFilter === "ALL" || Math.max(1, Math.round(p.validityDays / 30)) === monthFilter)
-    .sort((a:any, b:any) => {
+    .filter((plan) => planFilter === "ALL" || plan.durationHours === planFilter)
+    .filter(
+      (plan) =>
+        monthFilter === "ALL"
+        || Math.max(1, Math.round(plan.validityDays / 30)) === monthFilter,
+    )
+    .sort((a, b) => {
       const priceA = a.discount ? a.price - (a.price * a.discount / 100) : a.price;
       const priceB = b.discount ? b.price - (b.price * b.discount / 100) : b.price;
       return priceA - priceB;
     });
-
-  const maxX = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridX)) : 0;
-  const maxY = library.seats.length > 0 ? Math.max(...library.seats.map((s:any) => s.gridY)) : 0;
 
   // Setup photos array
   let photos = library.photos || [];
@@ -449,7 +642,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         try {
           if (window.top !== window.self) window.top!.location.href = url;
           else window.location.href = url;
-        } catch(e) { window.location.href = url; }
+        } catch { window.location.href = url; }
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -473,7 +666,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                 try {
                   if (window.top !== window.self) window.top!.location.href = url;
                   else window.location.href = url;
-                } catch(e) { window.location.href = url; }
+                } catch { window.location.href = url; }
               }}
               className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity mt-4"
             >
@@ -560,7 +753,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                 >
                   All Hours
                 </button>
-                {availableHours.map((hr: any) => (
+                {availableHours.map((hr) => (
                   <button 
                     key={hr === null ? "FULL" : hr}
                     onClick={() => setPlanFilter(hr)}
@@ -577,7 +770,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                 >
                   All Months
                 </button>
-                {availableMonths.map((m: any) => (
+                {availableMonths.map((m) => (
                   <button 
                     key={m}
                     onClick={() => setMonthFilter(m)}
@@ -589,7 +782,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               </div>
 
               <div className="grid grid-cols-1 gap-3 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
-                {filteredPlans.map((plan: any) => {
+                {filteredPlans.map((plan) => {
                   const isSelected = selectedPlan?.id === plan.id;
                   const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
                   const months = Math.max(1, Math.round(plan.validityDays / 30));
@@ -636,7 +829,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                               <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
                               <span className="leading-tight">{plan.validityDays} Days Validity</span>
                             </li>
-                            {plan.discount > 0 && (
+                            {(plan.discount ?? 0) > 0 && (
                               <li className="text-[12px] font-medium text-slate-500 flex items-start gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
                                 <span className="leading-tight"><span className="text-success font-bold">{plan.discount}% OFF</span> applied</span>
@@ -663,7 +856,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           </div>
                           <div className="text-[12px] font-semibold text-slate-500 leading-tight flex flex-col items-end gap-1 mt-1 truncate w-full">
                             <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>
-                            {plan.discount > 0 && (
+                            {(plan.discount ?? 0) > 0 && (
                               <span className="line-through opacity-60 text-muted-foreground truncate w-full text-right">₹{plan.price.toFixed(0)}</span>
                             )}
                           </div>
@@ -697,7 +890,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                     selectedPlan={selectedPlan}
                     compactMode={true}
                     onSeatSelect={(seat) => {
-                      setSelectedSeat(seat);
+                      const librarySeat = library.seats.find(
+                        (candidate) => candidate.id === seat.id,
+                      );
+                      if (!librarySeat) return;
+                      setSelectedSeat(librarySeat);
                       if (seat.hasLocker) {
                         setSelectedStandaloneLockerId("");
                       }
@@ -712,7 +909,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             )}
 
             {/* Premium Seat UI */}
-            {selectedPlan && selectedSeat?.type === 'PREMIUM' && selectedSeat?.premiumPriceMonthly > 0 && (
+            {selectedPlan && selectedSeat?.type === 'PREMIUM' && (selectedSeat?.premiumPriceMonthly ?? 0) > 0 && (
               <div className="p-4 rounded-xl border bg-amber-50 border-amber-200">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-sm text-amber-700 flex items-center gap-2">Premium Seat Surcharge</span>
@@ -753,7 +950,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                               className="w-full text-sm rounded-lg border border-primary/20 bg-background p-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground font-medium"
                             >
                               <option value="">No locker needed</option>
-                              {library.standaloneLockers.map((locker: any) => (
+                              {library.standaloneLockers.map((locker) => (
                                 <option key={locker.id} value={locker.id}>
                                   {locker.name} - ₹{locker.price}/mo
                                 </option>
@@ -798,7 +995,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs font-medium text-destructive">
                 <span>Couldn&apos;t load live seat availability.</span>
                 <button
-                  onClick={loadDynamicData}
+                  onClick={() => loadDynamicData()}
                   className="shrink-0 rounded-lg bg-destructive/20 px-3 py-1.5 font-bold hover:bg-destructive/30 transition-colors"
                 >
                   Retry
@@ -989,9 +1186,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           </div>
           <div className="text-lg font-black text-foreground">
             ₹{selectedPlan ? totalAmount : (() => {
-              const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+              const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
               const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
-              return plansToUse?.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 0;
+              return plansToUse.length > 0
+                ? Math.min(...plansToUse.map((plan) => plan.price))
+                : 0;
             })()} 
             {!selectedPlan && <span className="text-sm font-medium text-muted-foreground font-sans"> / month</span>}
           </div>

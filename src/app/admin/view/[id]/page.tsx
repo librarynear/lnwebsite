@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Check, X, Edit, ArrowLeft, MapPin, Building, CreditCard, Clock, Users } from "lucide-react";
+import { Check, X, Edit, ArrowLeft, MapPin, Building, CreditCard, Users } from "lucide-react";
 import { approveLibrary, rejectLibrary } from "@/app/actions/admin-actions";
 import { getSession } from "@/app/actions/auth-actions";
 
@@ -88,6 +88,8 @@ export default async function AdminViewLibraryPage({ params }: { params: { id: s
             </h2>
             {library.passbookPhoto ? (
               <div className="rounded-xl overflow-hidden border border-border">
+                {/* Admins preview user-uploaded URLs from arbitrary providers. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={library.passbookPhoto} alt="Passbook/KYC Document" className="w-full h-auto object-contain max-h-[500px] bg-muted/50" />
               </div>
             ) : (
@@ -129,6 +131,8 @@ export default async function AdminViewLibraryPage({ params }: { params: { id: s
               <h2 className="text-xl font-bold mb-4">Library Photos</h2>
               <div className="space-y-3">
                 {library.photos.map((url, i) => (
+                  // Library uploads may use arbitrary providers.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img key={i} src={url} alt={`Library photo ${i+1}`} className="w-full rounded-lg border border-border object-cover aspect-video" />
                 ))}
               </div>

@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ booking: activeBooking });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching seat details:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

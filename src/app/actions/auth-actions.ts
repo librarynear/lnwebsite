@@ -6,13 +6,48 @@ import { cookies } from "next/headers"
 import { adminAuth } from "@/lib/firebase/firebaseAdmin"
 import { redis } from "@/lib/redis"
 import { verifyFirebaseIdToken } from "@/lib/verify-firebase-token"
+import type { Role } from "@prisma/client"
 
 // Short TTL keeps per-request auth cheap while bounding role/profile staleness.
 const SESSION_CACHE_TTL_SECONDS = 30
 // Revoked sessions are remembered for the full cookie lifetime (14 days).
 const REVOCATION_TTL_SECONDS = 60 * 60 * 24 * 14
 
-type SessionData = { userId: string; role: string; email: string | null; phone: string | null; employerLibraryId: string | null }
+type SessionData = {
+  userId: string;
+  role: Role;
+  email: string | null;
+  phone: string | null;
+  employerLibraryId: string | null;
+}
+
+type UserExistsResult =
+  | { exists: boolean; error?: never }
+  | { error: string; exists?: never }
+
+type SyncUserResult =
+  | { success: true; isNewUser: boolean; error?: never }
+  | { error: string; success?: never; isNewUser?: never }
+
+const SESSION_ROLES = new Set<Role>(['STUDENT', 'LIBRARIAN', 'RECEPTIONIST', 'ADMIN']);
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
+function isSessionData(value: unknown): value is SessionData {
+  if (typeof value !== 'object' || value === null) return false;
+
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.userId === 'string' &&
+    typeof candidate.role === 'string' &&
+    SESSION_ROLES.has(candidate.role as Role) &&
+    isNullableString(candidate.email) &&
+    isNullableString(candidate.phone) &&
+    isNullableString(candidate.employerLibraryId)
+  );
+}
 
 async function generateFocusXId() {
   let id = "";
@@ -52,7 +87,8 @@ export async function getSession(): Promise<SessionData | null> {
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        return (typeof cached === 'string' ? JSON.parse(cached) : cached) as SessionData;
+        const parsed: unknown = typeof cached === 'string' ? JSON.parse(cached) : cached;
+        if (isSessionData(parsed)) return parsed;
       }
     } catch {
       // Ignore cache read errors
@@ -75,7 +111,7 @@ export async function getSession(): Promise<SessionData | null> {
       // Cache write failures are non-fatal
     }
     return sessionData;
-  } catch (error) {
+  } catch {
     console.error("Session verification failed");
     return null;
   }
@@ -92,7 +128,7 @@ export async function getPostLoginRedirect(): Promise<string> {
 // NOTE: Firebase login happens client-side; these actions run AFTER the client
 // has completed OTP verification and can produce a valid ID token. We never trust
 // a bare `authId`/`phone` string — the ID token is verified server-side first.
-export async function checkUserExists(phone: string, idToken: string) {
+export async function checkUserExists(phone: string, idToken: string): Promise<UserExistsResult> {
   try {
     // Require proof of identity to prevent anonymous phone-number enumeration.
     const caller = await verifyFirebaseIdToken(idToken, phone);
@@ -104,7 +140,7 @@ export async function checkUserExists(phone: string, idToken: string) {
     const normalizedPhone = phone.startsWith('+91') ? phone.slice(3) : phone;
     const phoneWithCode = phone.startsWith('+91') ? phone : `+91${phone}`;
 
-    const userByPhone = await prisma.user.findFirst({ 
+    const userByPhone = await prisma.user.findFirst({
       where: { 
         OR: [
           { phone: phone },
@@ -115,12 +151,12 @@ export async function checkUserExists(phone: string, idToken: string) {
     });
     
     return { exists: !!userByPhone };
-  } catch (e) {
+  } catch {
     return { error: "Failed to check user." };
   }
 }
 
-export async function syncUserOnSignup(idToken: string, phone: string, name?: string) {
+export async function syncUserOnSignup(idToken: string, phone: string, name?: string): Promise<SyncUserResult> {
   try {
     // Trust boundary: verify the ID token proves the caller owns both this
     // Firebase UID and this phone number before creating or linking any account.
@@ -129,7 +165,7 @@ export async function syncUserOnSignup(idToken: string, phone: string, name?: st
     const authId = caller.uid;
 
     // 1. Try to find by authId first (Definitive match for returning Firebase users)
-    let userByAuth = await prisma.user.findUnique({ where: { authId } });
+    const userByAuth = await prisma.user.findUnique({ where: { authId } });
     if (userByAuth) {
       if (name && userByAuth.name !== name) {
         await prisma.user.update({
@@ -144,8 +180,8 @@ export async function syncUserOnSignup(idToken: string, phone: string, name?: st
     const normalizedPhone = phone.startsWith('+91') ? phone.slice(3) : phone;
     const phoneWithCode = phone.startsWith('+91') ? phone : `+91${phone}`;
 
-    let userByPhone = await prisma.user.findFirst({ 
-      where: { 
+    const userByPhone = await prisma.user.findFirst({
+      where: {
         OR: [
           { phone: phone },
           { phone: normalizedPhone },
@@ -212,7 +248,7 @@ export async function logout() {
           }
         }
       }
-    } catch (e) {
+    } catch {
       // Session cookie already invalid — nothing to revoke
     }
   }

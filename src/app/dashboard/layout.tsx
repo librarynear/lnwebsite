@@ -5,11 +5,8 @@ import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { MobileNav } from "./MobileNav";
 import { logout, getSession } from "@/app/actions/auth-actions";
-import prisma from "@/lib/prisma";
-import { ExternalLink, Globe } from "lucide-react";
 import { Suspense } from "react";
-import { RealtimeProvider } from "@/components/RealtimeProvider";
-import { CommandMenu } from "@/components/CommandMenu";
+import { CommandPalette } from "@/components/command/CommandPalette";
 import { Search } from "lucide-react";
 
 async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
@@ -19,7 +16,6 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
   if (!session) redirect("/login");
   if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST') redirect("/");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
@@ -104,13 +100,11 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
         </header>
         
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-background">
-          <RealtimeProvider>
-            {children}
-          </RealtimeProvider>
+          {children}
         </div>
       </main>
       
-      <CommandMenu />
+      <CommandPalette />
     </div>
   );
 }

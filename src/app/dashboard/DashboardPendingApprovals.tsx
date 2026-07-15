@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from "react"
-import { CheckCircle2, ChevronRight } from "lucide-react"
 import { approveReceptionPayment } from "@/app/actions/student-actions"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
@@ -13,9 +12,41 @@ import {
 } from "@/components/ui/dialog"
 import Link from "next/link"
 
-export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprovals: any[] }) {
+interface PendingApproval {
+  id: string;
+  student?: {
+    name: string;
+    phone: string | null;
+    email: string | null;
+  } | null;
+  plan?: {
+    name: string;
+    price: number;
+  } | null;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprovals: PendingApproval[] }) {
   const [paymentApprovalId, setPaymentApprovalId] = useState<string | null>(null)
   const [approvalLoading, setApprovalLoading] = useState(false)
+
+  const handleApproval = async (paymentMethod: "CASH" | "ONLINE") => {
+    if (!paymentApprovalId || approvalLoading) return;
+
+    setApprovalLoading(true);
+    try {
+      await approveReceptionPayment(paymentApprovalId, paymentMethod);
+      toast.success("Payment approved successfully");
+      setPaymentApprovalId(null);
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to approve payment"));
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-warning shadow-sm overflow-hidden flex flex-col h-full">
@@ -65,40 +96,14 @@ export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprova
           </div>
           <div className="flex flex-col gap-3">
             <Button 
-              onClick={async () => {
-                if(paymentApprovalId && !approvalLoading) {
-                  setApprovalLoading(true);
-                  try {
-                    await approveReceptionPayment(paymentApprovalId, "CASH");
-                    toast.success("Payment approved successfully");
-                    setPaymentApprovalId(null);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to approve payment");
-                  } finally {
-                    setApprovalLoading(false);
-                  }
-                }
-              }} 
+              onClick={() => handleApproval("CASH")}
               className="w-full bg-primary"
               disabled={approvalLoading}
             >
               {approvalLoading ? "Approving..." : "Paid via Cash"}
             </Button>
             <Button 
-              onClick={async () => {
-                if(paymentApprovalId && !approvalLoading) {
-                  setApprovalLoading(true);
-                  try {
-                    await approveReceptionPayment(paymentApprovalId, "ONLINE");
-                    toast.success("Payment approved successfully");
-                    setPaymentApprovalId(null);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to approve payment");
-                  } finally {
-                    setApprovalLoading(false);
-                  }
-                }
-              }} 
+              onClick={() => handleApproval("ONLINE")}
               variant="outline" 
               className="w-full"
               disabled={approvalLoading}

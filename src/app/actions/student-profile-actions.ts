@@ -5,19 +5,39 @@ import { getSession } from "./auth-actions"
 import { revalidatePath } from "next/cache"
 import { uploadImage } from "@/lib/imagekit"
 
-export async function updateStudentProfile(formData: FormData) {
+function getFormString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUniqueEmailError(error: unknown): boolean {
+  if (!isRecord(error) || error.code !== "P2002" || !isRecord(error.meta)) return false;
+
+  const target = error.meta.target;
+  return (
+    (typeof target === "string" && target.includes("email")) ||
+    (Array.isArray(target) && target.some((field: unknown) => field === "email"))
+  );
+}
+
+export async function updateStudentProfile(formData: FormData): Promise<{ success: true }> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  const name = formData.get("name") as string;
-  const phone = formData.get("phone") as string;
-  const dobStr = formData.get("dob") as string;
-  const gender = formData.get("gender") as string;
-  const address = formData.get("address") as string;
-  const locality = formData.get("locality") as string;
-  const qualification = formData.get("qualification") as string;
-  const organization = formData.get("organization") as string;
-  const profilePhotoFile = formData.get("profilePhotoFile") as File;
+  const name = getFormString(formData, "name");
+  const phone = getFormString(formData, "phone");
+  const dobStr = getFormString(formData, "dob");
+  const gender = getFormString(formData, "gender");
+  const address = getFormString(formData, "address");
+  const locality = getFormString(formData, "locality");
+  const qualification = getFormString(formData, "qualification");
+  const organization = getFormString(formData, "organization");
+  const profilePhotoEntry = formData.get("profilePhotoFile");
+  const profilePhotoFile = profilePhotoEntry instanceof File ? profilePhotoEntry : null;
 
   let profilePhotoUrl: string | undefined = undefined;
 
@@ -47,7 +67,7 @@ export async function updateStudentProfile(formData: FormData) {
   const currentUser = await prisma.user.findUnique({ where: { id: session.userId } });
   const isVerified = currentUser?.digilockerVerified;
 
-  const email = formData.get("email") as string;
+  const email = getFormString(formData, "email");
 
   try {
     await prisma.user.update({
@@ -65,8 +85,8 @@ export async function updateStudentProfile(formData: FormData) {
         ...(profilePhotoUrl && !isVerified && { profilePhotoUrl }),
       }
     });
-  } catch (error: any) {
-    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+  } catch (error: unknown) {
+    if (isUniqueEmailError(error)) {
       throw new Error("Email address is already in use by another account.");
     }
     throw error;

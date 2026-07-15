@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       message: `Successfully ${newStatus === 'CHECK_IN' ? 'checked in' : 'checked out'}!`
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Check-in error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

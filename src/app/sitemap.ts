@@ -30,23 +30,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     select: { id: true, city: true, locality: true, updatedAt: true }
   });
 
-  const libraryRoutes = libraries.map((lib: any) => ({
+  const libraryRoutes = libraries.map((lib) => ({
     url: `${baseUrl}/library/${lib.id}`,
     lastModified: lib.updatedAt,
     changeFrequency: 'weekly' as const,
     priority: 0.8,
   }));
 
-  const uniqueCities = [...new Set(libraries.map((lib: any) => lib.city?.toLowerCase()).filter(Boolean))];
+  const uniqueCities = [
+    ...new Set(
+      libraries
+        .map((lib) => lib.city?.toLowerCase())
+        .filter((city): city is string => Boolean(city)),
+    ),
+  ];
   const cityRoutes = uniqueCities.map(city => ({
-    url: `${baseUrl}/${encodeURIComponent(city as string)}/libraries`,
+    url: `${baseUrl}/${encodeURIComponent(city)}/libraries`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
     priority: 0.9,
   }));
 
   const uniqueLocalities = new Set<string>();
-  libraries.forEach((lib: any) => {
+  libraries.forEach((lib) => {
     if (lib.city && lib.locality) {
       uniqueLocalities.add(`${lib.city.toLowerCase()}|${lib.locality.toLowerCase()}`);
     }

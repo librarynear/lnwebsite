@@ -51,7 +51,7 @@ export default async function WidgetsPage() {
             <h2 className="text-xl font-bold font-heading">Website Embed Code</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-6">
-            Copy and paste this HTML code into your own library's website to enable native bookings.
+            Copy and paste this HTML code into your own library&apos;s website to enable native bookings.
           </p>
 
           <CopyableField 

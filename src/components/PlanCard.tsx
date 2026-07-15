@@ -1,14 +1,20 @@
 import React from 'react';
 
 interface PlanCardProps {
-  plan: any;
+  plan: {
+    discount?: number | null;
+    durationHours: number | null;
+    price: number;
+    validityDays: number;
+  };
   isSelected?: boolean;
   onClick?: () => void;
   className?: string;
 }
 
 export function PlanCard({ plan, isSelected = false, onClick, className = '' }: PlanCardProps) {
-  const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
+  const discount = plan.discount ?? 0;
+  const finalPrice = discount ? plan.price - (plan.price * discount / 100) : plan.price;
   const months = Math.max(1, Math.round(plan.validityDays / 30));
   const perMonth = (finalPrice / months).toFixed(0);
   const isFullDay = plan.durationHours === null;
@@ -44,10 +50,10 @@ export function PlanCard({ plan, isSelected = false, onClick, className = '' }: 
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
               <span className="leading-tight">{plan.validityDays} Days Validity</span>
             </li>
-            {plan.discount > 0 && (
+            {discount > 0 && (
               <li className="text-[12px] font-medium text-slate-500 flex items-start gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0 mt-1.5"></div>
-                <span className="leading-tight"><span className="text-success font-bold">{plan.discount}% OFF</span> applied</span>
+                <span className="leading-tight"><span className="text-success font-bold">{discount}% OFF</span> applied</span>
               </li>
             )}
           </ul>
@@ -71,7 +77,7 @@ export function PlanCard({ plan, isSelected = false, onClick, className = '' }: 
           </div>
           <div className="text-[12px] font-semibold text-slate-500 leading-tight flex flex-col items-end gap-1 mt-1 truncate w-full">
             <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>
-            {plan.discount > 0 && (
+            {discount > 0 && (
               <span className="line-through opacity-60 text-muted-foreground truncate w-full text-right">₹{plan.price.toFixed(0)}</span>
             )}
           </div>

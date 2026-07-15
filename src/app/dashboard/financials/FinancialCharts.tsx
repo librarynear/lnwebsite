@@ -36,7 +36,7 @@ export default function FinancialCharts({ revenue, expenses, netProfit }: Props)
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          {!isEmpty && <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} />}
+          {!isEmpty && <Tooltip formatter={(value: unknown) => `₹${Number(value).toLocaleString()}`} />}
           <Legend verticalAlign="bottom" height={36} />
         </PieChart>
       </ResponsiveContainer>

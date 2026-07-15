@@ -1,10 +1,21 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts"
-import { Calendar, ArrowRightLeft, TrendingUp, TrendingDown } from "lucide-react"
+import { Calendar, ArrowRightLeft } from "lucide-react"
 
-export function DashboardCompareChart({ allBookings }: { allBookings: any[] }) {
+type DailyMetric = {
+  date: string
+  newCount: number
+  renewalCount: number
+  totalRevenue: number
+}
+
+type AnalyticsResponse = {
+  days: DailyMetric[]
+}
+
+export function DashboardCompareChart() {
   function getLocalDateString(date: Date) {
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
   }
@@ -19,100 +30,81 @@ export function DashboardCompareChart({ allBookings }: { allBookings: any[] }) {
   const [isComparing, setIsComparing] = useState(false);
   const [rangeA, setRangeA] = useState({ start: defaultStartA, end: defaultEndA });
   const [rangeB, setRangeB] = useState({ start: defaultStartB, end: defaultEndB });
+  const [daysA, setDaysA] = useState<DailyMetric[]>([]);
+  const [daysB, setDaysB] = useState<DailyMetric[]>([]);
 
-  // Map to store the very first booking timestamp for each student
-  const firstBookingMap = useMemo(() => {
-    const map = new Map<string, number>();
-    const sorted = [...allBookings].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    for (const b of sorted) {
-      if (!map.has(b.studentId)) {
-        map.set(b.studentId, new Date(b.createdAt).getTime());
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async (
+      range: { start: string; end: string },
+      setter: (days: DailyMetric[]) => void,
+    ) => {
+      try {
+        const response = await fetch(
+          `/api/dashboard/analytics/bookings?start=${range.start}&end=${range.end}`,
+          { signal: controller.signal, cache: "no-store" },
+        );
+        if (!response.ok) return;
+        const result = await response.json() as AnalyticsResponse;
+        setter(Array.isArray(result.days) ? result.days : []);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setter([]);
+        }
       }
-    }
-    return map;
-  }, [allBookings]);
+    };
 
-  function getMetrics(startStr: string, endStr: string) {
-    const start = new Date(startStr);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endStr);
-    end.setHours(23, 59, 59, 999);
+    void load(rangeA, setDaysA);
+    if (isComparing) void load(rangeB, setDaysB);
+    return () => controller.abort();
+  }, [rangeA, rangeB, isComparing]);
 
-    const filtered = allBookings.filter(b => {
-      const d = new Date(b.createdAt).getTime();
-      return d >= start.getTime() && d <= end.getTime();
-    });
+  const summarize = (days: DailyMetric[]) =>
+    days.reduce(
+      (total, day) => ({
+        total: total.total + day.newCount + day.renewalCount,
+        newCount: total.newCount + day.newCount,
+        renewCount: total.renewCount + day.renewalCount,
+        totalRevenue: total.totalRevenue + day.totalRevenue,
+      }),
+      { total: 0, newCount: 0, renewCount: 0, totalRevenue: 0 },
+    );
 
-    let newCount = 0;
-    let renewCount = 0;
-    let totalRevenue = 0;
+  const metricsA = useMemo(() => summarize(daysA), [daysA]);
+  const metricsB = useMemo(
+    () => isComparing ? summarize(daysB) : null,
+    [daysB, isComparing],
+  );
 
-    filtered.forEach(b => {
-      const isNew = firstBookingMap.get(b.studentId) === new Date(b.createdAt).getTime();
-      if (isNew) newCount++;
-      else renewCount++;
-
-      let price = b.plan?.price || 0;
-      if (b.plan?.discount) price -= (price * b.plan.discount / 100);
-      if (b.standaloneLocker) price += b.standaloneLocker.price;
-      totalRevenue += price;
-    });
-
-    return { total: filtered.length, newCount, renewCount, totalRevenue };
-  }
-
-  const metricsA = getMetrics(rangeA.start, rangeA.end);
-  const metricsB = isComparing ? getMetrics(rangeB.start, rangeB.end) : null;
-
-  // Build daily chart data for Period A
-  const dailyDataA = useMemo(() => {
-    const data = [];
-    const start = new Date(rangeA.start);
-    start.setHours(0,0,0,0);
-    const end = new Date(rangeA.end);
-    end.setHours(23,59,59,999);
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dayStart = new Date(d).getTime();
-      const dayEnd = dayStart + 86399999;
-      
-      const dayBookings = allBookings.filter(b => {
-        const time = new Date(b.createdAt).getTime();
-        return time >= dayStart && time <= dayEnd;
-      });
-
-      let newC = 0;
-      let renC = 0;
-      dayBookings.forEach(b => {
-        if (firstBookingMap.get(b.studentId) === new Date(b.createdAt).getTime()) newC++;
-        else renC++;
-      });
-
-      data.push({
-        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        New: newC,
-        Renewal: renC
-      });
-    }
-    return data;
-  }, [allBookings, rangeA, firstBookingMap]);
+  const dailyDataA = useMemo(
+    () =>
+      daysA.map((day) => ({
+        date: new Date(`${day.date}T12:00:00`).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        New: day.newCount,
+        Renewal: day.renewalCount,
+      })),
+    [daysA],
+  );
 
   // If comparing, we build a grouped comparison array instead of daily
   const compareData = isComparing ? [
     {
       name: "Total Bookings",
       PeriodA: metricsA.total,
-      PeriodB: metricsB!.total,
+      PeriodB: metricsB?.total ?? 0,
     },
     {
       name: "New Admissions",
       PeriodA: metricsA.newCount,
-      PeriodB: metricsB!.newCount,
+      PeriodB: metricsB?.newCount ?? 0,
     },
     {
       name: "Renewals",
       PeriodA: metricsA.renewCount,
-      PeriodB: metricsB!.renewCount,
+      PeriodB: metricsB?.renewCount ?? 0,
     }
   ] : [];
 

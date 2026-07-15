@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
+import type { Prisma } from '@prisma/client';
 import prisma from '../src/lib/prisma';
 
 async function generateSeats() {
@@ -19,7 +20,7 @@ async function generateSeats() {
   console.log("Cleared existing seats and lockers.");
 
   // 2. Generate new seats based on layout
-  const seatsData: any[] = [];
+  const seatsData: Prisma.SeatUncheckedCreateInput[] = [];
   
   const generateBlock = (prefix: string, count: number, hasLocker = false, lockerPrice: number | null = null) => {
     for (let i = 1; i <= count; i++) {

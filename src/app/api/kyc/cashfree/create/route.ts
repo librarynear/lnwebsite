@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, url: data.url, verification_id: issuedId });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Cashfree Create Error:', error);
     return NextResponse.json({ error: 'An error occurred' }, { status: 500 });
   }

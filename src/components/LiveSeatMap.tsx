@@ -4,16 +4,27 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Grid, Lock } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+export interface LiveSeat {
+  id: string;
+  name: string;
+  type: string;
+  gridX: number;
+  gridY: number;
+  hasLocker?: boolean;
+}
+
 interface LiveSeatMapProps {
-  library: any;
+  library: {
+    seats?: LiveSeat[] | null;
+  };
   occupiedSeatIds: string[];
   targetSeatId?: string | null; // Highlight specific seat
   isFlexible?: boolean; // Highlight all available seats
   interactive?: boolean; // Whether seats can be clicked
   adminMode?: boolean; // If true, all seats are clickable to view details
-  selectedSeat?: any;
-  selectedPlan?: any;
-  onSeatSelect?: (seat: any) => void;
+  selectedSeat?: Pick<LiveSeat, "id"> | null;
+  selectedPlan?: unknown;
+  onSeatSelect?: (seat: LiveSeat) => void;
   compactMode?: boolean;
 }
 
@@ -25,15 +36,14 @@ export default function LiveSeatMap({
   interactive = false,
   adminMode = false,
   selectedSeat,
-  selectedPlan,
   onSeatSelect,
   compactMode = false
 }: LiveSeatMapProps) {
   
-  const maxX = Math.max(...(library.seats?.map((s:any) => s.gridX) || [0]), 0);
-  const maxY = Math.max(...(library.seats?.map((s:any) => s.gridY) || [0]), 0);
+  const maxX = Math.max(...(library.seats?.map((seat) => seat.gridX) || [0]), 0);
+  const maxY = Math.max(...(library.seats?.map((seat) => seat.gridY) || [0]), 0);
 
-  const renderSeat = (seat: any, emptyKey?: string | number) => {
+  const renderSeat = (seat: LiveSeat | null | undefined, emptyKey?: string | number) => {
     if (!seat) return <div key={emptyKey} className="w-12 h-12"></div>;
 
     const isOccupied = occupiedSeatIds.includes(seat.id);
@@ -121,24 +131,14 @@ export default function LiveSeatMap({
         <TransformComponent wrapperClass="!w-full !h-[300px] cursor-grab active:cursor-grabbing">
           <div className="w-full h-full p-8 flex items-center justify-center">
             <div className="w-max mx-auto flex flex-col gap-3 transition-transform duration-500 ease-out">
-              {compactMode ? (
-                <div className="flex flex-wrap justify-center gap-3 w-full max-w-[600px] mx-auto">
-                  {library.seats
-                    ?.filter((s:any) => s.type !== 'EMPTY')
-                    .sort((a:any, b:any) => a.gridY === b.gridY ? a.gridX - b.gridX : a.gridY - b.gridY)
-                    .map((seat:any) => renderSeat(seat))
-                  }
-                </div>
-              ) : (
-                Array.from({ length: maxY + 1 }).map((_, y) => (
+              {Array.from({ length: maxY + 1 }).map((_, y) => (
                   <div key={y} className="flex justify-center gap-3">
                     {Array.from({ length: maxX + 1 }).map((_, x) => {
-                      const seat = library.seats?.find((s:any) => s.gridX === x && s.gridY === y);
+                      const seat = library.seats?.find((candidate) => candidate.gridX === x && candidate.gridY === y);
                       return renderSeat(seat, x);
                     })}
                   </div>
-                ))
-              )}
+                ))}
               <div className="mt-4 mx-auto w-full text-center py-1.5 bg-border/50 rounded-md text-muted-foreground text-[10px] tracking-widest uppercase font-bold border border-border">
                 Front Desk
               </div>

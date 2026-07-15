@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       valid_students: Array.from(uniqueStudentsMap.values())
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Relay cache error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

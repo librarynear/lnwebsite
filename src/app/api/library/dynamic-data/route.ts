@@ -1,9 +1,28 @@
+import crypto from "node:crypto";
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
+import { LeaseResourceType } from "@prisma/client";
+import { activeBookingsCacheKey } from "@/lib/library-cache";
+import {
+  getPrismaErrorCode,
+  isPrismaSchemaUnavailable,
+  isPrismaTemporarilyUnavailable,
+} from "@/lib/prisma-errors";
+
+type ActiveBooking = {
+  id: string;
+  seatId: string | null;
+  standaloneLockerId: string | null;
+};
+
+function isActiveBookingArray(value: unknown): value is ActiveBooking[] {
+  return Array.isArray(value);
+}
 
 export async function GET(req: Request) {
+  const requestId = crypto.randomUUID();
   const { searchParams } = new URL(req.url);
   const libraryId = searchParams.get("libraryId");
 
@@ -33,16 +52,15 @@ export async function GET(req: Request) {
       }
     }
 
-    const activeBookingsCacheKey = `library:${libraryId}:active_bookings`;
-    let activeBookings: any = await redis.get(activeBookingsCacheKey);
+    const cacheKey = activeBookingsCacheKey(libraryId);
+    const cachedBookings: unknown = await redis.get(cacheKey);
+    let activeBookings: ActiveBooking[] = [];
 
-    if (!activeBookings) {
+    if (!cachedBookings) {
       activeBookings = await prisma.booking.findMany({
         where: {
           libraryId: libraryId,
-          status: {
-            in: ['CONFIRMED', 'COMPLETED']
-          },
+          status: 'CONFIRMED',
           endTime: {
             gt: new Date()
           }
@@ -53,19 +71,46 @@ export async function GET(req: Request) {
           standaloneLockerId: true
         }
       });
-      await redis.set(activeBookingsCacheKey, JSON.stringify(activeBookings), { ex: 15 });
-    } else if (typeof activeBookings === 'string') {
-      activeBookings = JSON.parse(activeBookings);
+      await redis.set(cacheKey, activeBookings, { ex: 15 });
+    } else if (typeof cachedBookings === 'string') {
+      const parsed: unknown = JSON.parse(cachedBookings);
+      if (isActiveBookingArray(parsed)) activeBookings = parsed;
+    } else if (isActiveBookingArray(cachedBookings)) {
+      activeBookings = cachedBookings;
     }
 
-    const occupiedSeatIds = activeBookings
-      .filter((b: any) => b.id !== studentActiveBookingId)
-      .map((b: any) => b.seatId)
-      .filter(Boolean) as string[];
+    const activeLeases = await prisma.resourceLease.findMany({
+      where: {
+        libraryId,
+        expiresAt: { gt: new Date() }
+      },
+      select: {
+        resourceType: true,
+        resourceId: true,
+      }
+    });
 
-    const occupiedLockerIds = activeBookings
-      .map((b: any) => b.standaloneLockerId)
-      .filter(Boolean) as string[];
+    const occupiedSeatIds = [
+      ...activeBookings
+        .filter((booking) => booking.id !== studentActiveBookingId)
+        .map((booking) => booking.seatId)
+        .filter(Boolean),
+      ...activeLeases
+        .filter((lease) => lease.resourceType === LeaseResourceType.SEAT)
+        .map((lease) => lease.resourceId),
+    ] as string[];
+
+    const occupiedLockerIds = [
+      ...activeBookings
+        .map((booking) => booking.standaloneLockerId)
+        .filter(Boolean),
+      ...activeLeases
+        .filter(
+          (lease) =>
+            lease.resourceType === LeaseResourceType.STANDALONE_LOCKER,
+        )
+        .map((lease) => lease.resourceId),
+    ] as string[];
 
     return NextResponse.json({
       session: session ? {
@@ -79,8 +124,35 @@ export async function GET(req: Request) {
       studentActiveBookingId
     });
 
-  } catch (error: any) {
-    console.error("Dynamic data fetch error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("Dynamic data fetch error:", {
+      requestId,
+      prismaCode: getPrismaErrorCode(error),
+      error,
+    });
+    if (isPrismaSchemaUnavailable(error)) {
+      return NextResponse.json(
+        {
+          code: "BOOKING_SCHEMA_NOT_READY",
+          error: "Live booking availability is temporarily unavailable.",
+          requestId,
+        },
+        { status: 503 },
+      );
+    }
+    if (isPrismaTemporarilyUnavailable(error)) {
+      return NextResponse.json(
+        {
+          code: "BOOKING_DATABASE_UNAVAILABLE",
+          error: "Live booking availability is temporarily unavailable.",
+          requestId,
+        },
+        { status: 503, headers: { "Retry-After": "5" } },
+      );
+    }
+    return NextResponse.json(
+      { error: "Unable to load live booking availability.", requestId },
+      { status: 500 },
+    );
   }
 }

@@ -1,25 +1,46 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import { Grip, Plus, Trash2, Save, Undo2, Loader2, Lock, X } from "lucide-react";
-import { saveSeatLayoutAndLockers, getSeatLayoutAndLockers } from "@/app/actions/seat-actions";
-import LiveSeatMap from "@/components/LiveSeatMap";
+import { Plus, Trash2, Save, Undo2, Loader2, Lock, X } from "lucide-react";
+import {
+  saveSeatLayoutAndLockers,
+  getSeatLayoutAndLockers,
+  type SeatLayoutItem,
+  type SeatNamingValue,
+  type StandaloneLockerLayoutItem,
+} from "@/app/actions/seat-actions";
+import LiveSeatMap, { type LiveSeat } from "@/components/LiveSeatMap";
 import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
 import { formatStandardDate } from "@/lib/date-utils";
+
+type SeatBookingDetails = {
+  endTime: string;
+  student: {
+    id: string;
+    name: string;
+    phone: string | null;
+    profilePhotoUrl: string | null;
+  };
+  plan: {
+    name: string;
+  } | null;
+};
+
 export default function SeatsManagerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [rows, setRows] = useState(5);
   const [cols, setCols] = useState(8);
-  const [seatNaming, setSeatNaming] = useState<'ALPHANUMERIC' | 'NUMERIC'>('ALPHANUMERIC');
+  const [seatNaming, setSeatNaming] = useState<SeatNamingValue>('ALPHANUMERIC');
   
-  const [seats, setSeats] = useState<any[]>([]);
-  const [standaloneLockers, setStandaloneLockers] = useState<any[]>([]);
+  const [seats, setSeats] = useState<SeatLayoutItem[]>([]);
+  const [standaloneLockers, setStandaloneLockers] = useState<StandaloneLockerLayoutItem[]>([]);
   
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
   const [previewMode, setPreviewMode] = useState(false);
   const [popupSeatId, setPopupSeatId] = useState<string | null>(null);
-  const [popupData, setPopupData] = useState<any>(null);
+  const [popupSeatLabel, setPopupSeatLabel] = useState<string | null>(null);
+  const [popupData, setPopupData] = useState<SeatBookingDetails | null>(null);
   const [isPopupLoading, setIsPopupLoading] = useState(false);
   const [libraryId, setLibraryId] = useState<string>("");
   const [initialOccupied, setInitialOccupied] = useState<string[]>([]);
@@ -62,18 +83,21 @@ export default function SeatsManagerPage() {
     }
   };
 
-  const handlePreviewSeatClick = async (seat: any) => {
+  const handlePreviewSeatClick = async (seat: LiveSeat) => {
     if (!realtimeOccupiedSeatIds.includes(seat.id)) return; // Only fetch if occupied
 
     setPopupSeatId(seat.id);
+    setPopupSeatLabel(seat.name || seat.id);
     setIsPopupLoading(true);
     setPopupData(null);
 
     try {
       const res = await fetch(`/api/library/seat-details?libraryId=${libraryId}&seatId=${seat.id}`);
       if (res.ok) {
-        const data = await res.json();
-        setPopupData(data.booking);
+        const data = await res.json() as {
+          booking?: SeatBookingDetails | null;
+        };
+        setPopupData(data.booking ?? null);
       } else {
         setPopupData(null);
       }
@@ -97,9 +121,7 @@ export default function SeatsManagerPage() {
             const liveData = await res.json();
             setInitialOccupied(liveData.occupiedSeatIds || []);
           }
-          if ((data as any).seatNaming) {
-            setSeatNaming((data as any).seatNaming);
-          }
+          setSeatNaming(data.seatNaming);
         }
       
         let finalRows = 5;
@@ -120,8 +142,8 @@ export default function SeatsManagerPage() {
       const isEmptyLibrary = !data.seats || data.seats.length === 0;
 
       // Initialize grid, filling in gaps with EMPTY
-      const grid: any[] = [];
-      const currentNaming = data.libraryId ? ((data as any).seatNaming || 'ALPHANUMERIC') : 'ALPHANUMERIC';
+      const grid: SeatLayoutItem[] = [];
+      const currentNaming = data.seatNaming;
       for (let i = 0; i < finalRows * finalCols; i++) {
         const x = i % finalCols;
         const y = Math.floor(i / finalCols);
@@ -158,7 +180,7 @@ export default function SeatsManagerPage() {
       const isFormatChange = prevNamingRef.current !== seatNaming;
       prevNamingRef.current = seatNaming;
 
-      const newGrid: any[] = [];
+      const newGrid: SeatLayoutItem[] = [];
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
@@ -188,7 +210,10 @@ export default function SeatsManagerPage() {
     setSelectedSeatId(id);
   };
 
-  const updateSelectedSeat = (field: string, value: any) => {
+  const updateSelectedSeat = <Key extends keyof SeatLayoutItem>(
+    field: Key,
+    value: SeatLayoutItem[Key],
+  ) => {
     if (!selectedSeatId) return;
     setSeats(seats.map(s => s.id === selectedSeatId ? { ...s, [field]: value } : s));
   };
@@ -211,7 +236,13 @@ export default function SeatsManagerPage() {
     setStandaloneLockers([{ id: Date.now().toString(), name: `L${standaloneLockers.length + 1}`, price: "" }, ...standaloneLockers]);
   };
 
-  const updateStandaloneLocker = (id: string, field: string, value: any) => {
+  const updateStandaloneLocker = <
+    Key extends keyof StandaloneLockerLayoutItem
+  >(
+    id: string,
+    field: Key,
+    value: StandaloneLockerLayoutItem[Key],
+  ) => {
     setStandaloneLockers(standaloneLockers.map(l => l.id === id ? { ...l, [field]: value } : l));
   };
 
@@ -224,7 +255,7 @@ export default function SeatsManagerPage() {
     try {
       await saveSeatLayoutAndLockers(seats, standaloneLockers, true, seatNaming);
       alert("Layout & Lockers saved successfully!");
-    } catch (e) {
+    } catch {
       alert("Failed to save layout.");
     } finally {
       setIsSaving(false);
@@ -247,7 +278,12 @@ export default function SeatsManagerPage() {
         <div className="flex gap-2 items-center">
           <select 
             value={seatNaming}
-            onChange={(e) => setSeatNaming(e.target.value as any)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "ALPHANUMERIC" || value === "NUMERIC") {
+                setSeatNaming(value);
+              }
+            }}
             className="bg-card text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted transition-colors outline-none cursor-pointer"
           >
             <option value="ALPHANUMERIC">Alphanumeric (A1, B2)</option>
@@ -283,7 +319,17 @@ export default function SeatsManagerPage() {
                   <label className="text-sm font-medium text-foreground block">Seat Type</label>
                   <select 
                     value={selectedSeat.type} 
-                    onChange={(e) => updateSelectedSeat('type', e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (
+                        value === "NORMAL"
+                        || value === "PREMIUM"
+                        || value === "NON_RESERVABLE"
+                        || value === "EMPTY"
+                      ) {
+                        updateSelectedSeat("type", value);
+                      }
+                    }}
                     className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                   >
                     <option value="NORMAL">Reservable (General)</option>
@@ -478,7 +524,7 @@ export default function SeatsManagerPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="font-bold text-foreground text-xl">Standalone Lockers</h2>
-            <p className="text-sm text-muted-foreground">Add lockers that aren't attached to any specific seat.</p>
+            <p className="text-sm text-muted-foreground">Add lockers that aren&apos;t attached to any specific seat.</p>
           </div>
           <button onClick={addStandaloneLocker} className="bg-muted text-foreground border border-border font-semibold px-4 py-2 rounded-lg text-sm hover:bg-muted/80 transition-colors flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Locker
@@ -487,7 +533,7 @@ export default function SeatsManagerPage() {
 
         {standaloneLockers.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground bg-muted/30 border border-dashed border-border rounded-xl">
-            No standalone lockers added. Students won't see an optional locker dropdown.
+            No standalone lockers added. Students won&apos;t see an optional locker dropdown.
           </div>
         ) : (
           <div className="space-y-3">
@@ -543,7 +589,15 @@ export default function SeatsManagerPage() {
             </div>
             <div className="p-6 overflow-y-auto bg-muted/10 relative">
               <LiveSeatMap 
-                library={{ seats: seats.map(s => ({ ...s, gridX: s.x, gridY: s.y, name: s.id })) }} 
+                library={{
+                  seats: seats.map(s => ({
+                    ...s,
+                    id: s.databaseId || s.id,
+                    gridX: s.x,
+                    gridY: s.y,
+                    name: s.id,
+                  })),
+                }}
                 occupiedSeatIds={realtimeOccupiedSeatIds} 
                 compactMode={true}
                 interactive={true}
@@ -554,8 +608,11 @@ export default function SeatsManagerPage() {
               {popupSeatId && (
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card border border-border shadow-2xl rounded-2xl p-6 min-w-[300px] animate-in zoom-in-95 duration-200">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-bold text-lg text-foreground">Seat {popupSeatId}</h3>
-                    <button onClick={() => setPopupSeatId(null)} className="p-1 hover:bg-muted rounded-full">
+                    <h3 className="font-bold text-lg text-foreground">Seat {popupSeatLabel || popupSeatId}</h3>
+                    <button onClick={() => {
+                      setPopupSeatId(null);
+                      setPopupSeatLabel(null);
+                    }} className="p-1 hover:bg-muted rounded-full">
                       <X className="w-4 h-4 text-muted-foreground" />
                     </button>
                   </div>
@@ -568,6 +625,9 @@ export default function SeatsManagerPage() {
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 bg-muted/50 p-3 rounded-xl border border-border/50">
                         {popupData.student.profilePhotoUrl ? (
+                          // User profile photos can come from arbitrary providers,
+                          // so they cannot use a fixed Next.js remote-image allowlist.
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={popupData.student.profilePhotoUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-border" />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">

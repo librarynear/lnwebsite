@@ -1,15 +1,16 @@
 'use client'
 import { formatStandardDate } from "@/lib/date-utils";
+import type { Plan, Prisma, Relay, Seat } from "@prisma/client"
 
 import { useState, useEffect, useTransition, Fragment } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, UserPlus, UserMinus, MoreVertical, ChevronDown, CheckCircle2, ShieldAlert, ShieldCheck, CalendarClock, Clock, Tag, ArrowUpDown, Filter, X, PlusCircle, MinusCircle, History } from "lucide-react"
-import { addStudentWithBooking, approveReceptionPayment, revokeBooking, extendBookingExact, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
+import { Search, UserPlus, UserMinus, ChevronDown, CheckCircle2, Filter, PlusCircle, MinusCircle, History } from "lucide-react"
+import { addStudentWithBooking, approveReceptionPayment, revokeBooking, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
-import { generateRFIDCommandQR, addOfflineStudentWithRFID } from "@/app/actions/hardware-actions"
+import { generateRFIDCommandQR } from "@/app/actions/hardware-actions"
 import QRCode from "react-qr-code"
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth"
 import { firebaseConfig } from "@/lib/firebase/clientApp"
 import toast from "react-hot-toast"
 import { getStudentByPhoneOrAuthId } from "@/app/actions/student-actions"
@@ -46,24 +47,74 @@ import { Textarea } from "@/components/ui/textarea"
 import { AssignRFIDModal } from "@/components/AssignRFIDModal"
 import { StudentProfileModal } from "@/components/StudentProfileModal"
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: { bookings: any[], plans: any[], logs?: any[], relays?: any[], seats?: any[], totalCount?: number, tabCounts?: { active: number, expiring: number, inactive: number, revoked: number }, currentPage?: number, searchQuery?: string }) {
+type BookingWithDetails = Prisma.BookingGetPayload<{
+  include: {
+    student: true
+    plan: true
+    seat: true
+    standaloneLocker: true
+  }
+}>
+
+type SortMethod = 'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'
+
+interface ActivityLog {
+  id: string
+  studentId: string
+  status: 'CHECK_IN' | 'CHECK_OUT' | 'DENIED'
+  reason: string | null
+  timestamp: Date
+  isOfflineSync: boolean
+  student: {
+    name: string
+    uniqueId?: string | null
+  } | null
+}
+
+interface StudentsClientProps {
+  bookings: BookingWithDetails[]
+  plans: Plan[]
+  logs?: ActivityLog[]
+  relays?: Relay[]
+  seats?: Seat[]
+  totalCount?: number
+  tabCounts?: {
+    active: number
+    expiring: number
+    inactive: number
+    revoked: number
+  }
+  currentPage?: number
+  searchQuery?: string
+}
+
+type RecaptchaWindow = Window & {
+  recaptchaVerifier?: RecaptchaVerifier
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message || fallback
+  }
+
+  return fallback
+}
+
+function isSortMethod(value: unknown): value is SortMethod {
+  return value === 'LATEST' || value === 'EXPIRY' || value === 'DURATION' || value === 'ALPHABETICAL'
+}
+
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
   const router = useRouter()
   const searchParamsHook = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState(searchQuery)
-
-  useEffect(() => {
-    const action = searchParamsHook.get('action');
-    const studentId = searchParamsHook.get('studentId');
-    if (action === 'add-student') {
-      setIsOpen(true);
-      window.history.replaceState(null, '', '/dashboard/students');
-    } else if (action === 'view-profile' && studentId) {
-      setProfileStudentId(studentId);
-      window.history.replaceState(null, '', '/dashboard/students');
-    }
-  }, [searchParamsHook]);
 
   useEffect(() => {
     if (search === searchQuery) return;
@@ -106,7 +157,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
   // Tabs & Sorting
   const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING') || 'ACTIVE'
-  const [sortMethod, setSortMethod] = useState<'LATEST' | 'EXPIRY' | 'DURATION' | 'ALPHABETICAL'>('LATEST')
+  const [sortMethod, setSortMethod] = useState<SortMethod>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
   // RFID Modal States
@@ -134,7 +185,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
   const [otp, setOtp] = useState("")
   const [otpLoading, setOtpLoading] = useState(false)
-  const [verificationObj, setVerificationObj] = useState<any>(null)
+  const [verificationObj, setVerificationObj] = useState<ConfirmationResult | null>(null)
   const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [addFormSeatId, setAddFormSeatId] = useState<string | null>(null)
@@ -148,6 +199,30 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     isKycVerified: false
   });
 
+  const action = searchParamsHook.get('action')
+  const actionStudentId = searchParamsHook.get('studentId')
+  const actionRequest = action === 'add-student'
+    ? action
+    : action === 'view-profile' && actionStudentId
+      ? `${action}:${actionStudentId}`
+      : null
+  const [handledActionRequest, setHandledActionRequest] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (actionRequest) {
+      window.history.replaceState(null, '', '/dashboard/students')
+    }
+  }, [actionRequest])
+
+  if (actionRequest !== handledActionRequest) {
+    setHandledActionRequest(actionRequest)
+    if (action === 'add-student') {
+      setIsOpen(true)
+    } else if (action === 'view-profile' && actionStudentId) {
+      setProfileStudentId(actionStudentId)
+    }
+  }
+
   const handleSendOTP = async () => {
     try {
       setOtpLoading(true);
@@ -155,25 +230,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       const secondaryAuth = getAuth(secondaryApp);
       
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+      const recaptchaWindow = window as RecaptchaWindow;
       
-      if ((window as any).recaptchaVerifier) {
+      if (recaptchaWindow.recaptchaVerifier) {
         try {
-          (window as any).recaptchaVerifier.clear();
-        } catch(e) {}
-        (window as any).recaptchaVerifier = null;
+          recaptchaWindow.recaptchaVerifier.clear();
+        } catch {}
+        recaptchaWindow.recaptchaVerifier = undefined;
       }
       
       const appVerifier = new RecaptchaVerifier(secondaryAuth, 'recaptcha-container', { size: 'invisible' });
-      (window as any).recaptchaVerifier = appVerifier;
+      recaptchaWindow.recaptchaVerifier = appVerifier;
       
       const confirmation = await signInWithPhoneNumber(secondaryAuth, formattedPhone, appVerifier);
       
       setVerificationObj(confirmation);
       setStep(2);
       toast.success('OTP sent successfully!');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to send OTP");
+    } catch (error: unknown) {
+      console.error(error);
+      toast.error(getErrorMessage(error, "Failed to send OTP"));
     } finally {
       setOtpLoading(false);
     }
@@ -182,7 +258,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const handleVerifyOTP = async () => {
     try {
       setOtpLoading(true);
-      const result = await verificationObj.confirm(otp);
+      const result = await verificationObj!.confirm(otp);
       setVerifiedAuthId(result.user.uid);
       const secondaryAuth = getAuth(getApps().find(app => app.name === 'Secondary')!);
       await secondaryAuth.signOut();
@@ -206,9 +282,9 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       } else {
         toast.success("Phone verified!");
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Invalid OTP");
+    } catch (error: unknown) {
+      console.error(error);
+      toast.error(getErrorMessage(error, "Invalid OTP"));
     } finally {
       setOtpLoading(false);
     }
@@ -238,8 +314,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
       setStudentFormData({ name: "", email: "", dob: "", gender: "", address: "", isKycVerified: false });
       router.refresh();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to add student.");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to add student."));
     } finally {
       setAddingStudent(false);
     }
@@ -253,8 +329,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       toast.success("Seat updated successfully");
       setSeatChangeBookingId(null);
       router.refresh();
-    } catch(e: any) {
-      toast.error(e.message || "Failed to update seat");
+    } catch(error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to update seat"));
     } finally {
       setLoadingId(null);
     }
@@ -279,7 +355,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     (b.student.phone && b.student.phone.includes(search))
   );
 
-  const latestBookingsMap = new Map();
+  const latestBookingsMap = new Map<string, BookingWithDetails>();
   for (const b of searchedBookings) {
     const existing = latestBookingsMap.get(b.studentId);
     if (!existing) {
@@ -314,27 +390,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   }
   const uniqueSearchedBookings = Array.from(latestBookingsMap.values());
 
-  const activeBookings = uniqueSearchedBookings.filter((b: any) => {
+  const activeBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     return b.status === 'CONFIRMED' && end >= now;
   });
-  const expiringBookings = uniqueSearchedBookings.filter((b: any) => {
+  const expiringBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     const sevenDaysFromNow = new Date(now);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
     return b.status === 'CONFIRMED' && end >= now && end <= sevenDaysFromNow;
   });
-  const inactiveBookings = uniqueSearchedBookings.filter((b: any) => {
+  const inactiveBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     return b.status !== 'CANCELLED' && end < now;
   });
-  const revokedBookings = uniqueSearchedBookings.filter((b: any) => b.status === 'CANCELLED');
+  const revokedBookings = uniqueSearchedBookings.filter((b) => b.status === 'CANCELLED');
 
   const getFilteredBookings = () => {
-    let list = [];
+    let list: BookingWithDetails[] = [];
     if (activeTab === 'ACTIVE') list = activeBookings;
     else if (activeTab === 'EXPIRING') list = expiringBookings;
     else if (activeTab === 'INACTIVE') list = inactiveBookings;
@@ -612,7 +688,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           <button onClick={() => setSortMethod('LATEST')} className="text-[10px] text-primary hover:underline lowercase normal-case">Reset</button>
                         )}
                       </h4>
-                      <Select value={sortMethod} onValueChange={(val: any) => setSortMethod(val)}>
+                      <Select
+                        value={sortMethod}
+                        onValueChange={(value) => {
+                          if (isSortMethod(value)) setSortMethod(value)
+                        }}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Sort By" />
                         </SelectTrigger>
@@ -744,7 +825,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           <span 
                             className="text-[10px] text-muted-foreground max-w-[120px] truncate cursor-pointer hover:underline" 
                             onClick={() => {
-                              setViewReason(booking.revokedReason);
+                              setViewReason(booking.revokedReason ?? "");
                               setReasonModalOpen(true);
                             }}
                           >
@@ -797,8 +878,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                 } else {
                                   toast.success("ID generated successfully");
                                 }
-                              } catch (e: any) {
-                                toast.error(e.message || "Failed to generate ID");
+                              } catch (error: unknown) {
+                                toast.error(getErrorMessage(error, "Failed to generate ID"));
                               } finally {
                                 setLoadingId(null);
                                 router.refresh();
@@ -915,8 +996,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                           toast.success(`Plan resumed! Pause duration was < 7 days, so plan was not extended.`);
                                         }
                                         router.refresh();
-                                      } catch (e: any) {
-                                        toast.error(e.message || "Failed to resume");
+                                      } catch (error: unknown) {
+                                        toast.error(getErrorMessage(error, "Failed to resume"));
                                       }
                                       setLoadingId(null);
                                     }}
@@ -932,8 +1013,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                         await pauseBooking(booking.id);
                                         toast.success("Plan paused successfully");
                                         router.refresh();
-                                      } catch (e: any) {
-                                        toast.error(e.message || "Failed to pause");
+                                      } catch (error: unknown) {
+                                        toast.error(getErrorMessage(error, "Failed to pause"));
                                       }
                                       setLoadingId(null);
                                     }}
@@ -1163,8 +1244,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
                     router.refresh();
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to approve payment");
+                  } catch (error: unknown) {
+                    toast.error(getErrorMessage(error, "Failed to approve payment"));
                   } finally {
                     setApprovalLoading(false);
                   }
@@ -1188,8 +1269,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     toast.success("Payment approved successfully");
                     setPaymentApprovalId(null);
                     router.refresh();
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to approve payment");
+                  } catch (error: unknown) {
+                    toast.error(getErrorMessage(error, "Failed to approve payment"));
                   } finally {
                     setApprovalLoading(false);
                   }
@@ -1287,14 +1368,14 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         }`}>
                           {log.status.replace('_', ' ')}
                         </span>
-                        {(log as any).reason && (log.status === 'DENIED') && (
+                        {log.reason && (log.status === 'DENIED') && (
                           <span className="block mt-1 text-[10px] text-muted-foreground">
-                            {(log as any).reason}
+                            {log.reason}
                           </span>
                         )}
-                        {(log as any).reason?.startsWith("Unregistered RFID") && (
+                        {log.reason?.startsWith("Unregistered RFID") && (
                           <button 
-                            onClick={() => setRfidTagToAssign((log as any).reason?.split(":")[1]?.trim())}
+                            onClick={() => setRfidTagToAssign(log.reason?.split(":")[1]?.trim() ?? null)}
                             className="mt-1 block text-xs bg-primary text-primary-foreground font-bold px-2 py-1 rounded-md hover:opacity-90"
                           >
                             Assign RFID
@@ -1316,7 +1397,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           <DialogHeader>
             <DialogTitle>Revoke Student Access</DialogTitle>
             <DialogDescription>
-              Are you sure you want to revoke this student's access? Please provide a reason.
+              Are you sure you want to revoke this student&apos;s access? Please provide a reason.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1349,8 +1430,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   toast.success("Access revoked");
                   setRevokeModalOpen(false);
                   router.refresh();
-                } catch (e: any) {
-                  toast.error(e.message || "Failed to revoke");
+                } catch (error: unknown) {
+                  toast.error(getErrorMessage(error, "Failed to revoke"));
                 } finally {
                   setLoadingId(null);
                 }
@@ -1530,8 +1611,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
                   router.refresh();
-                } catch (e: any) {
-                  toast.error(e.message || "Failed to renew");
+                } catch (error: unknown) {
+                  toast.error(getErrorMessage(error, "Failed to renew"));
                 } finally {
                   setRenewLoadingMethod(null);
                 }
@@ -1568,8 +1649,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   toast.success(`Success! ${renewBookingData?.student?.name || 'Student'}'s plan has been extended to ${renewNewExpiryStr}.`);
                   setRenewModalBookingId(null);
                   router.refresh();
-                } catch (e: any) {
-                  toast.error(e.message || "Failed to renew");
+                } catch (error: unknown) {
+                  toast.error(getErrorMessage(error, "Failed to renew"));
                 } finally {
                   setRenewLoadingMethod(null);
                 }
@@ -1623,7 +1704,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         setRfidQrPayload(res.qrPayload!);
                         toast.success("QR Code Generated");
                       }
-                    } catch(e: any) {
+                    } catch {
                       toast.error("Error generating QR");
                     }
                     setRfidLoading(false);
@@ -1646,7 +1727,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           setRfidQrPayload(res.qrPayload!);
                           toast.success("QR Code Generated");
                         }
-                      } catch(e: any) {
+                      } catch {
                         toast.error("Error generating QR");
                       }
                       setRfidLoading(false);

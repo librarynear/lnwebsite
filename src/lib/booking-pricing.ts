@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 
 export type PricingInput = {
   planId: string
@@ -7,6 +8,8 @@ export type PricingInput = {
   hasLocker?: boolean
   standaloneLockerId?: string | null
 }
+
+type PricingClient = Pick<Prisma.TransactionClient, "plan" | "seat" | "standaloneLocker">
 
 /**
  * Single source of truth for how much a booking should cost, in paise.
@@ -20,10 +23,13 @@ export type PricingInput = {
  * Returns the expected amount in paise, or null if referenced entities are
  * missing / inconsistent (caller should reject the payment in that case).
  */
-export async function computeExpectedAmountPaise(input: PricingInput): Promise<number | null> {
+export async function computeExpectedAmountPaise(
+  input: PricingInput,
+  db: PricingClient = prisma,
+): Promise<number | null> {
   const { planId, libraryId, seatId, hasLocker, standaloneLockerId } = input
 
-  const plan = await prisma.plan.findUnique({ where: { id: planId } })
+  const plan = await db.plan.findUnique({ where: { id: planId } })
   if (!plan || plan.libraryId !== libraryId) return null
 
   let expectedAmount = plan.discount
@@ -33,31 +39,29 @@ export async function computeExpectedAmountPaise(input: PricingInput): Promise<n
   const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28))
 
   if (seatId) {
-    const seat = await prisma.seat.findUnique({ where: { id: seatId } })
-    if (seat) {
-      if (hasLocker && seat.lockerPriceMonthly) {
-        expectedAmount += seat.lockerPriceMonthly * lockerMonths
-      }
-      
-      if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
-        const premiumMultiplier = plan.validityDays / 30;
-        let premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier;
-        
-        // Sync plan discount with premium seat if checked
-        if (seat.syncPremiumOffers !== false && plan.discount) {
-          premiumSurcharge = premiumSurcharge - (premiumSurcharge * plan.discount / 100);
-        }
-        
-        expectedAmount += premiumSurcharge;
-      }
+    const seat = await db.seat.findUnique({ where: { id: seatId } })
+    if (!seat || seat.libraryId !== libraryId) return null
+
+    if (hasLocker && seat.lockerPriceMonthly) {
+      expectedAmount += seat.lockerPriceMonthly * lockerMonths
     }
-  } 
-  
+
+    if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
+      const premiumMultiplier = plan.validityDays / 30
+      let premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier
+
+      if (seat.syncPremiumOffers !== false && plan.discount) {
+        premiumSurcharge -= premiumSurcharge * plan.discount / 100
+      }
+
+      expectedAmount += premiumSurcharge
+    }
+  }
+
   if (standaloneLockerId) {
-    const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } })
-    if (locker) {
-      expectedAmount += locker.price * lockerMonths
-    }
+    const locker = await db.standaloneLocker.findUnique({ where: { id: standaloneLockerId } })
+    if (!locker || locker.libraryId !== libraryId) return null
+    expectedAmount += locker.price * lockerMonths
   }
 
   return Math.round(expectedAmount * 100)

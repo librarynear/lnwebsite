@@ -47,7 +47,7 @@ export function Testimonials() {
             transition={{ delay: 0.1 }}
             className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto"
           >
-            Don't just take our word for it. Here is what students are saying about their FocusX experience.
+            Don&apos;t just take our word for it. Here is what students are saying about their FocusX experience.
           </motion.p>
         </div>
 
@@ -68,7 +68,7 @@ export function Testimonials() {
                   ))}
                 </div>
                 <p className="text-slate-700 text-lg leading-relaxed mb-8 font-medium">
-                  "{testimonial.content}"
+                  &ldquo;{testimonial.content}&rdquo;
                 </p>
               </div>
               <div className="flex items-center gap-4">

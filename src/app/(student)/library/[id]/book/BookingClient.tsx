@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from "react";
-import Link from "next/link";
-import { CreditCard, Wallet, Lock, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { CreditCard, Wallet, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
@@ -16,27 +15,52 @@ const LiveSeatMap = dynamic(() => import("@/components/LiveSeatMap"), {
   ),
 });
 
+type BookingLibrary = {
+  id: string;
+};
+
+type BookingPlan = {
+  id: string;
+  name: string;
+  validityDays: number;
+  price: number;
+};
+
+type BookingSeat = {
+  id: string;
+  name: string;
+  type: string;
+  gridX: number;
+  gridY: number;
+  hasLocker?: boolean;
+};
+
+type BookingClientProps = {
+  library: BookingLibrary;
+  plans: BookingPlan[];
+  seats: BookingSeat[];
+  lockers: unknown[];
+  occupiedSeatIds: string[];
+  userId: string | null;
+};
+
 export function BookingClient({ 
   library, 
   plans, 
   seats, 
-  lockers, 
   occupiedSeatIds,
   userId
-}: { 
-  library: any, 
-  plans: any[], 
-  seats: any[], 
-  lockers: any[], 
-  occupiedSeatIds: string[],
-  userId: string | null
-}) {
+}: BookingClientProps) {
   const router = useRouter();
   const [selectedPlanId, setSelectedPlanId] = useState<string>(plans[0]?.id || "");
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'RECEPTION'>('ONLINE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const checkoutIdempotencyRef = useRef<{
+    fingerprint: string;
+    key: string;
+  } | null>(null);
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
   const selectedSeat = seats.find(s => s.id === selectedSeatId);
@@ -65,12 +89,27 @@ export function BookingClient({
 
     setLoading(true);
     setError(null);
+    const checkoutFingerprint = JSON.stringify({
+      paymentMethod,
+      selectedPlanId,
+      selectedSeatId,
+    });
+    if (checkoutIdempotencyRef.current?.fingerprint !== checkoutFingerprint) {
+      checkoutIdempotencyRef.current = {
+        fingerprint: checkoutFingerprint,
+        key: crypto.randomUUID(),
+      };
+    }
+    const idempotencyKey = checkoutIdempotencyRef.current.key;
 
     try {
       if (paymentMethod === 'RECEPTION') {
         const res = await fetch('/api/checkout/reception', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
           body: JSON.stringify({
             studentId: userId,
             libraryId: library.id,
@@ -78,13 +117,16 @@ export function BookingClient({
             seatId: selectedSeatId,
           })
         });
-        const data = await res.json();
+        const data = await res.json() as { error?: string };
         if (!res.ok) throw new Error(data.error || "Failed to book");
         router.push('/student/dashboard');
       } else {
         const res = await fetch('/api/razorpay/create-order', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
           body: JSON.stringify({
             studentId: userId,
             libraryId: library.id,
@@ -92,45 +134,21 @@ export function BookingClient({
             seatId: selectedSeatId,
           })
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to create order");
-        
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: data.order.amount,
-          currency: "INR",
-          name: "FocusX",
-          description: "Library Booking",
-          order_id: data.order.id,
-          handler: async function (response: any) {
-            const verifyRes = await fetch('/api/razorpay/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: data.bookingId
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              router.push('/student/dashboard');
-            } else {
-              setError("Payment verification failed.");
-            }
-          },
-          prefill: {
-            name: "Student",
-            contact: "9999999999"
-          },
-          theme: { color: "#2563eb" }
+        const data = await res.json() as {
+          error?: string;
+          payment_url?: string;
         };
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
+        if (!res.ok || typeof data.payment_url !== "string") {
+          throw new Error(data.error || "Failed to create payment link");
+        }
+        window.location.assign(data.payment_url);
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during checkout");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred during checkout",
+      );
     } finally {
       setLoading(false);
     }
@@ -151,7 +169,7 @@ export function BookingClient({
               occupiedSeatIds={realtimeOccupiedSeatIds}
               compactMode={false}
               interactive={true}
-              onSeatSelect={(seat: any) => handleSeatClick(seat.id)}
+              onSeatSelect={(seat: BookingSeat) => handleSeatClick(seat.id)}
               selectedSeat={selectedSeat}
             />
           </div>

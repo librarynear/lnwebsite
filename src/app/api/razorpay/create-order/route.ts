@@ -1,224 +1,302 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import Razorpay from 'razorpay';
-import prisma from '@/lib/prisma';
-import { redis } from '@/lib/redis';
-import { getSession } from '@/app/actions/auth-actions';
+import crypto from "node:crypto"
+import { NextResponse, type NextRequest } from "next/server"
+import { BookingIntentStatus } from "@prisma/client"
+import prisma from "@/lib/prisma"
+import { getSession } from "@/app/actions/auth-actions"
+import { adminAuth } from "@/lib/firebase/firebaseAdmin"
+import {
+  BookingAuthorityError,
+  attachPaymentLink,
+  cancellationRevokesLibraryAccess,
+  claimPaymentLinkCreation,
+  createOnlineBookingIntent,
+  failBookingIntent,
+} from "@/lib/booking-authority"
+import { getRazorpayClient } from "@/lib/razorpay"
+import {
+  getPrismaErrorCode,
+  isPrismaSchemaUnavailable,
+  isPrismaTemporarilyUnavailable,
+} from "@/lib/prisma-errors"
 
-// Lazily construct the client so a missing key fails loudly at request time
-// instead of silently signing requests with placeholder creds (which produces
-// confusing downstream Razorpay auth errors). Keeping it out of module scope
-// also avoids the constructor throwing during build-time page-data collection.
-function getRazorpayClient(): Razorpay {
-  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  const key_secret = process.env.RAZORPAY_KEY_SECRET;
-  if (!key_id || !key_secret) {
-    throw new Error('Razorpay keys are not configured (NEXT_PUBLIC_RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)');
-  }
-  return new Razorpay({ key_id, key_secret });
+type CheckoutBody = {
+  planId?: unknown
+  seatId?: unknown
+  hasLocker?: unknown
+  standaloneLockerId?: unknown
+  idToken?: unknown
+  idempotencyKey?: unknown
 }
 
 function getAppUrl(req: NextRequest): string {
-  const env = process.env.NEXT_PUBLIC_APP_URL;
-  if (env && !env.includes('localhost')) return env;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
-  const proto = req.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-  return `${proto}://${host}`;
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (configured && !configured.includes("localhost")) return configured
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+
+  const host =
+    req.headers.get("x-forwarded-host")
+    ?? req.headers.get("host")
+    ?? "localhost:3000"
+  const protocol =
+    req.headers.get("x-forwarded-proto")
+    ?? (host.includes("localhost") ? "http" : "https")
+  return `${protocol}://${host}`
 }
 
-import { adminAuth } from '@/lib/firebase/firebaseAdmin';
-
 export async function POST(req: NextRequest) {
+  const requestId = crypto.randomUUID()
+  let createdIntentId: string | null = null
+  let paymentLinkClaimed = false
+
   try {
-    const body = await req.json();
-    const { planId, seatId, hasLocker, standaloneLockerId, idToken } = body;
+    const body = await req.json() as CheckoutBody
+    const planId = typeof body.planId === "string" ? body.planId : null
+    const seatId = typeof body.seatId === "string" ? body.seatId : null
+    const standaloneLockerId =
+      typeof body.standaloneLockerId === "string"
+        ? body.standaloneLockerId
+        : null
+    const hasLocker = body.hasLocker === true
+    const idToken = typeof body.idToken === "string" ? body.idToken : null
+    const suppliedIdempotencyKey = (
+      req.headers.get("idempotency-key")
+      ?? (typeof body.idempotencyKey === "string" ? body.idempotencyKey : "")
+    ).trim().slice(0, 128)
 
-    let session = await getSession();
-    let authUserId = session?.userId;
-    let authUser: any = session || null;
+    if (!planId) {
+      return NextResponse.json({ error: "Plan ID is required" }, { status: 400 })
+    }
+    if (!suppliedIdempotencyKey) {
+      return NextResponse.json(
+        { error: "Idempotency-Key is required" },
+        { status: 400 },
+      )
+    }
 
-    if (!session && idToken && adminAuth) {
+    const session = await getSession()
+    let authUserId = session?.userId ?? null
+
+    if (!authUserId && idToken && adminAuth) {
       try {
-        const decoded = await adminAuth.verifyIdToken(idToken);
-        const user = await prisma.user.findUnique({ where: { authId: decoded.uid } });
-        if (user) {
-          authUserId = user.id;
-          authUser = user;
-        }
-      } catch (e) {
-        console.error("Iframe token verification failed", e);
+        const decoded = await adminAuth.verifyIdToken(idToken, true)
+        const user = await prisma.user.findUnique({
+          where: { authId: decoded.uid },
+          select: { id: true },
+        })
+        authUserId = user?.id ?? null
+      } catch (error) {
+        console.error("Checkout token verification failed:", error)
       }
     }
 
     if (!authUserId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (typeof planId !== 'string' || !planId) {
-      return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
-    }
-    if (seatId != null && typeof seatId !== 'string') {
-      return NextResponse.json({ error: 'Invalid seat' }, { status: 400 });
-    }
-    if (standaloneLockerId != null && typeof standaloneLockerId !== 'string') {
-      return NextResponse.json({ error: 'Invalid locker' }, { status: 400 });
-    }
+    const [user, plan] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: authUserId },
+        select: { id: true, name: true, phone: true, email: true },
+      }),
+      prisma.plan.findUnique({
+        where: { id: planId },
+        include: { library: { select: { name: true } } },
+      }),
+    ])
 
-    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!user) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 })
+    }
     if (!plan || !plan.isActive) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     }
-
-    const libraryId = plan.libraryId;
 
     const lastBooking = await prisma.booking.findFirst({
-      where: { studentId: authUserId, libraryId },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    if (lastBooking && lastBooking.status === 'CANCELLED') {
-      return NextResponse.json({ error: 'Your access to this library has been revoked. Please contact the librarian.' }, { status: 403 });
-    }
-
-    const library = await prisma.library.findUnique({
-      where: { id: libraryId },
-      select: { name: true },
-    });
-
-    if (seatId) {
-      const seat = await prisma.seat.findUnique({ where: { id: seatId } });
-      if (!seat || seat.libraryId !== libraryId) {
-        return NextResponse.json({ error: 'Invalid seat selection' }, { status: 400 });
-      }
-    }
-
-    if (standaloneLockerId) {
-      const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
-      if (!locker || locker.libraryId !== libraryId) {
-        return NextResponse.json({ error: 'Invalid locker selection' }, { status: 400 });
-      }
-    }
-
-    // Check seat availability before creating payment link
-    if (seatId) {
-      const seatClash = await prisma.booking.findFirst({
-        where: {
-          seatId,
-          status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
-          endTime: { gt: new Date() },
+      where: {
+        studentId: authUserId,
+        libraryId: plan.libraryId,
+      },
+      orderBy: { createdAt: "desc" },
+      select: { status: true, revokedReason: true },
+    })
+    if (lastBooking && cancellationRevokesLibraryAccess(lastBooking)) {
+      return NextResponse.json(
+        {
+          error:
+            "Your access to this library has been revoked. Please contact the librarian.",
         },
-      });
-      if (seatClash) {
-        return NextResponse.json({ error: 'This seat is no longer available' }, { status: 409 });
-      }
+        { status: 403 },
+      )
     }
 
-    let planPrice = plan.discount
-      ? plan.price - (plan.price * plan.discount / 100)
-      : plan.price;
+    const intent = await createOnlineBookingIntent({
+      studentId: user.id,
+      libraryId: plan.libraryId,
+      planId: plan.id,
+      seatId,
+      standaloneLockerId,
+      hasLocker,
+      idempotencyKey: suppliedIdempotencyKey,
+    })
+    createdIntentId = intent.id
 
-    let lockerCost = 0;
-    let premiumSurcharge = 0;
-    const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28));
-
-    if (seatId) {
-      const seat = await prisma.seat.findUnique({ where: { id: seatId } });
-      if (seat) {
-        if (hasLocker) {
-          lockerCost = (seat.lockerPriceMonthly || 0) * lockerMonths;
-        }
-        
-        if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
-          const premiumMultiplier = plan.validityDays / 30;
-          premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier;
-          
-          if (seat.syncPremiumOffers !== false && plan.discount) {
-            premiumSurcharge = premiumSurcharge - (premiumSurcharge * plan.discount / 100);
-          }
-        }
-      }
-    } 
-    
-    if (standaloneLockerId) {
-      const existingLockerBooking = await prisma.booking.findFirst({
-        where: {
-          standaloneLockerId,
-          status: { in: ["CONFIRMED"] },
-          endTime: { gt: new Date() }
-        }
-      });
-      if (existingLockerBooking) {
-        return NextResponse.json({ error: 'This locker has just been reserved by someone else.' }, { status: 409 });
-      }
-
-      const locker = await prisma.standaloneLocker.findUnique({ where: { id: standaloneLockerId } });
-      if (locker) {
-        lockerCost = locker.price * lockerMonths;
-      }
+    if (
+      intent.providerShortUrl
+      && intent.holdExpiresAt
+      && intent.holdExpiresAt > new Date()
+      && intent.status === BookingIntentStatus.AWAITING_PAYMENT
+    ) {
+      return NextResponse.json({
+        payment_url: intent.providerShortUrl,
+        reference_id: intent.referenceId,
+      })
     }
 
-    const totalAmount = planPrice + lockerCost + premiumSurcharge;
+    paymentLinkClaimed = await claimPaymentLinkCreation(intent.id)
+    if (!paymentLinkClaimed) {
+      const current = await prisma.bookingIntent.findUnique({
+        where: { id: intent.id },
+        select: {
+          status: true,
+          providerShortUrl: true,
+          holdExpiresAt: true,
+        },
+      })
+      if (
+        current?.providerShortUrl
+        && current.holdExpiresAt
+        && current.holdExpiresAt > new Date()
+        && current.status === BookingIntentStatus.AWAITING_PAYMENT
+      ) {
+        return NextResponse.json({
+          payment_url: current.providerShortUrl,
+          reference_id: intent.referenceId,
+        })
+      }
 
-    if (!Number.isFinite(totalAmount) || totalAmount <= 0 || totalAmount > 1_000_000) {
-      return NextResponse.json({ error: 'Invalid order amount' }, { status: 400 });
+      const isBeingPrepared =
+        current?.status === BookingIntentStatus.AWAITING_PAYMENT
+        && Boolean(current.holdExpiresAt && current.holdExpiresAt > new Date())
+      return NextResponse.json(
+        {
+          error: isBeingPrepared
+            ? "Checkout is already being prepared. Please retry in a moment."
+            : "This checkout request is no longer payable.",
+          retryable: isBeingPrepared,
+        },
+        {
+          status: 409,
+          headers: isBeingPrepared ? { "Retry-After": "1" } : undefined,
+        },
+      )
     }
 
-    const appUrl = getAppUrl(req);
-    const refId = `ref_${authUserId.substring(0, 8)}_${Date.now()}`;
-
-    const customerInfo: Record<string, string> = {};
-    customerInfo.name = authUser.name || "Student";
-    if (authUser.phone) customerInfo.contact = authUser.phone.startsWith('+') ? authUser.phone : `+91${authUser.phone}`;
-    if (authUser.email) customerInfo.email = authUser.email;
-
-    const callbackUrl = `${appUrl}/api/razorpay/callback`;
-
-    if (callbackUrl.includes('localhost')) {
-      console.error('[create-order] FATAL: callback_url is localhost — Razorpay will NOT redirect after payment. Set NEXT_PUBLIC_APP_URL to your production domain.');
-      return NextResponse.json({ error: 'Payment system is misconfigured. Please contact support.' }, { status: 500 });
+    if (!intent.holdExpiresAt || intent.holdExpiresAt <= new Date()) {
+      return NextResponse.json(
+        { error: "Checkout hold expired. Please try again." },
+        { status: 409 },
+      )
     }
 
-    const razorpay = getRazorpayClient();
+    const appUrl = getAppUrl(req)
+    const callbackUrl = `${appUrl}/api/razorpay/callback`
+    if (callbackUrl.includes("localhost")) {
+      await failBookingIntent(intent.id, "CALLBACK_URL_NOT_PUBLIC")
+      return NextResponse.json(
+        { error: "Payment system is misconfigured. Please contact support." },
+        { status: 500 },
+      )
+    }
 
-    const link = await razorpay.paymentLink.create({
-      amount: Math.round(totalAmount * 100),
-      currency: "INR",
+    const customer: Record<string, string> = { name: user.name || "Student" }
+    if (user.phone) {
+      customer.contact = user.phone.startsWith("+") ? user.phone : `+91${user.phone}`
+    }
+    if (user.email) customer.email = user.email
+
+    const link = await getRazorpayClient().paymentLink.create({
+      amount: intent.expectedAmountPaise,
+      currency: intent.currency,
       accept_partial: false,
-      reference_id: refId,
-      description: `${plan.name} – ${library?.name || 'Library'}`,
-      customer: Object.keys(customerInfo).length > 0 ? customerInfo : undefined,
+      reference_id: intent.referenceId,
+      description: `${plan.name} – ${plan.library.name}`,
+      customer,
       callback_url: callbackUrl,
       callback_method: "get",
       notes: {
-        planId,
-        seatId: seatId || '',
-        studentId: authUserId,
-        libraryId,
+        bookingIntentId: intent.id,
+        libraryId: intent.libraryId,
       },
-      expire_by: Math.floor(Date.now() / 1000) + 1800,
-    } as any);
+      expire_by: Math.floor(intent.holdExpiresAt.getTime() / 1000),
+    })
 
-    const intent = JSON.stringify({
-      studentId: authUserId,
-      libraryId,
-      planId,
-      seatId: seatId || null,
-      hasLocker: hasLocker || false,
-      standaloneLockerId: standaloneLockerId || null,
-      orderId: (link as any).order_id || null,
-    });
-
-    // Store intent keyed by our reference_id (used by callback GET)
-    await redis.set(`razorpay:intent:${refId}`, intent, { ex: 3600 });
-    // Also key by the internal order_id so the webhook can find it
-    if ((link as any).order_id) {
-      await redis.set(`razorpay:intent:${(link as any).order_id}`, intent, { ex: 3600 });
+    if (!link.id || !link.short_url) {
+      throw new Error("Razorpay did not return a usable Payment Link")
     }
 
-    return NextResponse.json({ payment_url: link.short_url });
-  } catch (error: any) {
-    console.error("Razorpay error:", error);
-    return NextResponse.json({ error: 'An error occurred creating payment' }, { status: 500 });
+    await attachPaymentLink(intent.id, {
+      providerLinkId: link.id,
+      providerShortUrl: link.short_url,
+    })
+    paymentLinkClaimed = false
+
+    return NextResponse.json({
+      payment_url: link.short_url,
+      reference_id: intent.referenceId,
+    })
+  } catch (error) {
+    if (createdIntentId && paymentLinkClaimed) {
+      await failBookingIntent(
+        createdIntentId,
+        error instanceof Error ? error.message : "PAYMENT_LINK_CREATION_FAILED",
+      ).catch(() => undefined)
+    }
+
+    if (error instanceof BookingAuthorityError) {
+      const status =
+        error.code === "RESOURCE_TAKEN"
+        || error.code === "BOOKING_IN_PROGRESS"
+        || error.code === "IDEMPOTENCY_CONFLICT"
+          ? 409
+          : 400
+      return NextResponse.json({ error: error.message }, { status })
+    }
+
+    console.error("Razorpay checkout creation failed:", {
+      requestId,
+      prismaCode: getPrismaErrorCode(error),
+      error,
+    })
+    if (isPrismaSchemaUnavailable(error)) {
+      return NextResponse.json(
+        {
+          code: "BOOKING_SCHEMA_NOT_READY",
+          error:
+            "Booking is temporarily unavailable because the latest booking database migration has not been deployed.",
+          requestId,
+        },
+        { status: 503 },
+      )
+    }
+    if (isPrismaTemporarilyUnavailable(error)) {
+      return NextResponse.json(
+        {
+          code: "BOOKING_DATABASE_UNAVAILABLE",
+          error: "Booking is temporarily unavailable. Please retry shortly.",
+          requestId,
+        },
+        { status: 503, headers: { "Retry-After": "5" } },
+      )
+    }
+    return NextResponse.json(
+      {
+        error: "An error occurred creating payment",
+        requestId,
+      },
+      { status: 500 },
+    )
   }
 }

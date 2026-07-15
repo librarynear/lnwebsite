@@ -2,10 +2,21 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Star, CheckCircle2, Navigation, Clock, Heart, Search, Plus } from 'lucide-react'
+import { MapPin, CheckCircle2, Navigation, Heart, Search, Plus } from 'lucide-react'
 import Image from 'next/image'
 
-export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
+type MockupLibrary = {
+  name: string;
+  locality: string | null;
+  address: string | null;
+  city: string | null;
+  photos: string[];
+  plans: Array<{
+    price: number;
+  }>;
+};
+
+export function InteractivePhoneMockup({ libraries }: { libraries: MockupLibrary[] }) {
   const [step, setStep] = useState(0)
   const [cursorPos, setCursorPos] = useState({ x: 150, y: 500, scale: 1, opacity: 0 });
   const [scrollY, setScrollY] = useState(0);
@@ -20,7 +31,7 @@ export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
     name: lib.name,
     locality: lib.locality || lib.address?.split(',')[0] || "Delhi",
     city: lib.city || "Delhi NCR",
-    minPrice: lib.plans?.length > 0 ? Math.min(...lib.plans.map((p: any) => p.price)) : 500,
+    minPrice: lib.plans?.length > 0 ? Math.min(...lib.plans.map((plan) => plan.price)) : 500,
     rating: 4.9, // Mock rating for display
     image: lib.photos?.[0] || defaultLibs[i % defaultLibs.length].image
   })) : defaultLibs;
@@ -34,12 +45,14 @@ export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
     let t4: NodeJS.Timeout | undefined;
     let t5: NodeJS.Timeout | undefined;
     let t6: NodeJS.Timeout | undefined;
-    let t7: NodeJS.Timeout | undefined;
+    let initialTimer: NodeJS.Timeout | undefined;
 
     if (step === 0) {
-      setScrollY(0);
-      // 1. Move to first library card
-      setCursorPos({ x: 150, y: 350, scale: 1, opacity: 0.8 });
+      initialTimer = setTimeout(() => {
+        setScrollY(0);
+        // 1. Move to first library card
+        setCursorPos({ x: 150, y: 350, scale: 1, opacity: 0.8 });
+      }, 0);
       // 2. Press
       t1 = setTimeout(() => setCursorPos({ x: 150, y: 350, scale: 0.8, opacity: 0.8 }), 2000);
       // 3. Switch to Step 1 (Library Detail)
@@ -72,8 +85,10 @@ export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
       t6 = setTimeout(() => setStep(2), 4800);
 
     } else if (step === 2) {
-      // Hide cursor
-      setCursorPos({ x: 150, y: 450, scale: 1, opacity: 0 });
+      initialTimer = setTimeout(() => {
+        // Hide cursor
+        setCursorPos({ x: 150, y: 450, scale: 1, opacity: 0 });
+      }, 0);
       // Restart loop
       t1 = setTimeout(() => setStep(0), 3000);
     }
@@ -85,7 +100,7 @@ export function InteractivePhoneMockup({ libraries }: { libraries: any[] }) {
       if (t4) clearTimeout(t4);
       if (t5) clearTimeout(t5);
       if (t6) clearTimeout(t6);
-      if (t7) clearTimeout(t7);
+      if (initialTimer) clearTimeout(initialTimer);
     }
   }, [step]);
 

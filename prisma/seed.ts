@@ -47,7 +47,7 @@ async function main() {
     }
   })
 
-  const library2 = await prisma.library.create({
+  await prisma.library.create({
     data: {
       librarianId: librarian.id,
       name: 'Quiet Hub',
@@ -69,7 +69,7 @@ async function main() {
     }
   })
 
-  const plan2 = await prisma.plan.create({
+  await prisma.plan.create({
     data: {
       libraryId: library1.id,
       name: 'Monthly Fixed',

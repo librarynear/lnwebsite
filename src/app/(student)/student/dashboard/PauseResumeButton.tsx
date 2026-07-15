@@ -36,8 +36,8 @@ export default function PauseResumeButton({
         setCurrentState(true);
         toast.success("Plan paused successfully.")
       }
-    } catch (err: any) {
-      toast.error(err.message || "Something went wrong")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
     } finally {
       setLoading(false);
     }

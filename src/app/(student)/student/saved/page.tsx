@@ -3,39 +3,39 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, MapPin } from "lucide-react";
+import { Heart } from "lucide-react";
 import { SaveButton, SavedLibrary } from "@/components/save-button";
 
 export default function SavedLibrariesPage() {
   const [libraries, setLibraries] = useState<SavedLibrary[]>([]);
-  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-    
     const loadSaved = () => {
       try {
-        const saved = JSON.parse(localStorage.getItem("savedLibraries") || "[]");
-        setLibraries(saved);
-      } catch (e) {
+        const saved: unknown = JSON.parse(
+          localStorage.getItem("savedLibraries") || "[]",
+        );
+        setLibraries(Array.isArray(saved) ? saved as SavedLibrary[] : []);
+      } catch {
         setLibraries([]);
       }
     };
 
-    loadSaved();
+    const timer = window.setTimeout(loadSaved, 0);
     
     window.addEventListener("savedLibrariesUpdated", loadSaved);
-    return () => window.removeEventListener("savedLibrariesUpdated", loadSaved);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("savedLibrariesUpdated", loadSaved);
+    };
   }, []);
-
-  if (!isClient) return null; // Avoid hydration mismatch
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-64px)]">
       <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
         <div className="mb-8 border-b border-border/40 pb-6">
           <h1 className="text-3xl font-heading font-bold text-black">Saved Libraries</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Libraries you've liked, saved directly to your phone.</p>
+          <p className="text-muted-foreground mt-2 text-sm">Libraries you&apos;ve liked, saved directly to your phone.</p>
         </div>
 
         {libraries.length === 0 ? (

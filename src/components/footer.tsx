@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Phone, Mail, BookOpen } from "lucide-react";
+import { MapPin, Phone, Mail } from "lucide-react";
 import { GlobalFeedbackModal } from "./global-feedback-modal";
 
 export function Footer() {

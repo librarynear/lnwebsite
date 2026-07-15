@@ -2,7 +2,13 @@
 import { getSession } from "./auth-actions";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
-import { endOfDayIST } from "@/lib/date-utils";
+import { BookingIntentSource } from "@prisma/client";
+import {
+  BookingAuthorityError,
+  createManualConfirmedBookingInTransaction,
+  manualPaymentReference,
+} from "@/lib/booking-authority";
+import { invalidateLibraryRuntimeCache } from "@/lib/library-cache";
 
 export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_GATE") {
   const session = await getSession();
@@ -60,7 +66,7 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       // It must be base64 encoded, let's decode it
       try {
         privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
-      } catch (e) {
+      } catch {
         console.error("Failed to decode ECDSA_PRIVATE_KEY from base64");
       }
     }
@@ -83,7 +89,7 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
 
     return { success: true, qrPayload: JSON.stringify(qrData) };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error signing QR:", error);
     return { error: "Failed to generate secure QR code" };
   }
@@ -304,41 +310,16 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
       });
       newUserId = student.id;
 
-      // 2. Validate Seat (if applicable)
-      let seat = null;
-      let startTime = startDateStr ? new Date(startDateStr) : new Date();
-      const endTime = endOfDayIST(startTime, plan.validityDays - 1);
-      
-      finalExpiry = Math.floor(endTime.getTime() / 1000);
-
-      if (!isFlexible) {
-        seat = await tx.seat.findFirst({ where: { id: seatId, libraryId: library.id } });
-        if (!seat) throw new Error("Invalid seat");
-
-        const clash = await tx.booking.findFirst({
-          where: {
-            seatId: seat.id,
-            status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
-            startTime: { lt: endTime },
-            endTime: { gt: startTime }
-          }
-        });
-        if (clash) throw new Error("SEAT_TAKEN");
-      }
-
-      // 3. Create Booking
-      await tx.booking.create({
-        data: {
-          studentId: student.id,
-          libraryId: library.id,
-          planId: plan.id,
-          seatId: seat ? seat.id : null,
-          startTime,
-          endTime,
-          status: "CONFIRMED",
-          paymentRef: `MANUAL_${paymentMethod}_${Date.now()}`
-        }
+      const booking = await createManualConfirmedBookingInTransaction(tx, {
+        studentId: student.id,
+        libraryId: library.id,
+        planId: plan.id,
+        seatId: isFlexible ? null : seatId,
+        requestedStart: startDateStr ? new Date(startDateStr) : undefined,
+        source: BookingIntentSource.HARDWARE,
+        paymentRef: manualPaymentReference(`MANUAL_${paymentMethod}`),
       });
+      finalExpiry = Math.floor(booking.endTime.getTime() / 1000);
     }, { isolationLevel: 'Serializable' });
 
     // 4. Generate the QR Code payload (re-using the logic)
@@ -353,7 +334,7 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
     if (!privateKeyBase64.includes('-----BEGIN PRIVATE KEY-----')) {
       try {
         privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
-      } catch (e) {
+      } catch {
         console.error("Failed to decode ECDSA_PRIVATE_KEY from base64");
       }
     }
@@ -381,11 +362,19 @@ export async function addOfflineStudentWithRFID(formData: FormData) {
       sig: signature
     };
 
+    await invalidateLibraryRuntimeCache(library.id);
     return { success: true, qrPayload: JSON.stringify(qrPayload) };
 
-  } catch (e: any) {
-    if (e.message === 'SEAT_TAKEN') return { error: "Seat is already booked for this duration" };
+  } catch (e: unknown) {
+    if (
+      e instanceof BookingAuthorityError
+      && e.code === "RESOURCE_TAKEN"
+    ) {
+      return { error: "Seat is already booked for this duration" };
+    }
     // Prevent Next.js from crashing serialization by returning only the message string
-    return { error: e?.message || "Failed to register offline student" };
+    return {
+      error: e instanceof Error ? e.message : "Failed to register offline student",
+    };
   }
 }

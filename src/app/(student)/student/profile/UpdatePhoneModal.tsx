@@ -2,11 +2,11 @@
 
 declare global {
   interface Window {
-    recaptchaVerifier: any;
+    recaptchaVerifier?: RecaptchaVerifier;
   }
 }
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { auth } from "@/lib/firebase/clientApp"
 import { RecaptchaVerifier, PhoneAuthProvider, updatePhoneNumber } from "firebase/auth"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -16,7 +16,23 @@ import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { syncUpdatedPhone } from "@/app/actions/student-profile-actions"
 
-export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhone: string | null, onPhoneUpdated: (phone: string) => void }) {
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getErrorCode(error: unknown): string | undefined {
+  if (
+    typeof error === "object"
+    && error !== null
+    && "code" in error
+    && typeof error.code === "string"
+  ) {
+    return error.code;
+  }
+  return undefined;
+}
+
+export function UpdatePhoneModal({ onPhoneUpdated }: { currentPhone: string | null, onPhoneUpdated: (phone: string) => void }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [phone, setPhone] = useState("");
@@ -25,8 +41,9 @@ export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhon
   const [error, setError] = useState("");
   const [verificationId, setVerificationId] = useState("");
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
       setStep(1);
       setPhone("");
       setOtp("");
@@ -38,7 +55,7 @@ export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhon
         window.recaptchaVerifier = undefined;
       }
     }
-  }, [open]);
+  };
 
   const initRecaptcha = () => {
     if (!window.recaptchaVerifier) {
@@ -61,9 +78,9 @@ export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhon
       
       setVerificationId(vId);
       setStep(2);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to send OTP");
+      setError(getErrorMessage(err, "Failed to send OTP"));
     } finally {
       setLoading(false);
     }
@@ -88,13 +105,13 @@ export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhon
         throw new Error("Failed to sync updated phone with database.");
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       // Firebase throws specific errors for credentials already in use
-      if (err.code === 'auth/credential-already-in-use') {
+      if (getErrorCode(err) === 'auth/credential-already-in-use') {
         setError("This phone number is already registered to another account.");
       } else {
-        setError(err.message || "Failed to verify OTP");
+        setError(getErrorMessage(err, "Failed to verify OTP"));
       }
     } finally {
       setLoading(false);
@@ -102,7 +119,7 @@ export function UpdatePhoneModal({ currentPhone, onPhoneUpdated }: { currentPhon
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button type="button" variant="outline" />}>
         Change
       </DialogTrigger>

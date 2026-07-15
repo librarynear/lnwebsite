@@ -15,12 +15,7 @@ export function AccessQRModal({ libraryId, iconOnly }: { libraryId: string; icon
 
   // Refresh QR code every 20 seconds while modal is open since TTL is 30s
   useEffect(() => {
-    if (!open) {
-      setQrData(null);
-      return;
-    }
-
-    let interval: NodeJS.Timeout;
+    if (!open) return;
 
     const fetchQR = async () => {
       setLoading(true);
@@ -32,7 +27,7 @@ export function AccessQRModal({ libraryId, iconOnly }: { libraryId: string; icon
         } else if (res.qrPayload) {
           setQrData(res.qrPayload);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to generate secure QR");
       } finally {
         setLoading(false);
@@ -40,13 +35,18 @@ export function AccessQRModal({ libraryId, iconOnly }: { libraryId: string; icon
     };
 
     fetchQR();
-    interval = setInterval(fetchQR, 20000);
+    const interval = setInterval(fetchQR, 20000);
 
     return () => clearInterval(interval);
   }, [open, libraryId]);
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setQrData(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={
         iconOnly ? (
           <Button variant="ghost" className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full flex-shrink-0 text-foreground hover:bg-muted">

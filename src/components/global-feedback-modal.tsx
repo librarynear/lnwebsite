@@ -21,7 +21,7 @@ export function GlobalFeedbackModal() {
         return;
       }
       setIsOpen(true);
-    } catch (e) {
+    } catch {
       window.location.href = '/login?returnUrl=/';
     }
   }
@@ -55,9 +55,10 @@ export function GlobalFeedbackModal() {
       setStudentName("");
       setStudentPhone("");
       setLibrarySearch("");
-    } catch (e: any) {
-      alert(e.message);
-      if (e.message.includes('login')) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to submit";
+      alert(message);
+      if (message.includes('login')) {
         window.location.href = '/login?returnUrl=/';
       }
     } finally {

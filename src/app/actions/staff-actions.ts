@@ -5,7 +5,15 @@ import { getSession } from "./auth-actions"
 import { revalidatePath } from "next/cache"
 import { verifyFirebaseIdToken } from "@/lib/verify-firebase-token"
 
-export async function addReceptionist(formData: FormData) {
+type StaffActionResult =
+  | { success: true; error?: never }
+  | { success?: never; error: string };
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export async function addReceptionist(formData: FormData): Promise<StaffActionResult> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
     return { error: "Unauthorized" };
@@ -17,11 +25,20 @@ export async function addReceptionist(formData: FormData) {
 
   if (!library) return { error: "Library not found" };
 
-  const phone = formData.get("phone") as string;
-  const name = formData.get("name") as string;
-  const idToken = formData.get("idToken") as string;
+  const phone = formData.get("phone");
+  const name = formData.get("name");
+  const idToken = formData.get("idToken");
 
-  if (!phone || !name || !idToken) return { error: "Phone, name, and OTP verification are required" };
+  if (
+    typeof phone !== "string" ||
+    typeof name !== "string" ||
+    typeof idToken !== "string" ||
+    !phone ||
+    !name ||
+    !idToken
+  ) {
+    return { error: "Phone, name, and OTP verification are required" };
+  }
 
   // Verify the OTP token really belongs to the phone being onboarded, so a
   // librarian can't bind an arbitrary Firebase UID (or someone else's) to a
@@ -32,7 +49,7 @@ export async function addReceptionist(formData: FormData) {
 
   try {
     // Check if user already exists by authId or phone
-    let existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
           { authId: authId },
@@ -72,13 +89,13 @@ export async function addReceptionist(formData: FormData) {
 
     revalidatePath("/dashboard/staff");
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Add Receptionist Error:", err);
-    return { error: "Database error: " + (err.message || "Failed to save staff.") };
+    return { error: "Database error: " + getErrorMessage(err, "Failed to save staff.") };
   }
 }
 
-export async function removeReceptionist(userId: string) {
+export async function removeReceptionist(userId: string): Promise<StaffActionResult> {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
     return { error: "Unauthorized" };
@@ -106,8 +123,8 @@ export async function removeReceptionist(userId: string) {
 
     revalidatePath("/dashboard/staff");
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Remove Receptionist Error:", err);
-    return { error: "Database error: " + (err.message || "Failed to remove staff.") };
+    return { error: "Database error: " + getErrorMessage(err, "Failed to remove staff.") };
   }
 }

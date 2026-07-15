@@ -23,23 +23,12 @@ async function getCachedLibrary(id: string) {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusx.in';
 
-// Pre-render the approved library pages at build time for instant first paint + SEO.
-export async function generateStaticParams() {
-  try {
-    const libraries = await prisma.library.findMany({
-      where: { kycStatus: "APPROVED" },
-      select: { id: true },
-      take: 1000,
-    });
-    return libraries.map((lib) => ({ id: lib.id }));
-  } catch {
-    return [];
-  }
-}
-
-export async function generateMetadata(props: any): Promise<Metadata> {
-  const params = await props.params;
-  const id = params?.id;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params;
   if (!id) return {};
 
   const library = await getCachedLibrary(id);
@@ -48,9 +37,11 @@ export async function generateMetadata(props: any): Promise<Metadata> {
   }
 
   const area = library.locality || library.city || "your area";
-  const monthlyPlans = library.plans.filter((p: any) => p.validityDays >= 28);
+  const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
   const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
-  const minPrice = plansToUse.length > 0 ? Math.min(...plansToUse.map((p: any) => p.price)) : 500;
+  const minPrice = plansToUse.length > 0
+    ? Math.min(...plansToUse.map((plan) => plan.price))
+    : 500;
   const title = `${library.name} — Study Library in ${area}`;
   const description = `Book a seat at ${library.name}, a premium study library in ${area}${library.city ? `, ${library.city}` : ''}. Plans from ₹${minPrice}/mo with verified amenities. Reserve on FocusX.`;
   const canonical = `${APP_URL}/library/${id}`;
@@ -71,9 +62,12 @@ export async function generateMetadata(props: any): Promise<Metadata> {
   };
 }
 
-export default async function LibraryDetailsPage(props: any) {
-  const params = await props.params;
-  const id = params?.id;
+export default async function LibraryDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params;
 
   if (!id) {
     return notFound()
@@ -87,13 +81,13 @@ export default async function LibraryDetailsPage(props: any) {
   }
 
   // Generate JSON-LD Structured Data
-  const monthlyPlansLD = library.plans.filter((p: any) => p.validityDays >= 28);
+  const monthlyPlansLD = library.plans.filter((plan) => plan.validityDays >= 28);
   const plansToUseLD = monthlyPlansLD.length > 0 ? monthlyPlansLD : library.plans;
   const minPriceLD = plansToUseLD.length > 0 
-    ? Math.min(...plansToUseLD.map((p: any) => p.price)) 
+    ? Math.min(...plansToUseLD.map((plan) => plan.price))
     : 500;
   const maxPrice = library.plans.length > 0 
-    ? Math.max(...library.plans.map((p: any) => p.price)) 
+    ? Math.max(...library.plans.map((plan) => plan.price))
     : 2000;
 
   const schema = {

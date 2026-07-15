@@ -10,6 +10,7 @@ import { DashboardPendingApprovals } from "./DashboardPendingApprovals";
 
 import { LiveEntryLogs } from "@/components/LiveEntryLogs";
 import { StudentsInsideWidget } from "@/components/StudentsInsideWidget";
+import { Prisma } from "@prisma/client";
 
 export default async function LibrarianDashboardPage() {
   const session = await getSession();
@@ -21,24 +22,35 @@ export default async function LibrarianDashboardPage() {
   // Calculate past 7 days range
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const expiringBefore = new Date();
+  expiringBefore.setDate(expiringBefore.getDate() + 3);
 
-  // Fetch all necessary data securely
   const now = new Date();
   const [
-    studentGroup,
+    studentCount,
     totalSeatsCount,
     occupiedSeatRows,
     pendingQueries,
     recentBookings,
     checkinLogsRaw,
-    allBookings,
+    expiringCount,
     pendingApprovals,
-    entryLogs
+    entryLogs,
+    todaysBookings,
+    latestEntryStates,
   ] = await Promise.all([
-    // Active students = distinct students with a CONFIRMED plan that hasn't expired yet.
-    prisma.booking.groupBy({
-      by: ['studentId'],
-      where: { libraryId: library.id, status: 'CONFIRMED', endTime: { gte: now } }
+    prisma.user.count({
+      where: {
+        bookings: {
+          some: {
+            libraryId: library.id,
+            status: 'CONFIRMED',
+            endTime: { gte: now },
+          },
+        },
+      },
     }),
     prisma.seat.count({ where: { libraryId: library.id } }),
     // Occupancy = distinct seats actually held right now (excludes seatless
@@ -68,23 +80,47 @@ export default async function LibrarianDashboardPage() {
     prisma.checkinLog.findMany({
       where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo } },
       include: { student: { select: { name: true, phone: true } } },
-      orderBy: { timestamp: 'desc' }
+      orderBy: { timestamp: 'desc' },
+      take: 250,
     }),
-    prisma.booking.findMany({
-      where: { libraryId: library.id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
-      include: { plan: true, standaloneLocker: true, student: true },
-      orderBy: { createdAt: 'desc' }
+    prisma.booking.count({
+      where: {
+        libraryId: library.id,
+        status: "CONFIRMED",
+        endTime: { gt: now, lt: expiringBefore },
+      },
     }),
     prisma.booking.findMany({
       where: { libraryId: library.id, status: 'PENDING_PAYMENT' },
       include: { student: true, plan: true, seat: true },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 20,
     }),
     prisma.entryLog.findMany({
       where: { libraryId: library.id, timestamp: { gte: sevenDaysAgo }, status: { in: ["SUCCESS", "IN", "OUT"] } },
       include: { user: { select: { id: true, name: true, phone: true } } },
-      orderBy: { timestamp: 'desc' }
-    })
+      orderBy: { timestamp: 'desc' },
+      take: 250,
+    }),
+    prisma.booking.findMany({
+      where: {
+        libraryId: library.id,
+        status: { in: ["CONFIRMED", "COMPLETED"] },
+        createdAt: { gte: startOfDay },
+      },
+      include: { plan: true, standaloneLocker: true, student: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.$queryRaw<Array<{ userId: string; status: string }>>(Prisma.sql`
+      SELECT DISTINCT ON ("userId") "userId", "status"
+      FROM "EntryLog"
+      WHERE "libraryId" = ${library.id}
+        AND "timestamp" >= ${startOfDay}
+        AND "userId" IS NOT NULL
+        AND "status" IN ('SUCCESS', 'IN', 'OUT')
+      ORDER BY "userId", "timestamp" DESC
+    `),
   ]);
 
   const checkinLogs = [
@@ -100,38 +136,20 @@ export default async function LibrarianDashboardPage() {
       status: (log.status === 'OUT' ? 'CHECK_OUT' : 'CHECK_IN') as 'CHECK_IN' | 'CHECK_OUT',
       timestamp: log.timestamp
     }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  ]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 250);
 
-  const studentCount = studentGroup.length;
   const totalSeats = totalSeatsCount || library.seatsAvailable || 1;
   const bookedSeats = occupiedSeatRows.length;
   const occupancyPercentage = Math.min(100, Math.round((bookedSeats / totalSeats) * 100));
 
-  const expiringBookings = allBookings.filter(b => {
-    const diff = new Date(b.endTime).getTime() - new Date().getTime();
-    return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000 && b.status === 'CONFIRMED';
+  const insideUserIds = latestEntryStates
+    .filter(({ status }) => status !== "OUT")
+    .map(({ userId }) => userId);
+  const studentsInside = await prisma.user.findMany({
+    where: { id: { in: insideUserIds } },
   });
-
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const todayEntryLogs = await prisma.entryLog.findMany({
-    where: { libraryId: library.id, timestamp: { gte: startOfDay }, status: { in: ["SUCCESS", "IN", "OUT"] } },
-    include: { user: true },
-    orderBy: { timestamp: 'asc' }
-  });
-
-  const studentsInsideMap = new Map();
-  todayEntryLogs.forEach(log => {
-    if (log.user) {
-      if (log.status === "OUT") {
-        studentsInsideMap.delete(log.userId);
-      } else {
-        studentsInsideMap.set(log.userId, log.user);
-      }
-    }
-  });
-  const studentsInside = Array.from(studentsInsideMap.values());
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -188,7 +206,7 @@ export default async function LibrarianDashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Expiring Soon</p>
-              <h3 className="text-2xl font-bold text-foreground">{expiringBookings.length}</h3>
+              <h3 className="text-2xl font-bold text-foreground">{expiringCount}</h3>
             </div>
           </div>
           <div className="text-xs font-medium text-muted-foreground">
@@ -257,7 +275,7 @@ export default async function LibrarianDashboardPage() {
           <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
             <div>
               <h2 className="text-xl font-bold text-foreground">Transactions</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Today's Transactions</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Today&apos;s Transactions</p>
             </div>
             <Link href="/dashboard/financials" className="text-primary text-sm font-medium hover:underline">View All</Link>
           </div>
@@ -272,10 +290,6 @@ export default async function LibrarianDashboardPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {(() => {
-                  const startOfToday = new Date();
-                  startOfToday.setHours(0, 0, 0, 0);
-                  const todaysBookings = allBookings.filter(b => new Date(b.createdAt).getTime() >= startOfToday.getTime());
-
                   if (todaysBookings.length === 0) {
                     return <tr><td colSpan={3} className="p-6 text-center text-sm text-muted-foreground">No transactions today</td></tr>;
                   }
@@ -328,12 +342,12 @@ export default async function LibrarianDashboardPage() {
 
       {/* Row 4: Check-in Attendance */}
       <div className="w-full">
-        <DashboardAttendance logs={checkinLogs as any} />
+        <DashboardAttendance logs={checkinLogs} />
       </div>
 
       {/* Row 3: Admissions Chart */}
       <div className="w-full">
-        <DashboardCompareChart allBookings={allBookings} />
+        <DashboardCompareChart />
       </div>
     </div>
   );

@@ -101,7 +101,7 @@ export default async function StudentDashboardPage() {
               <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center shadow-sm">
                 <BookOpen className="w-12 h-12 text-muted-foreground opacity-50 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-foreground">No Active Bookings</h3>
-                <p className="text-muted-foreground text-sm mt-1 mb-6">You don't have any ongoing library subscriptions.</p>
+                <p className="text-muted-foreground text-sm mt-1 mb-6">You don&apos;t have any ongoing library subscriptions.</p>
                 <Link href="/libraries" className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2">
                   <MapPin className="w-4 h-4" /> Find a Library
                 </Link>
