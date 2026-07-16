@@ -104,7 +104,18 @@ export default async function OwnerSubmissionsAdminPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-muted-foreground">{submission.city}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{submission.phone_number ?? "-"}</td>
+                  <td className="px-6 py-4 text-muted-foreground">
+                    {submission.phone_number ? (
+                      <a 
+                        href={`https://wa.me/${submission.phone_number.replace(/\s+/g, "").startsWith("+91") ? submission.phone_number.replace(/\s+/g, "") : "+91" + submission.phone_number.replace(/\s+/g, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:underline hover:text-primary"
+                      >
+                        {submission.phone_number}
+                      </a>
+                    ) : "-"}
+                  </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={submission.status} />
                   </td>

@@ -76,7 +76,18 @@ export default async function AdminLeadsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-black">{lead.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{lead.phone_number}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {lead.phone_number ? (
+                          <a 
+                            href={`https://wa.me/${lead.phone_number.replace(/\s+/g, "").startsWith("+91") ? lead.phone_number.replace(/\s+/g, "") : "+91" + lead.phone_number.replace(/\s+/g, "")}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline hover:text-primary"
+                          >
+                            {lead.phone_number}
+                          </a>
+                        ) : "-"}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       {lib ? (

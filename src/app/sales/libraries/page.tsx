@@ -148,7 +148,18 @@ export default async function SalesLibrariesPage({
                     </td>
                     <td className="px-6 py-4 text-muted-foreground max-w-[180px] truncate">{lib.locality || "-"}</td>
                     <td className="px-6 py-4 text-muted-foreground capitalize">{lib.city}</td>
-                    <td className="px-6 py-4 text-muted-foreground">{lib.phone_number || "-"}</td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {lib.phone_number ? (
+                        <a 
+                          href={`https://wa.me/${lib.phone_number.replace(/\s+/g, "").startsWith("+91") ? lib.phone_number.replace(/\s+/g, "") : "+91" + lib.phone_number.replace(/\s+/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline hover:text-primary"
+                        >
+                          {lib.phone_number}
+                        </a>
+                      ) : "-"}
+                    </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {lib.opening_time && lib.closing_time ? `${lib.opening_time} - ${lib.closing_time}` : "-"}
                     </td>
