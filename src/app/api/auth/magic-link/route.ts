@@ -3,7 +3,7 @@ import { adminAuth } from '@/lib/firebase/firebaseAdmin';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session')?.value;
