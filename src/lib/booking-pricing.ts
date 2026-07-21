@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
+import { loadBookingFacts } from "./booking-engine/server/server-fact-loader"
+import { evaluateBookingSelection } from "./booking-engine/evaluate-selection"
 
 export type PricingInput = {
   planId: string
@@ -9,62 +11,36 @@ export type PricingInput = {
   standaloneLockerId?: string | null
 }
 
-type PricingClient = Pick<Prisma.TransactionClient, "plan" | "seat" | "standaloneLocker">
+type PricingClient = Prisma.TransactionClient | typeof prisma
 
 /**
- * Single source of truth for how much a booking should cost, in paise.
- *
- * Every payment verification path (interactive verify, payment-link callback,
- * and the webhook) MUST compute the expected amount here and compare it against
- * what Razorpay reports as actually paid. Trusting a client- or
- * gateway-supplied amount without this check lets a user pay ₹1 for a ₹1000
- * plan by tampering with the order.
- *
- * Returns the expected amount in paise, or null if referenced entities are
- * missing / inconsistent (caller should reject the payment in that case).
+ * @deprecated Use evaluateBookingSelection from booking-engine instead for full validation.
+ * Proxy function for backwards compatibility with legacy UI.
  */
 export async function computeExpectedAmountPaise(
   input: PricingInput,
   db: PricingClient = prisma,
 ): Promise<number | null> {
-  const { planId, libraryId, seatId, hasLocker, standaloneLockerId } = input
-
-  const plan = await db.plan.findUnique({ where: { id: planId } })
-  if (!plan || plan.libraryId !== libraryId) return null
-
-  let expectedAmount = plan.discount
-    ? plan.price - (plan.price * plan.discount) / 100
-    : plan.price
-
-  const lockerMonths = Math.max(1, Math.round(plan.validityDays / 28))
-
-  if (seatId) {
-    const seat = await db.seat.findUnique({ where: { id: seatId } })
-    if (!seat || seat.libraryId !== libraryId) return null
-
-    if (hasLocker && seat.lockerPriceMonthly) {
-      expectedAmount += seat.lockerPriceMonthly * lockerMonths
-    }
-
-    if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
-      const premiumMultiplier = plan.validityDays / 30
-      let premiumSurcharge = seat.premiumPriceMonthly * premiumMultiplier
-
-      if (seat.syncPremiumOffers !== false && plan.discount) {
-        premiumSurcharge -= premiumSurcharge * plan.discount / 100
-      }
-
-      expectedAmount += premiumSurcharge
-    }
+  const draft = {
+    operation: 'ADD_STUDENT' as const,
+    studentId: 'legacy-pricing-check', 
+    libraryId: input.libraryId,
+    planId: input.planId,
+    seatId: input.seatId ?? null,
+    attachedLockerSelected: input.hasLocker ?? undefined,
+    standaloneLockerId: input.standaloneLockerId ?? null,
   }
 
-  if (standaloneLockerId) {
-    const locker = await db.standaloneLocker.findUnique({ where: { id: standaloneLockerId } })
-    if (!locker || locker.libraryId !== libraryId) return null
-    expectedAmount += locker.price * lockerMonths
-  }
+  const actor = { role: 'ADMIN' as const, isLibraryOwner: true }
+  const facts = await loadBookingFacts(draft, actor, db as Prisma.TransactionClient)
 
-  return Math.round(expectedAmount * 100)
+  const result = evaluateBookingSelection(draft, facts)
+  
+  if (result.status === 'READY') {
+    return result.amountPaise
+  }
+  
+  return null
 }
 
 /**

@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(
       {
-        error: "An error occurred creating payment",
+        error: error instanceof Error ? `An error occurred creating payment: ${error.message}` : "An error occurred creating payment",
         requestId,
       },
       { status: 500 },

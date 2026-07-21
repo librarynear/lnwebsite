@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageKitProvider, IKUpload } from "imagekitio-next"
 import { HardwareProvisioningCard } from "./HardwareProvisioningCard"
+import { AdminNoteEditor } from "@/components/admin-note-editor"
 import Image from "next/image"
 import type { Library as LibraryRecord } from "@prisma/client"
 
@@ -127,8 +128,8 @@ export function SettingsClient({ library }: { library: LibraryRecord }) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Display Name *</Label>
-              <Input id="name" name="name" defaultValue={library.name} required />
+              <Label htmlFor="name">Display Name</Label>
+              <Input id="name" name="name" defaultValue={library.name} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="managerName">Manager Name</Label>
@@ -145,8 +146,8 @@ export function SettingsClient({ library }: { library: LibraryRecord }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="seatsAvailable">Seats Available *</Label>
-              <Input id="seatsAvailable" name="seatsAvailable" type="number" defaultValue={library.seatsAvailable || ""} required />
+              <Label htmlFor="seatsAvailable">Seats Available</Label>
+              <Input id="seatsAvailable" name="seatsAvailable" type="number" defaultValue={library.seatsAvailable || ""} />
             </div>
           </div>
         </div>
@@ -158,32 +159,32 @@ export function SettingsClient({ library }: { library: LibraryRecord }) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="address">Full Address *</Label>
-              <Input id="address" name="address" defaultValue={library.address} required />
+              <Label htmlFor="address">Full Address</Label>
+              <Input id="address" name="address" defaultValue={library.address} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="locality">Locality *</Label>
-              <Input id="locality" name="locality" defaultValue={library.locality || ""} required />
+              <Label htmlFor="locality">Locality</Label>
+              <Input id="locality" name="locality" defaultValue={library.locality || ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="city">City *</Label>
-              <Input id="city" name="city" defaultValue={library.city || ""} required />
+              <Label htmlFor="city">City</Label>
+              <Input id="city" name="city" defaultValue={library.city || ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="district">District</Label>
               <Input id="district" name="district" defaultValue={library.district || ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="state">State *</Label>
-              <Input id="state" name="state" defaultValue={library.state || ""} required />
+              <Label htmlFor="state">State</Label>
+              <Input id="state" name="state" defaultValue={library.state || ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pinCode">PIN Code *</Label>
-              <Input id="pinCode" name="pinCode" defaultValue={library.pinCode || ""} required />
+              <Label htmlFor="pinCode">PIN Code</Label>
+              <Input id="pinCode" name="pinCode" defaultValue={library.pinCode || ""} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="googleMapsUrl">Google Maps Link *</Label>
-              <Input id="googleMapsUrl" name="googleMapsUrl" defaultValue={library.googleMapsUrl || ""} placeholder="https://maps.google.com/..." required />
+              <Label htmlFor="googleMapsUrl">Google Maps Link</Label>
+              <Input id="googleMapsUrl" name="googleMapsUrl" defaultValue={library.googleMapsUrl || ""} placeholder="https://maps.google.com/..." />
             </div>
             <div className="space-y-2">
               <Label htmlFor="metroStation">Nearest Metro Station</Label>
@@ -203,18 +204,18 @@ export function SettingsClient({ library }: { library: LibraryRecord }) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="space-y-2">
-              <Label htmlFor="openingTime">Opening Time *</Label>
-              <Input id="openingTime" name="openingTime" type="time" defaultValue={library.openingTime || "08:00"} required />
+              <Label htmlFor="openingTime">Opening Time</Label>
+              <Input id="openingTime" name="openingTime" type="time" defaultValue={library.openingTime || "08:00"} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="closingTime">Closing Time *</Label>
-              <Input id="closingTime" name="closingTime" type="time" defaultValue={library.closingTime || "22:00"} required />
+              <Label htmlFor="closingTime">Closing Time</Label>
+              <Input id="closingTime" name="closingTime" type="time" defaultValue={library.closingTime || "22:00"} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="managerPhone">Phone (10-digit mobile number) *</Label>
+              <Label htmlFor="managerPhone">Phone (10-digit mobile number)</Label>
               <div className="relative">
                 <Phone className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-                <Input id="managerPhone" name="managerPhone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" required pattern="[0-9]{10}" />
+                <Input id="managerPhone" name="managerPhone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" pattern="[0-9]{10}" />
               </div>
             </div>
             <div className="space-y-2">
@@ -358,6 +359,12 @@ export function SettingsClient({ library }: { library: LibraryRecord }) {
           </button>
         </div>
       </form>
+
+      <AdminNoteEditor 
+        libraryId={library.id} 
+        initialNote={library.adminNotes || ""} 
+        phone={library.managerPhone} 
+      />
     </div>
   )
 }

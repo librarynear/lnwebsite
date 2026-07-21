@@ -36,8 +36,7 @@ export default function LiveSeatMap({
   interactive = false,
   adminMode = false,
   selectedSeat,
-  onSeatSelect,
-  compactMode = false
+  onSeatSelect
 }: LiveSeatMapProps) {
   
   const maxX = Math.max(...(library.seats?.map((seat) => seat.gridX) || [0]), 0);

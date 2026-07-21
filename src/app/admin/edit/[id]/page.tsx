@@ -7,6 +7,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSession } from "@/app/actions/auth-actions";
+import { AdminNoteEditor } from "@/components/admin-note-editor";
 
 export default async function AdminEditLibraryPage(props: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -43,12 +44,12 @@ export default async function AdminEditLibraryPage(props: { params: Promise<{ id
           
           <div className="space-y-2">
             <Label htmlFor="name">Library Name</Label>
-            <Input id="name" name="name" defaultValue={library.name} required />
+            <Input id="name" name="name" defaultValue={library.name} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="address">Full Address</Label>
-            <Input id="address" name="address" defaultValue={library.address} required />
+            <Input id="address" name="address" defaultValue={library.address} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -136,6 +137,12 @@ export default async function AdminEditLibraryPage(props: { params: Promise<{ id
           </div>
         </form>
       </div>
+
+      <AdminNoteEditor 
+        libraryId={library.id} 
+        initialNote={library.adminNotes || ""} 
+        phone={library.managerPhone} 
+      />
     </div>
   );
 }

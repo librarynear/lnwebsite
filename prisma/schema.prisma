@@ -83,6 +83,7 @@ model Library {
 
   whatsapp       String?
   description    String?
+    adminNotes     String?
   seatsAvailable Int?
   photos         String[]
   facilities     String[]

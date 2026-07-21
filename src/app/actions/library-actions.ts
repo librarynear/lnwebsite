@@ -123,3 +123,18 @@ export async function uploadPassbook(libraryId: string, passbookPhotoUrl: string
 
   revalidatePath("/dashboard/settings");
 }
+
+export async function updateLibraryNote(libraryId: string, note: string) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) throw new Error("Unauthorized");
+
+  const library = await prisma.library.findUnique({ where: { id: libraryId } });
+  if (!library || (library.librarianId !== session.userId && session.role !== 'ADMIN')) {
+    throw new Error("Unauthorized: You don't own this library.");
+  }
+
+  await prisma.library.update({
+    where: { id: libraryId },
+    data: { adminNotes: note }
+  });
+}

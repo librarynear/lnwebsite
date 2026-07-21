@@ -4,14 +4,13 @@ import { useState, useRef } from "react";
 import { X, Copy, Edit3, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { useBookingWorkflow } from "./useBookingWorkflow";
 
 interface ExtendPlanModalProps {
   libraryId: string;
   planId: string;
   seatId: string | null;
   standaloneLockerId: string | null;
-  isFlexible: boolean;
-  hasMandatoryLocker: boolean;
   studentId: string;
 }
 
@@ -20,16 +19,34 @@ export default function ExtendPlanModal({
   planId, 
   seatId, 
   standaloneLockerId, 
-  isFlexible, 
-  hasMandatoryLocker, 
   studentId 
 }: ExtendPlanModalProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<"CHOICE" | "PAYMENT_METHOD">("CHOICE");
+  const [step, setStep] = useState<"CHOICE" | "ASK_LOCKER" | "PAYMENT_METHOD">("CHOICE");
   const [isProcessing, setIsProcessing] = useState(false);
   const checkoutLockRef = useRef(false);
   const checkoutIdempotencyRef = useRef<string | null>(null);
   const router = useRouter();
+
+  const { draft, workflowState, isEvaluating, updateDraft } = useBookingWorkflow({
+    operation: 'RENEW',
+    studentId,
+    libraryId,
+    planId,
+    seatId,
+    standaloneLockerId,
+    attachedLockerSelected: undefined
+  });
+
+  const handleRepeatCurrentPlan = () => {
+    if (workflowState?.status === 'NEEDS_INPUT' && workflowState.requiredFields.includes('attachedLockerSelected')) {
+      setStep('ASK_LOCKER');
+    } else if (workflowState?.status === 'READY') {
+      setStep('PAYMENT_METHOD');
+    } else if (workflowState?.status === 'BLOCKED') {
+      toast.error(workflowState.userFacingExplanation);
+    }
+  };
 
   const handleChooseAnother = () => {
     setIsOpen(false);
@@ -54,10 +71,10 @@ export default function ExtendPlanModal({
           body: JSON.stringify({
             studentId,
             libraryId,
-            seatId: isFlexible ? null : seatId,
-            planId,
-            hasLocker: hasMandatoryLocker,
-            standaloneLockerId
+            seatId: draft.seatId,
+            planId: draft.planId,
+            hasLocker: draft.attachedLockerSelected,
+            standaloneLockerId: draft.standaloneLockerId
           })
         });
         const data = await res.json();
@@ -85,10 +102,10 @@ export default function ExtendPlanModal({
           'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
-          planId,
-          seatId: isFlexible ? null : seatId,
-          hasLocker: hasMandatoryLocker,
-          standaloneLockerId
+          planId: draft.planId,
+          seatId: draft.seatId,
+          hasLocker: draft.attachedLockerSelected,
+          standaloneLockerId: draft.standaloneLockerId
         })
       });
       const data = await orderRes.json();
@@ -131,7 +148,9 @@ export default function ExtendPlanModal({
               <div>
                 <h2 className="text-xl font-black text-foreground">Renew Plan</h2>
                 <p className="text-sm text-foreground/70 mt-1">
-                  {step === "CHOICE" ? "How would you like to renew your booking?" : "Select your payment method."}
+                  {step === "CHOICE" ? "How would you like to renew your booking?" : 
+                   step === "ASK_LOCKER" ? "Do you want to include the seat's locker?" : 
+                   "Select your payment method."}
                 </p>
               </div>
               <button 
@@ -147,11 +166,12 @@ export default function ExtendPlanModal({
               {step === "CHOICE" && (
                 <div className="space-y-3">
                   <button 
-                    onClick={() => setStep("PAYMENT_METHOD")}
-                    className="w-full flex items-center p-4 border border-border rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                    onClick={handleRepeatCurrentPlan}
+                    disabled={isEvaluating}
+                    className="w-full flex items-center p-4 border border-border rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
                   >
                     <div className="bg-primary/10 p-3 rounded-full text-primary group-hover:scale-110 transition-transform">
-                      <Copy className="w-5 h-5" />
+                      {isEvaluating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Copy className="w-5 h-5" />}
                     </div>
                     <div className="ml-4">
                       <p className="font-bold text-foreground">Repeat Current Plan</p>
@@ -170,6 +190,35 @@ export default function ExtendPlanModal({
                       <p className="font-bold text-foreground">Choose Another Plan</p>
                       <p className="text-xs text-foreground/70 mt-1">Switch to a different duration, plan type, or seat.</p>
                     </div>
+                  </button>
+                </div>
+              )}
+
+              {step === "ASK_LOCKER" && (
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => {
+                      updateDraft({ attachedLockerSelected: true });
+                      setStep("PAYMENT_METHOD");
+                    }}
+                    className="w-full py-4 px-4 rounded-xl font-bold transition-all border-2 bg-primary/10 border-primary text-primary hover:bg-primary/20"
+                  >
+                    Yes, include locker
+                  </button>
+                  <button 
+                    onClick={() => {
+                      updateDraft({ attachedLockerSelected: false });
+                      setStep("PAYMENT_METHOD");
+                    }}
+                    className="w-full py-4 px-4 rounded-xl font-bold transition-all border-2 bg-background border-border text-foreground hover:bg-muted"
+                  >
+                    No, just the seat
+                  </button>
+                  <button 
+                    onClick={() => setStep("CHOICE")}
+                    className="w-full py-2 text-sm text-muted-foreground hover:text-foreground mt-2 font-medium transition-colors"
+                  >
+                    Back
                   </button>
                 </div>
               )}

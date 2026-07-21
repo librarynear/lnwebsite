@@ -158,6 +158,99 @@ export async function revokeBooking(bookingId: string, reason?: string) {
   return { success: true, needsRefund: result.needsRefund };
 }
 
+export async function addStudentProfile(formData: FormData) {
+  // Auth guard: only LIBRARIAN or ADMIN can add students
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
+    return { error: 'Unauthorized' };
+  }
+
+  const name = (formData.get("name") as string)?.trim();
+  const email = ((formData.get("email") as string) || "").trim();
+  const phone = ((formData.get("phone") as string) || "").trim();
+  const dobStr = formData.get("dob") as string;
+  const gender = formData.get("gender") as string;
+  const address = formData.get("address") as string;
+  const authId = formData.get("authId") as string;
+
+  if (!name) return { error: "Student name is required" };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Invalid email address" };
+  if (phone && !/^[0-9+\-\s()]{6,20}$/.test(phone)) return { error: "Invalid phone number" };
+
+  const library = await prisma.library.findFirst({ 
+    where: { librarianId: session.userId } 
+  });
+  if (!library) return { error: "No library found." };
+
+  let student = null;
+  
+  if (authId) {
+    student = await prisma.user.findUnique({ where: { authId } });
+  }
+
+  const normalizedPhone = phone ? phone.replace(/\s+/g, '') : null;
+  
+  if (!student && phone) {
+    student = await prisma.user.findFirst({ 
+      where: { 
+        OR: [
+          { phone },
+          { phone: normalizedPhone },
+          { phone: { endsWith: normalizedPhone ? normalizedPhone.slice(-10) : 'XXXXXXXXXX' } }
+        ]
+      } 
+    });
+  }
+  if (!student && email) {
+    student = await prisma.user.findUnique({ where: { email } });
+  }
+
+  if (student) {
+    const updateData: Prisma.UserUpdateInput = {
+      email: email || student.email,
+      phone: phone || student.phone,
+      authId: authId || student.authId,
+    };
+
+    if (!student.digilockerVerified) {
+      updateData.name = name;
+      updateData.dob = dobStr ? new Date(dobStr) : student.dob;
+      updateData.gender = gender || student.gender;
+      updateData.address = address || student.address;
+    }
+
+    student = await prisma.user.update({
+      where: { id: student.id },
+      data: updateData
+    });
+  } else {
+    try {
+      student = await prisma.user.create({
+        data: {
+          authId: authId || null,
+          role: Role.STUDENT,
+          name,
+          email: email || null,
+          phone: phone || null,
+          uniqueId: await generateUniqueId(),
+          dob: dobStr ? new Date(dobStr) : null,
+          gender: gender || null,
+          address: address || null
+        }
+      });
+    } catch (error: unknown) {
+      if (isPrismaUniqueError(error)) {
+        return { error: "A student with this phone, email, or auth credentials already exists in the system but couldn't be matched." };
+      }
+      return { error: "Failed to create student record." };
+    }
+  }
+
+  await invalidateLibraryRuntimeCache(library.id);
+  revalidatePath("/dashboard/students");
+  return { success: true, studentId: student.id };
+}
+
 export async function addStudentWithBooking(formData: FormData) {
   // Auth guard: only LIBRARIAN or ADMIN can add students with bookings
   const session = await getSession();
@@ -270,6 +363,7 @@ export async function addStudentWithBooking(formData: FormData) {
         planId: plan.id,
         seatId: isFlexible ? null : seatId,
         requestedStart: startDateStr ? new Date(startDateStr) : undefined,
+        paymentMethod: paymentMethod || "CASH",
         source: BookingIntentSource.MANUAL,
         paymentRef: manualPaymentReference(`MANUAL_${paymentMethod || "CASH"}`),
       });
@@ -319,7 +413,15 @@ export async function extendBookingExact(bookingId: string) {
 
 
 
-export async function renewPlan(bookingId: string, paymentMethod: string, newPlanId?: string, newSeatId?: string, startDate?: Date) {
+export async function renewPlan(
+  bookingId: string, 
+  paymentMethod: string, 
+  newPlanId?: string, 
+  newSeatId?: string, 
+  startDate?: Date,
+  hasLocker?: boolean,
+  standaloneLockerId?: string | null
+) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) return { error: "Unauthorized" };
 
@@ -359,8 +461,8 @@ export async function renewPlan(bookingId: string, paymentMethod: string, newPla
       libraryId: booking.libraryId,
       planId: targetPlan.id,
       seatId: targetSeatId,
-      standaloneLockerId: booking.standaloneLockerId,
-      hasLocker: booking.hasLocker,
+      standaloneLockerId: standaloneLockerId !== undefined ? standaloneLockerId : booking.standaloneLockerId,
+      hasLocker: hasLocker !== undefined ? hasLocker : booking.hasLocker,
       requestedStart: startDate,
       source: BookingIntentSource.RENEWAL,
       paymentRef: manualPaymentReference(`RENEWAL_${paymentMethod}`),
@@ -646,5 +748,20 @@ export async function getLibraryPlansForCmdk() {
   });
 
   return { plans };
+}
+
+export async function getLibraryContext() {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { error: 'Unauthorized' };
+  }
+
+  const libraryId = session.role === 'RECEPTIONIST' ? session.employerLibraryId : (
+    await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } })
+  )?.id;
+
+  if (!libraryId) return { error: 'Library not found' };
+  
+  return { libraryId };
 }
 

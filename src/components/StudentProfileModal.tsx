@@ -14,7 +14,7 @@ interface StudentProfileModalProps {
   onOpenChange: (open: boolean) => void;
   // Optional callbacks if we want to support action buttons from outside
   onChangeSeat?: (bookingId: string, currentSeatId: string) => void;
-  onRenewPlan?: (bookingId: string, planId: string, seatId: string) => void;
+  onRenewPlan?: (bookingId: string, planId: string, seatId: string, hasLocker: boolean, standaloneLockerId: string | null) => void;
 }
 
 type ProfileStudent = Prisma.UserGetPayload<{
@@ -196,11 +196,11 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                 )}
                 {onRenewPlan && (currentBooking?.status === 'CONFIRMED' || currentBooking?.status === 'COMPLETED') && (
                   <Button 
-                    onClick={() => {
-                      onRenewPlan(currentBooking.id, currentBooking.planId, currentBooking.seatId || "NONE");
-                      onOpenChange(false);
-                    }}
-                    variant="outline"
+                      onClick={() => {
+                        onOpenChange(false);
+                        onRenewPlan(currentBooking.id, currentBooking.planId, currentBooking.seatId || "NONE", currentBooking.hasLocker, currentBooking.standaloneLockerId);
+                      }}
+                      className="flex-1 bg-primary text-primary-foreground hover:opacity-90"
                   >
                     Renew Plan
                   </Button>

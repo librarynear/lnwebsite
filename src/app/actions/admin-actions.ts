@@ -121,3 +121,12 @@ export async function updateLibraryDetails(libraryId: string, formData: FormData
   revalidatePath(`/admin/edit/${libraryId}`);
   revalidatePath('/');
 }
+
+export async function updateAdminNote(libraryId: string, note: string) {
+  await requireAdmin();
+  await prisma.library.update({
+    where: { id: libraryId },
+    data: { adminNotes: note }
+  });
+}
+

@@ -187,8 +187,6 @@ export default async function StudentDashboardPage() {
                         planId={booking.planId}
                         seatId={booking.seatId}
                         standaloneLockerId={booking.standaloneLockerId}
-                        isFlexible={booking.plan.type === "FLEXIBLE"}
-                        hasMandatoryLocker={booking.seat?.hasLocker || false}
                         studentId={session.userId}
                       />
                       <LocateSeatModal 

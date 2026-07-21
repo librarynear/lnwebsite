@@ -10,10 +10,12 @@ import {
   type BookingIntent,
 } from "@prisma/client"
 import prisma from "@/lib/prisma"
-import { computeExpectedAmountPaise, amountMatches } from "@/lib/booking-pricing"
+import { amountMatches } from "@/lib/booking-pricing"
+import { loadBookingFacts } from "@/lib/booking-engine/server/server-fact-loader"
+import { evaluateBookingSelection } from "@/lib/booking-engine/evaluate-selection"
 import { endOfDayIST } from "@/lib/date-utils"
 
-const ONLINE_HOLD_MINUTES = 15
+const ONLINE_HOLD_MINUTES = 20
 const MANUAL_HOLD_MINUTES = 24 * 60
 const SERIALIZABLE_RETRIES = 3
 const NON_BLOCKING_CANCELLATION_REASONS = new Set([
@@ -52,6 +54,8 @@ export class BookingAuthorityError extends Error {
 }
 
 export type BookingSelection = {
+  operation?: 'ADD_STUDENT' | 'RENEW' | 'CHANGE_SEAT' | 'CHANGE_PLAN'
+  sourceBookingId?: string | null
   studentId: string
   libraryId: string
   planId: string
@@ -59,6 +63,7 @@ export type BookingSelection = {
   standaloneLockerId?: string | null
   hasLocker?: boolean
   requestedStart?: Date
+  paymentMethod?: string | null
 }
 
 type Resource = {
@@ -307,79 +312,56 @@ async function prepareSelection(
 ): Promise<PreparedSelection> {
   await lockStudentTimeline(tx, input.studentId, input.libraryId)
 
-  const plan = await tx.plan.findFirst({
-    where: {
-      id: input.planId,
-      libraryId: input.libraryId,
-      isActive: true,
-    },
-  })
-  if (!plan) {
-    throw new BookingAuthorityError("INVALID_PLAN", "Plan is unavailable")
-  }
-
-  let seatId = input.seatId ?? null
-  let hasLocker = false
-  if (plan.type === "FLEXIBLE") {
-    seatId = null
-  } else if (!seatId) {
-    throw new BookingAuthorityError("SEAT_REQUIRED", "A seat is required for this plan")
-  }
-
-  if (seatId) {
-    const seat = await tx.seat.findFirst({
-      where: { id: seatId, libraryId: input.libraryId },
-      select: { id: true, type: true, hasLocker: true },
-    })
-    if (!seat) {
-      throw new BookingAuthorityError("INVALID_SEAT", "Seat does not belong to this library")
-    }
-    if (seat.type === SeatType.NON_RESERVABLE) {
-      throw new BookingAuthorityError("INVALID_SEAT", "This seat cannot be reserved")
-    }
-    hasLocker = seat.hasLocker
-  }
-
-  const standaloneLockerId = input.standaloneLockerId ?? null
-  if (standaloneLockerId) {
-    const locker = await tx.standaloneLocker.findFirst({
-      where: { id: standaloneLockerId, libraryId: input.libraryId },
-      select: { id: true },
-    })
-    if (!locker) {
-      throw new BookingAuthorityError("INVALID_LOCKER", "Locker does not belong to this library")
-    }
-  }
-
-  const expectedAmountPaise = await computeExpectedAmountPaise(
-    {
-      planId: plan.id,
-      libraryId: input.libraryId,
-      seatId,
-      hasLocker,
-      standaloneLockerId,
-    },
-    tx,
-  )
-  if (expectedAmountPaise === null || expectedAmountPaise <= 0) {
-    throw new BookingAuthorityError("INVALID_PLAN", "Booking price is invalid")
-  }
-
-  const { startsAt, endsAt } = await bookingWindow(tx, input, plan.validityDays)
-  const prepared = {
+  const draft = {
+    operation: input.operation ?? 'ADD_STUDENT', // Fallback for legacy
+    sourceBookingId: input.sourceBookingId ?? null,
     studentId: input.studentId,
     libraryId: input.libraryId,
-    planId: plan.id,
-    seatId,
-    standaloneLockerId,
-    hasLocker,
-    startsAt,
-    endsAt,
-    expectedAmountPaise,
-    resources: resourcesFor({ seatId, standaloneLockerId }),
+    planId: input.planId,
+    seatId: input.seatId ?? null,
+    attachedLockerSelected: input.hasLocker ?? undefined,
+    standaloneLockerId: input.standaloneLockerId ?? null,
+    requestedStart: input.requestedStart ?? null,
+    paymentMethod: input.paymentMethod ?? null,
   }
 
-  await assertNoBookingConflict(tx, prepared)
+  // Load facts transactionally
+  const actor = { role: 'ADMIN' as const, isLibraryOwner: true } // Authorized beforehand
+  const facts = await loadBookingFacts(draft, actor, tx)
+
+  // Pure evaluation
+  const result = evaluateBookingSelection(draft, facts)
+
+  if (result.status === 'BLOCKED') {
+    throw new BookingAuthorityError(
+      (result.errorCode as BookingAuthorityErrorCode) || 'INVALID_BOOKING_STATE', 
+      result.userFacingExplanation
+    )
+  }
+
+  if (result.status === 'NEEDS_INPUT') {
+    throw new BookingAuthorityError(
+      result.requiredFields.includes('seatId') ? 'SEAT_REQUIRED' : 'INVALID_BOOKING_STATE',
+      `Missing required fields: ${result.requiredFields.join(', ')}`
+    )
+  }
+
+  const prepared: PreparedSelection = {
+    studentId: input.studentId,
+    libraryId: input.libraryId,
+    planId: input.planId,
+    seatId: result.normalizedDraft.seatId ?? null,
+    standaloneLockerId: result.normalizedDraft.standaloneLockerId ?? null,
+    hasLocker: result.normalizedDraft.attachedLockerSelected ?? false,
+    startsAt: result.dates.startsAt,
+    endsAt: result.dates.endsAt,
+    expectedAmountPaise: result.amountPaise,
+    resources: resourcesFor({ 
+      seatId: result.normalizedDraft.seatId ?? null, 
+      standaloneLockerId: result.normalizedDraft.standaloneLockerId ?? null 
+    }),
+  }
+
   await assertNoPendingStudentConflict(tx, prepared)
   return prepared
 }
@@ -1047,6 +1029,7 @@ async function createManualConfirmedBookingInTransaction(
     holdExpiresAt,
   })
   await acquireResources(tx, intent, prepared.resources, holdExpiresAt)
+  await assertNoBookingConflict(tx, prepared)
   const booking = await createConfirmedBookingForIntent(tx, intent, input.paymentRef)
   await tx.bookingIntent.update({
     where: { id: intent.id },
@@ -1183,19 +1166,23 @@ async function createLegacyPendingIntent(
   tx: AuthorityTx,
   booking: Booking & { plan: { validityDays: number } },
 ): Promise<BookingIntent> {
-  const expectedAmountPaise = await computeExpectedAmountPaise(
-    {
-      planId: booking.planId,
-      libraryId: booking.libraryId,
-      seatId: booking.seatId,
-      hasLocker: booking.hasLocker,
-      standaloneLockerId: booking.standaloneLockerId,
-    },
-    tx,
-  )
-  if (expectedAmountPaise === null) {
+  const draft = {
+    operation: 'RENEW' as const,
+    studentId: booking.studentId,
+    libraryId: booking.libraryId,
+    planId: booking.planId,
+    seatId: booking.seatId,
+    attachedLockerSelected: booking.hasLocker,
+    standaloneLockerId: booking.standaloneLockerId,
+  }
+  const actor = { role: 'ADMIN' as const, isLibraryOwner: true }
+  const facts = await loadBookingFacts(draft, actor, tx)
+  const result = evaluateBookingSelection(draft, facts)
+  
+  if (result.status === 'BLOCKED' || result.status === 'NEEDS_INPUT') {
     throw new BookingAuthorityError("INVALID_PLAN", "Pending booking has invalid pricing")
   }
+  const expectedAmountPaise = result.amountPaise
 
   const expiresAt = new Date(Date.now() + MANUAL_HOLD_MINUTES * 60_000)
   const intent = await tx.bookingIntent.create({
@@ -1648,19 +1635,23 @@ export async function changeBookingSeat(
         },
       })
 
-      const expectedAmountPaise = await computeExpectedAmountPaise(
-        {
-          planId: booking.planId,
-          libraryId: booking.libraryId,
-          seatId: normalizedSeatId,
-          hasLocker: selectedSeatHasLocker,
-          standaloneLockerId: booking.standaloneLockerId,
-        },
-        tx,
-      )
-      if (expectedAmountPaise === null || expectedAmountPaise <= 0) {
+      const draft = {
+        operation: 'RENEW' as const, // For pricing calculation
+        studentId: booking.studentId,
+        libraryId: booking.libraryId,
+        planId: booking.planId,
+        seatId: normalizedSeatId,
+        attachedLockerSelected: selectedSeatHasLocker,
+        standaloneLockerId: booking.standaloneLockerId,
+      }
+      const actor = { role: 'ADMIN' as const, isLibraryOwner: true }
+      const facts = await loadBookingFacts(draft, actor, tx)
+      const result = evaluateBookingSelection(draft, facts)
+
+      if (result.status === 'BLOCKED' || result.status === 'NEEDS_INPUT' || result.amountPaise <= 0) {
         throw new BookingAuthorityError("INVALID_PLAN", "Booking price is invalid")
       }
+      const expectedAmountPaise = result.amountPaise
       await tx.bookingIntent.update({
         where: { id: pendingIntent.id },
         data: {

@@ -178,6 +178,38 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
     orderBy: { name: 'asc' }
   });
 
+  const standaloneLockers = await prisma.standaloneLocker.findMany({
+    where: { libraryId: library.id }
+  });
+
+  const [activeBookings, activeLeases] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        libraryId: library.id,
+        status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+        endTime: { gt: new Date() }
+      },
+      select: { standaloneLockerId: true, seatId: true },
+    }),
+    prisma.resourceLease.findMany({
+      where: {
+        libraryId: library.id,
+        resourceType: 'STANDALONE_LOCKER',
+        expiresAt: { gt: new Date() },
+      },
+      select: { resourceId: true },
+    }),
+  ]);
+
+  const occupiedStandaloneLockerIds = Array.from(new Set([
+    ...activeBookings.map(b => b.standaloneLockerId).filter(Boolean),
+    ...activeLeases.map(l => l.resourceId),
+  ])) as string[];
+
+  const occupiedSeatIds = Array.from(new Set(
+    activeBookings.map(b => b.seatId).filter(Boolean)
+  )) as string[];
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <StudentsClient 
@@ -186,6 +218,9 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
         logs={logs} 
         relays={relays} 
         seats={seats} 
+        standaloneLockers={standaloneLockers}
+        occupiedStandaloneLockerIds={occupiedStandaloneLockerIds}
+        occupiedSeatIds={occupiedSeatIds}
         totalCount={totalStudentsCount} 
         tabCounts={counts}
         currentPage={page} 

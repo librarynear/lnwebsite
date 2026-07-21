@@ -77,6 +77,9 @@ interface StudentsClientProps {
   logs?: ActivityLog[]
   relays?: Relay[]
   seats?: Seat[]
+  standaloneLockers?: { id: string; name: string; price: number }[]
+  occupiedStandaloneLockerIds?: string[]
+  occupiedSeatIds?: string[]
   totalCount?: number
   tabCounts?: {
     active: number
@@ -109,7 +112,7 @@ function isSortMethod(value: unknown): value is SortMethod {
   return value === 'LATEST' || value === 'EXPIRY' || value === 'DURATION' || value === 'ALPHABETICAL'
 }
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], standaloneLockers = [], occupiedStandaloneLockerIds = [], occupiedSeatIds = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
   const router = useRouter()
   const searchParamsHook = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -152,6 +155,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewPlanMode, setRenewPlanMode] = useState<'SAME' | 'CHANGE'>('SAME');
   const [renewSelectedPlanId, setRenewSelectedPlanId] = useState<string | null>(null);
   const [renewSelectedSeatId, setRenewSelectedSeatId] = useState<string | null>(null);
+  const [renewHasLocker, setRenewHasLocker] = useState<boolean | null>(null);
+  const [renewStandaloneLockerId, setRenewStandaloneLockerId] = useState<string | null>(null);
   const [renewStartDate, setRenewStartDate] = useState<Date | undefined>(undefined);
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
@@ -189,6 +194,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [addFormSeatId, setAddFormSeatId] = useState<string | null>(null)
+  const [addFormPaymentMethod, setAddFormPaymentMethod] = useState("CASH")
 
   const [studentFormData, setStudentFormData] = useState({
     name: "",
@@ -304,6 +310,14 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     }
     setAddingStudent(true);
     try {
+      // Browser omits disabled inputs, so we append from controlled state
+      formData.set("name", studentFormData.name);
+      formData.set("email", studentFormData.email);
+      formData.set("dob", studentFormData.dob);
+      formData.set("gender", studentFormData.gender);
+      formData.set("address", studentFormData.address);
+      formData.set("paymentMethod", addFormPaymentMethod);
+      
       const result = await addStudentWithBooking(formData);
       if (result && result.error) {
         toast.error(result.error);
@@ -609,9 +623,14 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {seats.map(s => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
+                            {seats.map(s => {
+                              const isOccupied = occupiedSeatIds?.includes(s.id);
+                              return (
+                                <SelectItem key={s.id} value={s.id} disabled={isOccupied}>
+                                  {s.name} {isOccupied && "(Occupied)"}
+                                </SelectItem>
+                              )
+                            })}
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
@@ -625,7 +644,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="paymentMethod">Payment Method</Label>
-                        <Select name="paymentMethod" defaultValue="CASH" required>
+                        <input type="hidden" name="paymentMethod" value={addFormPaymentMethod} />
+                        <Select value={addFormPaymentMethod} onValueChange={v => setAddFormPaymentMethod(v || "CASH")} required>
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select payment method" />
                           </SelectTrigger>
@@ -1033,6 +1053,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                       setRenewModalBookingId(booking.id);
                                       setRenewSelectedPlanId(booking.planId);
                                       setRenewSelectedSeatId(booking.seatId || "NONE");
+                                      setRenewHasLocker(booking.hasLocker);
+                                      setRenewStandaloneLockerId(booking.standaloneLockerId);
                                       setRenewPlanMode('SAME');
                                     }}
                                     className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted text-foreground"
@@ -1205,9 +1227,14 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 <SelectValue placeholder="Choose a seat" />
               </SelectTrigger>
               <SelectContent>
-                {seats.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
+                {seats.map(s => {
+                  const isOccupied = occupiedSeatIds?.includes(s.id);
+                  return (
+                    <SelectItem key={s.id} value={s.id} disabled={isOccupied}>
+                      {s.name} {isOccupied && "(Occupied)"}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">Reserved (fixed-seat) plans require a seat.</p>
@@ -1295,10 +1322,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           setSeatChangeBookingId(bookingId);
           setSelectedNewSeatId(seatId);
         }}
-        onRenewPlan={(bookingId, planId, seatId) => {
+        onRenewPlan={(bookingId, planId, seatId, hasLocker, standaloneLockerId) => {
           setRenewModalBookingId(bookingId);
           setRenewSelectedPlanId(planId);
           setRenewSelectedSeatId(seatId);
+          setRenewHasLocker(hasLocker);
+          setRenewStandaloneLockerId(standaloneLockerId);
           setRenewPlanMode('SAME');
         }}
       />
@@ -1466,6 +1495,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
           setRenewModalBookingId(null);
           setRenewLoadingMethod(null);
           setRenewStartDate(undefined);
+          setRenewHasLocker(null);
+          setRenewStandaloneLockerId(null);
         }
       }}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -1515,12 +1546,26 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
             <div className="flex bg-muted p-1 rounded-lg">
               <button 
-                onClick={() => setRenewPlanMode('SAME')} className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'SAME' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => {
+                  setRenewPlanMode('SAME');
+                  if (renewBookingData) {
+                    setRenewSelectedPlanId(renewBookingData.planId);
+                    setRenewSelectedSeatId(renewBookingData.seatId || "NONE");
+                    setRenewHasLocker(renewBookingData.hasLocker);
+                    setRenewStandaloneLockerId(renewBookingData.standaloneLockerId);
+                  }
+                }} 
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'SAME' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 Renew Same Plan
               </button>
               <button 
-                onClick={() => setRenewPlanMode('CHANGE')}
+                onClick={() => {
+                  setRenewPlanMode('CHANGE');
+                  setRenewSelectedSeatId("NONE");
+                  setRenewHasLocker(null);
+                  setRenewStandaloneLockerId(null);
+                }}
                 className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${renewPlanMode === 'CHANGE' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 Choose Another Plan
@@ -1534,7 +1579,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   {plans.map(p => (
                     <div 
                       key={p.id} 
-                      onClick={() => setRenewSelectedPlanId(p.id)}
+                      onClick={() => {
+                        setRenewSelectedPlanId(p.id);
+                        if (p.type === 'FLEXIBLE') {
+                          setRenewSelectedSeatId("NONE");
+                          setRenewHasLocker(null);
+                        }
+                      }}
                       className={`p-4 rounded-xl border cursor-pointer transition-all ${renewSelectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
                     >
                       <div className="font-bold text-foreground text-sm">{p.name}</div>
@@ -1549,21 +1600,85 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             {renewTargetPlan?.type === 'FIXED' && (
               <div className="space-y-2">
                 <Label>Assign Seat *</Label>
-                <Select value={renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined} onValueChange={(val) => setRenewSelectedSeatId(val)}>
+                <Select value={renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined} onValueChange={(val) => {
+                  setRenewSelectedSeatId(val);
+                  setRenewHasLocker(null);
+                }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a seat">
-                      {renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? seats.find(s => s.id === renewSelectedSeatId)?.name : "Select a seat"}
+                      {renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? seats?.find(s => s.id === renewSelectedSeatId)?.name : "Select a seat"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {seats.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    {seats?.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <span>{s.name}</span>
+                          {s.hasLocker && (
+                            <span className="text-xs text-muted-foreground flex items-center ml-2">
+                              🔒 Locker {s.lockerPriceMonthly ? `(₹${s.lockerPriceMonthly}/mo)` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
               </div>
             )}
+            
+            {renewTargetPlan?.type === 'FIXED' && renewSelectedSeatId && renewSelectedSeatId !== "NONE" && seats?.find(s => s.id === renewSelectedSeatId)?.hasLocker && (
+              <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
+                <Label>Seat Locker</Label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setRenewHasLocker(true)}
+                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors border ${renewHasLocker === true ? 'bg-primary/10 border-primary text-primary' : 'bg-background border-border text-foreground hover:border-primary/50'}`}
+                  >
+                    Yes, include locker
+                  </button>
+                  <button
+                    onClick={() => setRenewHasLocker(false)}
+                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors border ${renewHasLocker === false ? 'bg-muted border-border text-foreground' : 'bg-background border-border text-foreground hover:bg-muted'}`}
+                  >
+                    No, skip locker
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
+              <Label>Standalone Locker (Optional)</Label>
+              <Select 
+                value={renewStandaloneLockerId || "NONE"} 
+                onValueChange={(val) => setRenewStandaloneLockerId(val === "NONE" ? null : val)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a standalone locker">
+                    {renewStandaloneLockerId ? standaloneLockers?.find(l => l.id === renewStandaloneLockerId)?.name : "No standalone locker"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">No standalone locker</SelectItem>
+                  {standaloneLockers?.map(l => (
+                    <SelectItem 
+                      key={l.id} 
+                      value={l.id}
+                      disabled={occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId}
+                    >
+                      <div className="flex items-center justify-between w-full pr-4">
+                        <span>
+                          {l.name}
+                          {occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId ? " (Occupied)" : ""}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2">₹{l.price}/mo</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <div className="pt-2 border-t border-border mt-2 space-y-2">
@@ -1591,9 +1706,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   toast.error("Please select a plan first.");
                   return;
                 }
-                if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
-                  toast.error("Please select a seat for this reserved (fixed-seat) plan.");
-                  return;
+                if (renewTargetPlan?.type === 'FIXED') {
+                  if (!renewSelectedSeatId || renewSelectedSeatId === "NONE") {
+                    toast.error("Please select a seat for this reserved (fixed-seat) plan.");
+                    return;
+                  }
+                  if (seats?.find(s => s.id === renewSelectedSeatId)?.hasLocker && renewHasLocker === null) {
+                    toast.error("Please choose whether to include the seat locker.");
+                    return;
+                  }
                 }
                 setRenewLoadingMethod('CASH');
                 try {
@@ -1602,7 +1723,9 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     "CASH", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
-                    renewStartDate
+                    renewStartDate,
+                    renewHasLocker ?? undefined,
+                    renewStandaloneLockerId
                   );
                   if (result?.error) {
                     toast.error(result.error);
@@ -1618,7 +1741,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 }
               }} 
               className="w-full bg-primary"
-              disabled={!!renewLoadingMethod}
+              disabled={!!renewLoadingMethod || (renewTargetPlan?.type === 'FIXED' && seats?.find(s => s.id === renewSelectedSeatId)?.hasLocker && renewHasLocker === null)}
             >
               {renewLoadingMethod === 'CASH' ? "Renewing..." : "Pay via Cash"}
             </Button>
@@ -1629,9 +1752,15 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   toast.error("Please select a plan first.");
                   return;
                 }
-                if (renewTargetPlan?.type === 'FIXED' && (!renewSelectedSeatId || renewSelectedSeatId === "NONE")) {
-                  toast.error("Please select a seat for this reserved (fixed-seat) plan.");
-                  return;
+                if (renewTargetPlan?.type === 'FIXED') {
+                  if (!renewSelectedSeatId || renewSelectedSeatId === "NONE") {
+                    toast.error("Please select a seat for this reserved (fixed-seat) plan.");
+                    return;
+                  }
+                  if (seats?.find(s => s.id === renewSelectedSeatId)?.hasLocker && renewHasLocker === null) {
+                    toast.error("Please choose whether to include the seat locker.");
+                    return;
+                  }
                 }
                 setRenewLoadingMethod('ONLINE');
                 try {
@@ -1640,7 +1769,9 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     "ONLINE", 
                     renewPlanMode === 'CHANGE' ? renewSelectedPlanId! : undefined, 
                     renewSelectedSeatId && renewSelectedSeatId !== "NONE" ? renewSelectedSeatId : undefined,
-                    renewStartDate
+                    renewStartDate,
+                    renewHasLocker ?? undefined,
+                    renewStandaloneLockerId
                   );
                   if (result?.error) {
                     toast.error(result.error);
@@ -1657,7 +1788,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               }} 
               variant="outline" 
               className="w-full"
-              disabled={!!renewLoadingMethod}
+              disabled={!!renewLoadingMethod || (renewTargetPlan?.type === 'FIXED' && seats?.find(s => s.id === renewSelectedSeatId)?.hasLocker && renewHasLocker === null)}
             >
               {renewLoadingMethod === 'ONLINE' ? "Renewing..." : "Pay via UPI/Card"}
             </Button>
