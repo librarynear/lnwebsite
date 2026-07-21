@@ -197,8 +197,8 @@ export async function updateLocation(formData: FormData) {
   let googleMapsUrl = null;
   try {
     googleMapsUrl = parseSafeUrl(formData.get("googleMapsUrl"), "Google Maps URL");
-  } catch (err: any) {
-    throw new Error(err.message || "Invalid Google Maps URL");
+  } catch (err: unknown) {
+    throw new Error(err instanceof Error ? err.message : "Invalid Google Maps URL");
   }
 
   if (!address || address.trim() === "") throw new Error("Address is required");

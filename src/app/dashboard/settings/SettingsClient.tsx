@@ -147,8 +147,8 @@ function GeneralTab({ library }: { library: LibraryRecord }) {
       await updateBasicInfo(formData)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
-    } catch (e: any) {
-      setError(e.message || "Failed to save General Info.")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save General Info.")
     } finally {
       setIsSaving(false)
     }
@@ -251,8 +251,8 @@ function LocationTab({ library }: { library: LibraryRecord }) {
       await updateLocation(formData)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
-    } catch (e: any) {
-      setError(e.message || "Failed to save Location.")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save Location.")
     } finally {
       setIsSaving(false)
     }
@@ -374,8 +374,8 @@ function FacilitiesTab({ library }: { library: LibraryRecord }) {
       await updateFacilities(formData)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
-    } catch (e: any) {
-      setError(e.message || "Failed to save Facilities.")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save Facilities.")
     } finally {
       setIsSaving(false)
     }
