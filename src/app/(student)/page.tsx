@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
+
+export const dynamic = 'force-dynamic';
 import { InteractivePhoneMockup } from "@/components/InteractivePhoneMockup"
 
 import { HowItWorks } from "@/components/home/how-it-works"
