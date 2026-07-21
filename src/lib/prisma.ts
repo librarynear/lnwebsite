@@ -11,7 +11,13 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined
 }
 
-const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
+let connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
+
+// Vercel build containers often block or fail to route to pooler ports (6543) via IPv6.
+// By using DIRECT_URL (5432) during the CI build phase, we bypass the ENETUNREACH errors.
+if (process.env.CI && process.env.DIRECT_URL) {
+  connectionString = process.env.DIRECT_URL;
+}
 
 if (!connectionString) {
   throw new Error(
