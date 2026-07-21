@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import { connection } from 'next/server'
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { InteractivePhoneMockup } from "@/components/InteractivePhoneMockup"
@@ -34,6 +35,7 @@ async function getFeaturedLibraries() {
   }).slice(0, 3);
 }
 export default async function HomePage() {
+  await connection();
   // Fetch top 3 libraries to showcase in the interactive mockup and carousel
   const libraries = await getFeaturedLibraries();
 
