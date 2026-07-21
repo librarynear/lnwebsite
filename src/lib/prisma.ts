@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
+import dns from 'dns'
+
+// Force IPv4 resolution for Supabase pooler on Vercel to prevent ENETUNREACH
+dns.setDefaultResultOrder('ipv4first')
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
