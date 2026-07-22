@@ -19,8 +19,8 @@ export type SeatLayoutItem = {
   y: number;
   type: SeatType | "EMPTY";
   hasLocker: boolean;
-  lockerPriceMonthly: string;
-  premiumPriceMonthly?: string;
+  lockerPriceDaily: string;
+  premiumPriceDaily?: string;
   syncPremiumOffers?: boolean;
 };
 
@@ -104,8 +104,8 @@ export async function saveSeatLayoutAndLockers(
           gridX: s.x,
           gridY: s.y,
           hasLocker: s.hasLocker || false,
-          lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
-          premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly || "") || null) : null,
+          lockerPriceDaily: s.hasLocker ? (parseFloat(s.lockerPriceDaily) || null) : null,
+          premiumPriceDaily: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceDaily || "") || null) : null,
           syncPremiumOffers: s.syncPremiumOffers !== undefined ? s.syncPremiumOffers : true,
         },
       });
@@ -120,8 +120,8 @@ export async function saveSeatLayoutAndLockers(
         gridX: s.x,
         gridY: s.y,
         hasLocker: s.hasLocker || false,
-        lockerPriceMonthly: s.hasLocker ? (parseFloat(s.lockerPriceMonthly) || null) : null,
-        premiumPriceMonthly: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceMonthly || "") || null) : null,
+        lockerPriceDaily: s.hasLocker ? (parseFloat(s.lockerPriceDaily) || null) : null,
+        premiumPriceDaily: s.type === 'PREMIUM' ? (parseFloat(s.premiumPriceDaily || "") || null) : null,
         syncPremiumOffers: s.syncPremiumOffers !== undefined ? s.syncPremiumOffers : true,
       }));
       await tx.seat.createMany({ data: seatData, skipDuplicates: true });
@@ -229,8 +229,8 @@ export async function getSeatLayoutAndLockers() {
       y: s.gridY,
       type: s.type,
       hasLocker: s.hasLocker,
-      lockerPriceMonthly: s.lockerPriceMonthly?.toString() || "",
-      premiumPriceMonthly: s.premiumPriceMonthly?.toString() || "",
+      lockerPriceDaily: s.lockerPriceDaily?.toString() || "",
+      premiumPriceDaily: s.premiumPriceDaily?.toString() || "",
       syncPremiumOffers: s.syncPremiumOffers
     })),
     standaloneLockers: library.standaloneLockers.map(l => ({

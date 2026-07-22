@@ -31,7 +31,7 @@ async function generateSeats() {
         gridX: i - 1,
         gridY: prefix.charCodeAt(0) - 65,
         hasLocker: hasLocker,
-        lockerPriceMonthly: hasLocker ? lockerPrice : null,
+        lockerPriceDaily: hasLocker ? lockerPrice : null,
       });
     }
   };
@@ -65,8 +65,8 @@ async function generateSeats() {
   
   generateBlock('R', 2, true, 100); // R1, R2 -> 100
   // R3, R4 -> 200
-  seatsData.push({ libraryId: library.id, name: 'R3', type: 'NORMAL', gridX: 2, gridY: 17, hasLocker: true, lockerPriceMonthly: 200 });
-  seatsData.push({ libraryId: library.id, name: 'R4', type: 'NORMAL', gridX: 3, gridY: 17, hasLocker: true, lockerPriceMonthly: 200 });
+  seatsData.push({ libraryId: library.id, name: 'R3', type: 'NORMAL', gridX: 2, gridY: 17, hasLocker: true, lockerPriceDaily: 200 });
+  seatsData.push({ libraryId: library.id, name: 'R4', type: 'NORMAL', gridX: 3, gridY: 17, hasLocker: true, lockerPriceDaily: 200 });
 
   generateBlock('S', 6);
   generateBlock('T', 6);

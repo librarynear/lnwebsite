@@ -32,7 +32,6 @@ export async function loadBookingFacts(
       price: true,
       discount: true,
       isActive: true,
-      seatCategory: true,
     }
   });
 
@@ -44,8 +43,7 @@ export async function loadBookingFacts(
     validityDays: p.validityDays,
     pricePaise: Math.round(p.price * 100),
     discountPercentage: p.discount,
-    isActive: p.isActive,
-    seatCategory: p.seatCategory
+    isActive: p.isActive
   }));
 
   const selectedPlan = draft.planId ? activePlans.find(p => p.id === draft.planId) ?? null : null;
@@ -61,8 +59,8 @@ export async function loadBookingFacts(
         name: true,
         type: true,
         hasLocker: true,
-        lockerPriceMonthly: true,
-        premiumPriceMonthly: true,
+        lockerPriceDaily: true,
+        premiumPriceDaily: true,
         syncPremiumOffers: true
       }
     });
@@ -73,8 +71,8 @@ export async function loadBookingFacts(
       name: s.name,
       type: s.type,
       hasLocker: s.hasLocker,
-      lockerPriceMonthlyPaise: s.lockerPriceMonthly ? Math.round(s.lockerPriceMonthly * 100) : null,
-      premiumPriceMonthlyPaise: s.premiumPriceMonthly ? Math.round(s.premiumPriceMonthly * 100) : null,
+      lockerPriceDailyPaise: s.lockerPriceDaily ? Math.round(s.lockerPriceDaily * 100) : null,
+      premiumPriceDailyPaise: s.premiumPriceDaily ? Math.round(s.premiumPriceDaily * 100) : null,
       syncPremiumOffers: s.syncPremiumOffers
     }));
   }

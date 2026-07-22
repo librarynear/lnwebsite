@@ -153,7 +153,7 @@ export default function SeatsManagerPage() {
         if (existing) {
           grid.push({ ...existing, id }); // ensure id matches coords
         } else {
-          grid.push({ id, x, y, type: isEmptyLibrary ? 'NORMAL' : 'EMPTY', hasLocker: false, lockerPriceMonthly: "" });
+          grid.push({ id, x, y, type: isEmptyLibrary ? 'NORMAL' : 'EMPTY', hasLocker: false, lockerPriceDaily: "" });
         }
       }
       
@@ -198,7 +198,7 @@ export default function SeatsManagerPage() {
             // Update the ID (if format changed) and update x,y to instantly reflect reflow changes
             newGrid.push({ ...existing, id, x, y });
           } else {
-            newGrid.push({ id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" });
+            newGrid.push({ id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceDaily: "" });
           }
         }
       }
@@ -225,7 +225,7 @@ export default function SeatsManagerPage() {
           const x = i % cols;
           const y = Math.floor(i / cols);
           const id = seatNaming === 'NUMERIC' ? ((y * cols) + x + 1).toString() : `${String.fromCharCode(65 + y)}${x + 1}`;
-          return { id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceMonthly: "" };
+          return { id, x, y, type: 'NORMAL', hasLocker: false, lockerPriceDaily: "" };
         })
       );
       setSelectedSeatId(null);
@@ -342,13 +342,13 @@ export default function SeatsManagerPage() {
                 {selectedSeat.type === 'PREMIUM' && (
                   <div className="space-y-4 pt-4 border-t border-border">
                     <div className="space-y-1">
-                      <label className="text-sm font-medium text-amber-600 flex items-center gap-2">
-                        Premium Price (Monthly ₹)
-                      </label>
+                      <span className="text-xs font-medium text-foreground">
+                        Premium Price (Daily ₹)
+                      </span>
                       <input 
                         type="number" 
-                        value={selectedSeat.premiumPriceMonthly || ''} 
-                        onChange={(e) => updateSelectedSeat('premiumPriceMonthly', e.target.value)}
+                        value={selectedSeat.premiumPriceDaily || ''} 
+                        onChange={(e) => updateSelectedSeat('premiumPriceDaily', e.target.value)}
                         placeholder="e.g. 300"
                         className="w-full p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-amber-500 text-sm"
                       />
@@ -380,11 +380,11 @@ export default function SeatsManagerPage() {
 
                     {selectedSeat.hasLocker && (
                       <div className="pl-6 space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground block">Monthly Locker Price (₹)</label>
+                        <label className="text-xs font-medium text-muted-foreground block">Daily Locker Price (₹)</label>
                         <input 
                           type="number" 
-                          value={selectedSeat.lockerPriceMonthly} 
-                          onChange={(e) => updateSelectedSeat('lockerPriceMonthly', e.target.value)}
+                          value={selectedSeat.lockerPriceDaily} 
+                          onChange={(e) => updateSelectedSeat('lockerPriceDaily', e.target.value)}
                           placeholder="e.g. 100"
                           className="w-full p-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                         />
@@ -551,7 +551,7 @@ export default function SeatsManagerPage() {
                   />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Monthly Price (₹)</label>
+                  <label className="text-xs font-medium text-muted-foreground">Daily Price (₹)</label>
                   <input 
                     type="number" 
                     value={locker.price} 

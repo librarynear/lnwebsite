@@ -32,8 +32,8 @@ type LibrarySeat = {
   gridX: number
   gridY: number
   hasLocker: boolean
-  lockerPriceMonthly: number | null
-  premiumPriceMonthly: number | null
+  lockerPriceDaily: number | null
+  premiumPriceDaily: number | null
   syncPremiumOffers: boolean
 }
 
@@ -412,23 +412,21 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     planPrice = selectedPlan.discount 
       ? selectedPlan.price - (selectedPlan.price * selectedPlan.discount / 100) 
       : selectedPlan.price;
-      
-    const lockerMonths = Math.max(1, Math.round(selectedPlan.validityDays / 28));
 
     if (seatHasMandatoryLocker) {
-      lockerCost = (selectedSeat.lockerPriceMonthly || 0) * lockerMonths;
+      lockerCost = (selectedSeat.lockerPriceDaily || 0) * selectedPlan.validityDays;
     } else if (selectedStandaloneLockerId) {
       const locker = library.standaloneLockers.find(
         (item) => item.id === selectedStandaloneLockerId,
       );
       if (locker) {
-        lockerCost = locker.price * lockerMonths;
+        // Prorate standalone lockers based on 28-day month since they weren't migrated
+        lockerCost = Math.round((locker.price / 28) * selectedPlan.validityDays);
       }
     }
     
-    if (selectedSeat?.type === 'PREMIUM' && selectedSeat?.premiumPriceMonthly) {
-      const premiumMultiplier = selectedPlan.validityDays / 30;
-      premiumSurcharge = selectedSeat.premiumPriceMonthly * premiumMultiplier;
+    if (selectedSeat?.type === 'PREMIUM' && selectedSeat?.premiumPriceDaily) {
+      premiumSurcharge = selectedSeat.premiumPriceDaily * selectedPlan.validityDays;
       if (selectedSeat.syncPremiumOffers !== false && selectedPlan.discount) {
         premiumSurcharge -= (premiumSurcharge * selectedPlan.discount / 100);
       }
@@ -909,7 +907,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             )}
 
             {/* Premium Seat UI */}
-            {selectedPlan && selectedSeat?.type === 'PREMIUM' && (selectedSeat?.premiumPriceMonthly ?? 0) > 0 && (
+            {selectedPlan && selectedSeat?.type === 'PREMIUM' && (selectedSeat?.premiumPriceDaily ?? 0) > 0 && (
               <div className="p-4 rounded-xl border bg-amber-50 border-amber-200">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-sm text-amber-700 flex items-center gap-2">Premium Seat Surcharge</span>

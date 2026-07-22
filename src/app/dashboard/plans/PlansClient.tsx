@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type PlanType = "FIXED" | "FLEXIBLE"
-type SeatCategory = "GENERAL" | "PREMIUM"
 
 type Plan = {
   id: string;
@@ -115,7 +114,6 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
   const [basePlanName, setBasePlanName] = useState("")
   const [monthlyPrice, setMonthlyPrice] = useState("")
   const [planType, setPlanType] = useState<PlanType>("FIXED")
-  const [seatCategory, setSeatCategory] = useState<SeatCategory>("GENERAL")
   
   const [hour6, setHour6] = useState(false)
   const [hour8, setHour8] = useState(false)
@@ -189,8 +187,7 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
         validityDays: r.days,
         durationHours: r.hours,
         price: calculatedTotal,
-        discount: discountPercent,
-        seatCategory: seatCategory
+        discount: discountPercent || null,
       };
     }).filter(p => p.price > 0);
 
@@ -219,7 +216,6 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
     setBasePlanName("");
     setMonthlyPrice("");
     setPlanType("FIXED");
-    setSeatCategory("GENERAL");
     setHour6(false);
     setHour8(false);
     setHour12(false);

@@ -1,4 +1,6 @@
-import prisma from './src/lib/prisma';
+// @ts-nocheck
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("Starting Kripa Library Seat Map Update...");

@@ -42,9 +42,8 @@ const mockFacts: BookingFacts = {
       libraryId: 'lib1',
       name: 'A1',
       type: 'NORMAL',
-      hasLocker: true,
-      lockerPriceMonthlyPaise: 15000, // 150
-      premiumPriceMonthlyPaise: null,
+      lockerPriceDailyPaise: 15000, // 150
+      premiumPriceDailyPaise: null,
       syncPremiumOffers: false
     }
   ],

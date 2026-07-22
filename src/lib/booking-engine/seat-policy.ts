@@ -50,17 +50,7 @@ export function validateSeatEligibility(
     };
   }
 
-  // Seat must satisfy the plan's seat category
-  if (selectedPlan.seatCategory === 'GENERAL' && seat.type === 'PREMIUM') {
-    return {
-      nextDraft,
-      error: {
-        status: 'BLOCKED',
-        errorCode: 'INCOMPATIBLE_SEAT_CATEGORY',
-        userFacingExplanation: 'This plan does not support premium seats. Please choose a different plan or seat.'
-      }
-    };
-  }
+
   
   // NOTE: If plan is PREMIUM, they CAN book a NORMAL seat (downgrade is fine).
 

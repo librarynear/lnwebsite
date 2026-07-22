@@ -37,7 +37,6 @@ export interface PlanFact {
   pricePaise: number; // Converted to paise by fact loader
   discountPercentage: number | null;
   isActive: boolean;
-  seatCategory: 'GENERAL' | 'PREMIUM';
 }
 
 export interface SeatFact {
@@ -46,8 +45,8 @@ export interface SeatFact {
   name: string;
   type: 'RESERVED' | 'NORMAL' | 'PREMIUM' | 'NON_RESERVABLE';
   hasLocker: boolean;
-  lockerPriceMonthlyPaise: number | null; // Converted to paise
-  premiumPriceMonthlyPaise: number | null; // Converted to paise
+  lockerPriceDailyPaise: number | null; // Converted to paise
+  premiumPriceDailyPaise: number | null; // Converted to paise
   syncPremiumOffers: boolean;
 }
 

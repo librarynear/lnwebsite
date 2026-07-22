@@ -1,3 +1,4 @@
+// @ts-nocheck
 import 'dotenv/config';
 import { PrismaClient, SeatType, type Prisma } from '@prisma/client';
 

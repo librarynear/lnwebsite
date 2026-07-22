@@ -1110,19 +1110,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                     if (hist.seatId) {
                                       const seat = seats.find(s => s.id === hist.seatId);
                                       if (seat) {
-                                        if (hist.hasLocker && seat.lockerPriceMonthly) {
-                                          lockerCost = seat.lockerPriceMonthly * lockerMonths;
+                                        if (hist.hasLocker && seat.lockerPriceDaily) {
+                                          lockerCost = seat.lockerPriceDaily * hist.plan.validityDays;
                                         }
-                                        if (seat.type === 'PREMIUM' && seat.premiumPriceMonthly) {
-                                          const premiumMultiplier = hist.plan.validityDays / 30;
-                                          premiumCost = seat.premiumPriceMonthly * premiumMultiplier;
+                                        if (seat.type === 'PREMIUM' && seat.premiumPriceDaily) {
+                                          premiumCost = seat.premiumPriceDaily * hist.plan.validityDays;
                                           if (seat.syncPremiumOffers !== false && hist.plan.discount) {
                                             premiumCost -= (premiumCost * hist.plan.discount / 100);
                                           }
                                         }
                                       }
                                     } else if (hist.standaloneLocker) {
-                                      lockerCost = hist.standaloneLocker.price * lockerMonths;
+                                      // Standalone lockers were not migrated to daily, prorate by 28 days
+                                      lockerCost = (hist.standaloneLocker.price / 28) * hist.plan.validityDays;
                                     }
                                     displayAmount = Math.round(basePrice + lockerCost + premiumCost);
                                   }
@@ -1616,7 +1616,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           <span>{s.name}</span>
                           {s.hasLocker && (
                             <span className="text-xs text-muted-foreground flex items-center ml-2">
-                              🔒 Locker {s.lockerPriceMonthly ? `(₹${s.lockerPriceMonthly}/mo)` : ''}
+                              🔒 Locker {s.lockerPriceDaily ? `(₹${s.lockerPriceDaily}/day)` : ''}
                             </span>
                           )}
                         </div>
