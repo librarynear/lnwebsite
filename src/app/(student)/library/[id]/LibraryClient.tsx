@@ -433,7 +433,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     }
   }
 
-  const totalAmount = planPrice + lockerCost + premiumSurcharge;
+  const totalAmount = Math.round(planPrice + lockerCost + premiumSurcharge);
 
   let startDate = new Date();
   if (dynamicState.currentPlanEndDate) {

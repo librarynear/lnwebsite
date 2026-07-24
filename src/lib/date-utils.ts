@@ -22,7 +22,12 @@ export function formatStandardDate(dateInput: Date | string | number): string {
   if (!dateInput) return "N/A";
   const date = new Date(dateInput);
   if (isNaN(date.getTime())) return "Invalid Date";
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  }).format(date);
 }
 
 export function formatStandardDateTime(dateInput: Date | string | number): string {
@@ -30,6 +35,11 @@ export function formatStandardDateTime(dateInput: Date | string | number): strin
   const date = new Date(dateInput);
   if (isNaN(date.getTime())) return "Invalid Date";
   const datePart = formatStandardDate(date);
-  const timePart = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const timePart = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  });
   return `${datePart}, ${timePart}`;
 }

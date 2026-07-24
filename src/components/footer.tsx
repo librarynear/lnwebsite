@@ -66,7 +66,7 @@ export function Footer() {
 
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-border/40 gap-4">
             <p className="text-[13px] text-muted-foreground text-center md:text-left max-w-xl">
-              ©2026 FocusX. Explore study spaces, save your shortlist, and connect students with trusted libraries.
+              ©2026 FocusDesk Private Limited. Explore study spaces, save your shortlist, and connect students with trusted libraries.
             </p>
             <div className="flex gap-4">
               <a href="https://www.youtube.com/@FocusXTalks" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors">

@@ -268,6 +268,7 @@ export async function addStudentWithBooking(formData: FormData) {
   const authId = formData.get("authId") as string;
   const startDateStr = formData.get("startDate") as string;
   const paymentMethod = formData.get("paymentMethod") as string;
+  const hasLocker = formData.get("hasLocker") === "true" || formData.get("hasLocker") === "on";
 
   if (!name) return { error: "Student name is required" };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Invalid email address" };
@@ -362,6 +363,7 @@ export async function addStudentWithBooking(formData: FormData) {
         libraryId: library.id,
         planId: plan.id,
         seatId: isFlexible ? null : seatId,
+        hasLocker,
         requestedStart: startDateStr ? new Date(startDateStr) : undefined,
         paymentMethod: paymentMethod || "CASH",
         source: BookingIntentSource.MANUAL,

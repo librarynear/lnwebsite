@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { Plus, Edit2, Trash2, Tag, CalendarClock, CheckSquare, Square, Clock } from "lucide-react"
+import { Plus, Edit2, Trash2, Tag, CalendarClock, CheckSquare, Square, Clock, Filter } from "lucide-react"
 import { deletePlan, editPlan, batchAddPlans } from "@/app/actions/plan-actions"
 import {
   Dialog,
@@ -156,6 +156,23 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
   const [editDiscount, setEditDiscount] = useState("")
   const [editValidity, setEditValidity] = useState("")
   const [editHours, setEditHours] = useState("FULL")
+
+  // Filter State
+  const [filterType, setFilterType] = useState<string>("ALL")
+  const [filterValidity, setFilterValidity] = useState<string>("ALL")
+  const [filterDuration, setFilterDuration] = useState<string>("ALL")
+
+  const uniqueTypes = Array.from(new Set(initialPlans.map(p => p.type)));
+  const uniqueValidities = Array.from(new Set(initialPlans.map(p => p.validityDays))).sort((a,b) => a - b);
+  const uniqueDurations = Array.from(new Set(initialPlans.map(p => p.durationHours))).sort((a, b) => (a || 24) - (b || 24));
+
+  const filteredPlans = initialPlans.filter(plan => {
+    if (filterType !== "ALL" && plan.type !== filterType) return false;
+    if (filterValidity !== "ALL" && plan.validityDays.toString() !== filterValidity) return false;
+    const planDurationStr = plan.durationHours === null ? "FULL" : plan.durationHours.toString();
+    if (filterDuration !== "ALL" && planDurationStr !== filterDuration) return false;
+    return true;
+  });
 
   async function handleDelete(id: string) {
     if (confirm("Are you sure you want to delete this plan?")) {
@@ -475,14 +492,77 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {initialPlans.length === 0 && (
-          <div className="col-span-full p-8 text-center text-muted-foreground bg-card border border-border rounded-xl">
-            No plans found in the database.
+      <div className="flex flex-wrap items-center gap-3 mb-8 bg-card p-2 rounded-xl border border-border shadow-sm w-fit">
+        <div className="flex items-center gap-2 px-2 text-muted-foreground border-r border-border/50 pr-4">
+          <Filter className="w-4 h-4" />
+          <span className="text-sm font-medium">Filter</span>
+        </div>
+
+        {uniqueTypes.length > 1 && (
+          <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border/50">
+            <button 
+              onClick={() => setFilterType('ALL')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${filterType === 'ALL' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              All Types
+            </button>
+            {uniqueTypes.map(t => (
+              <button
+                key={t}
+                onClick={() => setFilterType(t)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${filterType === t ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {t === 'FIXED' ? 'Fixed' : 'Flexible'}
+              </button>
+            ))}
           </div>
         )}
         
-        {initialPlans.map(plan => (
+        {uniqueValidities.length > 1 && (
+          <Select value={filterValidity} onValueChange={(val) => setFilterValidity(val || "ALL")}>
+            <SelectTrigger className="h-8 border-border/50 bg-muted/20 hover:bg-muted/50 transition-colors text-xs font-medium w-fit min-w-[140px] rounded-lg">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-3.5 h-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Validity" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Validities</SelectItem>
+              {uniqueValidities.map(v => (
+                <SelectItem key={v} value={v.toString()} className="text-xs">{v} Day{v > 1 ? 's' : ''}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {uniqueDurations.length > 1 && (
+          <Select value={filterDuration} onValueChange={(val) => setFilterDuration(val || "ALL")}>
+            <SelectTrigger className="h-8 border-border/50 bg-muted/20 hover:bg-muted/50 transition-colors text-xs font-medium w-fit min-w-[140px] rounded-lg">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Access Hours" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All Access Hours</SelectItem>
+              {uniqueDurations.map(d => {
+                const val = d === null ? "FULL" : d.toString();
+                const label = d === null ? "Full Day" : `${d} Hours`;
+                return <SelectItem key={val} value={val} className="text-xs">{label}</SelectItem>;
+              })}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredPlans.length === 0 && (
+          <div className="col-span-full p-8 text-center text-muted-foreground bg-card border border-border rounded-xl">
+            {initialPlans.length === 0 ? "No plans found in the database." : "No plans match the selected filters."}
+          </div>
+        )}
+        
+        {filteredPlans.map(plan => (
           <div key={plan.id} className="bg-card rounded-2xl border border-border shadow-sm flex flex-col relative overflow-hidden group">
             <div className={`absolute top-0 w-full h-1 ${plan.type === 'FIXED' ? 'bg-primary' : 'bg-warning'}`} />
             

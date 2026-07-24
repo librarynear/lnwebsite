@@ -61,7 +61,7 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
 
   function formatStandardDate(isoString: string | Date | undefined | null) {
     if (!isoString) return "N/A";
-    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(isoString));
+    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(isoString));
   }
 
   const currentBooking = profileStudent?.bookings?.[0]; // Assuming bookings are ordered by desc

@@ -462,7 +462,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     renewAddedDays = renewTargetPlan.validityDays;
     const futureEnd = new Date(effectiveStart);
     futureEnd.setDate(futureEnd.getDate() + renewAddedDays - (isActive && new Date(renewBookingData.endTime) > startBase ? 0 : 1));
-    renewNewExpiryStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(futureEnd);
+    renewNewExpiryStr = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(futureEnd);
   }
 
   return (
@@ -627,13 +627,31 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               const isOccupied = occupiedSeatIds?.includes(s.id);
                               return (
                                 <SelectItem key={s.id} value={s.id} disabled={isOccupied}>
-                                  {s.name} {isOccupied && "(Occupied)"}
+                                  {s.name} {s.hasLocker && "(Has Locker)"} {isOccupied && "(Occupied)"}
                                 </SelectItem>
                               )
                             })}
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">Reserved plans require a seat.</p>
+
+                        {addFormSeatId && seats.find(s => s.id === addFormSeatId)?.hasLocker && (
+                          <div className="flex items-center space-x-2 mt-4 bg-primary/5 p-3 rounded-lg border border-primary/20">
+                            <input 
+                              type="checkbox" 
+                              id="hasLocker" 
+                              name="hasLocker" 
+                              value="true" 
+                              defaultChecked={true}
+                              className="w-4 h-4 text-primary rounded border-border cursor-pointer accent-primary" 
+                            />
+                            <Label htmlFor="hasLocker" className="text-sm cursor-pointer font-medium">
+                              Include Attached Locker 
+                              {seats.find(s => s.id === addFormSeatId)?.lockerPriceDaily ? 
+                                ` (+₹${seats.find(s => s.id === addFormSeatId)?.lockerPriceDaily}/day)` : ''}
+                            </Label>
+                          </div>
+                        )}
                       </div>
                     )}
 
