@@ -4,14 +4,15 @@ import { redirect } from "next/navigation";
 import { removeReceptionist } from "@/app/actions/staff-actions";
 import { Trash2, UserPlus, Shield } from "lucide-react";
 import { StaffForm } from "./StaffForm";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 
-export default async function StaffManagerPage() {
+export default async function StaffPage() {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
-    redirect("/dashboard");
+    redirect("/login");
   }
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId } });
+  const library = await getActiveLibrary(session);
 
   if (!library) redirect("/onboarding");
 

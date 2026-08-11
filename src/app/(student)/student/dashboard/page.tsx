@@ -23,7 +23,7 @@ export default async function StudentDashboardPage() {
 
   const now = new Date();
 
-  const [student, allBookings] = await Promise.all([
+  const [student, allBookings, latestLog] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
     }),
@@ -37,6 +37,10 @@ export default async function StudentDashboardPage() {
       },
       take: 50,
       orderBy: { createdAt: 'desc' }
+    }),
+    prisma.checkinLog.findFirst({
+      where: { studentId: session.userId },
+      orderBy: { timestamp: 'desc' }
     })
   ]);
 
@@ -44,6 +48,32 @@ export default async function StudentDashboardPage() {
 
   const activeBookings = allBookings.filter(b => b.endTime > now && b.status !== 'CANCELLED');
   const pastBookings = allBookings.filter(b => b.endTime <= now || b.status === 'CANCELLED');
+
+  const calculateTotalAmount = (booking: typeof allBookings[0]) => {
+    let displayAmount = 0;
+    if (booking.plan) {
+      const basePrice = booking.plan.discount ? (booking.plan.price - (booking.plan.price * booking.plan.discount / 100)) : booking.plan.price;
+      let lockerCost = 0;
+      let premiumCost = 0;
+      
+      if (booking.seat) {
+        if (booking.hasLocker && booking.seat.lockerPriceDaily) {
+          lockerCost = booking.seat.lockerPriceDaily * booking.plan.validityDays;
+        }
+        if (booking.seat.type === 'PREMIUM' && booking.seat.premiumPriceDaily) {
+          premiumCost = booking.seat.premiumPriceDaily * booking.plan.validityDays;
+          if (booking.seat.syncPremiumOffers !== false && booking.plan.discount) {
+            premiumCost -= (premiumCost * booking.plan.discount / 100);
+          }
+        }
+      } else if (booking.standaloneLocker) {
+        // Standalone lockers were not migrated to daily, prorate by 28 days
+        lockerCost = (booking.standaloneLocker.price / 28) * booking.plan.validityDays;
+      }
+      displayAmount = Math.round(basePrice + lockerCost + premiumCost);
+    }
+    return displayAmount;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -136,7 +166,7 @@ export default async function StudentDashboardPage() {
                         <div className="space-y-4">
                           <div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Plan details</p>
-                            <p className="text-base font-bold text-foreground">{booking.plan.name} <span className="text-muted-foreground font-normal mx-1">•</span> <span className="text-primary">₹{(booking.plan.discount ? booking.plan.price - (booking.plan.price * booking.plan.discount / 100) : booking.plan.price) + (booking.standaloneLocker?.price || 0)}</span></p>
+                            <p className="text-base font-bold text-foreground">{booking.plan.name} <span className="text-muted-foreground font-normal mx-1">•</span> <span className="text-primary">₹{calculateTotalAmount(booking)}</span></p>
                           </div>
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
@@ -195,7 +225,10 @@ export default async function StudentDashboardPage() {
                         isFlexible={booking.plan.type === "FLEXIBLE"} 
                       />
                       {booking.status === 'CONFIRMED' && (
-                        <AccessQRModal libraryId={booking.libraryId} />
+                        <AccessQRModal 
+                          libraryId={booking.libraryId} 
+                          isCheckedIn={latestLog?.status === 'CHECK_IN' && latestLog?.libraryId === booking.libraryId} 
+                        />
                       )}
                     </div>
                   </div>
@@ -219,7 +252,7 @@ export default async function StudentDashboardPage() {
                           <Calendar className="w-3.5 h-3.5" /> Expired {formatDate(booking.endTime)}
                         </span>
                         <span className="text-muted-foreground flex items-center gap-1">
-                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{(booking.plan.discount ? booking.plan.price - (booking.plan.price * booking.plan.discount / 100) : booking.plan.price) + (booking.standaloneLocker?.price || 0)}
+                          {booking.seat ? `Seat ${booking.seat.name}` : "Flexible Plan"} • ₹{calculateTotalAmount(booking)}
                         </span>
                       </div>
                     </div>

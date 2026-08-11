@@ -13,7 +13,7 @@ const SESSION_CACHE_TTL_SECONDS = 30
 // Revoked sessions are remembered for the full cookie lifetime (14 days).
 const REVOCATION_TTL_SECONDS = 60 * 60 * 24 * 14
 
-type SessionData = {
+export type SessionData = {
   userId: string;
   role: Role;
   email: string | null;

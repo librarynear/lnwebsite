@@ -269,6 +269,7 @@ export async function addStudentWithBooking(formData: FormData) {
   const startDateStr = formData.get("startDate") as string;
   const paymentMethod = formData.get("paymentMethod") as string;
   const hasLocker = formData.get("hasLocker") === "true" || formData.get("hasLocker") === "on";
+  const standaloneLockerId = formData.get("standaloneLockerId") as string;
 
   if (!name) return { error: "Student name is required" };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Invalid email address" };
@@ -364,6 +365,7 @@ export async function addStudentWithBooking(formData: FormData) {
         planId: plan.id,
         seatId: isFlexible ? null : seatId,
         hasLocker,
+        standaloneLockerId,
         requestedStart: startDateStr ? new Date(startDateStr) : undefined,
         paymentMethod: paymentMethod || "CASH",
         source: BookingIntentSource.MANUAL,
@@ -551,6 +553,14 @@ export async function getStudentProfile(studentId: string) {
           where: { libraryId },
           include: { plan: true },
           orderBy: { createdAt: 'desc' }
+        },
+        entryLogs: {
+          where: { libraryId },
+          orderBy: { timestamp: 'asc' }
+        },
+        checkins: {
+          where: { libraryId },
+          orderBy: { timestamp: 'asc' }
         }
       }
     });

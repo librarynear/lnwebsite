@@ -2,14 +2,15 @@ import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ApprovalActions from "./ApprovalActions";
-import { Clock } from "lucide-react";
+import { AlertTriangle, UserCheck, ShieldCheck, Phone, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 import { formatStandardDate } from "@/lib/date-utils";
 
-export default async function ApprovalsPage() {
+export default async function PendingApprovalsPage() {
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/login");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
+  const library = await getActiveLibrary(session);
   if (!library) redirect("/onboarding");
 
   const pendingBookings = await prisma.booking.findMany({

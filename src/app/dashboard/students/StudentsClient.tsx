@@ -4,7 +4,8 @@ import type { Plan, Prisma, Relay, Seat } from "@prisma/client"
 
 import { useState, useEffect, useTransition, Fragment } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, UserPlus, UserMinus, ChevronDown, CheckCircle2, Filter, PlusCircle, MinusCircle, History } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Search, UserPlus, UserMinus, ChevronDown, CheckCircle2, Filter, PlusCircle, MinusCircle, History, Grid, List, User, Lock, Tag, Pause, Ban, RefreshCw, MoreHorizontal } from "lucide-react"
 import { addStudentWithBooking, approveReceptionPayment, revokeBooking, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
 import { generateRFIDCommandQR } from "@/app/actions/hardware-actions"
@@ -25,6 +26,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,10 +52,21 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { AssignRFIDModal } from "@/components/AssignRFIDModal"
 import { StudentProfileModal } from "@/components/StudentProfileModal"
+import { AttendanceCalendar } from "@/components/AttendanceCalendar"
 
 type BookingWithDetails = Prisma.BookingGetPayload<{
   include: {
-    student: true
+    student: {
+      include: {
+        bookings: {
+          include: {
+            plan: true
+            seat: true
+            standaloneLocker: true
+          }
+        }
+      }
+    }
     plan: true
     seat: true
     standaloneLocker: true
@@ -117,6 +134,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const searchParamsHook = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [search, setSearch] = useState(searchQuery)
 
   useEffect(() => {
@@ -194,6 +212,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [verifiedAuthId, setVerifiedAuthId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [addFormSeatId, setAddFormSeatId] = useState<string | null>(null)
+  const [addFormStandaloneLockerId, setAddFormStandaloneLockerId] = useState<string | null>(null)
   const [addFormPaymentMethod, setAddFormPaymentMethod] = useState("CASH")
 
   const [studentFormData, setStudentFormData] = useState({
@@ -317,6 +336,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       formData.set("gender", studentFormData.gender);
       formData.set("address", studentFormData.address);
       formData.set("paymentMethod", addFormPaymentMethod);
+      formData.set("standaloneLockerId", addFormStandaloneLockerId || "");
       
       const result = await addStudentWithBooking(formData);
       if (result && result.error) {
@@ -325,7 +345,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       }
       toast.success("Student enrolled & plan assigned!");
       setIsOpen(false);
-      setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null);
+      setPhone("+91 "); setOtp(""); setStep(1); setVerifiedAuthId(null); setSelectedPlanId(null); setAddFormStandaloneLockerId(null);
       setStudentFormData({ name: "", email: "", dob: "", gender: "", address: "", isKycVerified: false });
       router.refresh();
     } catch (error: unknown) {
@@ -469,8 +489,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Students</h1>
-          <p className="text-muted-foreground mt-1">Manage active, inactive, and new enrollments.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Students</h1>
+          <p className="text-slate-500 mt-1">Manage active, inactive, and new enrollments.</p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -507,8 +527,23 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   </div>
                   {!verifiedAuthId && step === 2 && (
                     <div className="flex gap-2 mt-4 animate-in fade-in slide-in-from-top-2">
-                      <Input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} className="text-center tracking-widest text-lg py-6" />
-                      <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6} className="h-auto px-6">
+                      <div className="flex justify-center my-4">
+                        <InputOTP 
+                          maxLength={6} 
+                          value={otp} 
+                          onChange={(val) => setOtp(val)}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} className="w-12 h-14 text-xl" />
+                            <InputOTPSlot index={1} className="w-12 h-14 text-xl" />
+                            <InputOTPSlot index={2} className="w-12 h-14 text-xl" />
+                            <InputOTPSlot index={3} className="w-12 h-14 text-xl" />
+                            <InputOTPSlot index={4} className="w-12 h-14 text-xl" />
+                            <InputOTPSlot index={5} className="w-12 h-14 text-xl" />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                      <Button type="button" onClick={handleVerifyOTP} disabled={otpLoading || otp.length < 6} className="h-auto px-6 w-full">
                         {otpLoading ? "..." : "Confirm"}
                       </Button>
                     </div>
@@ -598,17 +633,32 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       <Label>Assign Initial Plan *</Label>
                       <input type="hidden" name="planId" value={selectedPlanId || ""} required />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
-                        {plans.map(p => (
-                          <div 
-                            key={p.id} 
-                            onClick={() => setSelectedPlanId(p.id)}
-                            className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <div className="font-bold text-foreground text-sm">{p.name}</div>
-                            <div className="text-xl font-black mt-1">₹{p.price}</div>
-                            <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
-                          </div>
-                        ))}
+                        {plans.map(p => {
+                          const finalPrice = p.discount ? p.price - (p.price * p.discount / 100) : p.price;
+                          return (
+                            <div 
+                              key={p.id} 
+                              onClick={() => setSelectedPlanId(p.id)}
+                              className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                            >
+                              <div className="font-bold text-foreground text-sm">{p.name}</div>
+                              <div className="text-xl font-black mt-1">
+                                {p.discount ? (
+                                  <>
+                                    <span className="line-through text-muted-foreground text-sm mr-2">₹{p.price}</span>
+                                    ₹{finalPrice.toFixed(0)}
+                                  </>
+                                ) : (
+                                  `₹${p.price}`
+                                )}
+                              </div>
+                              {p.discount ? (
+                                <div className="text-xs text-success font-bold mt-1">{p.discount}% OFF applied</div>
+                              ) : null}
+                              <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -655,6 +705,34 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       </div>
                     )}
 
+                    <div className="space-y-2 mt-4">
+                      <Label>Standalone Locker (Optional)</Label>
+                      <select 
+                        value={addFormStandaloneLockerId || ""} 
+                        onChange={(e) => setAddFormStandaloneLockerId(e.target.value === "" ? null : e.target.value)}
+                        className="w-full text-sm rounded-lg border border-border bg-background p-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground font-medium"
+                      >
+                        <option value="">No standalone locker</option>
+                        {(!standaloneLockers || standaloneLockers.length === 0) && (
+                          <option disabled value="unavailable">No standalone lockers configured in your library</option>
+                        )}
+                        {standaloneLockers?.map(l => {
+                          const targetPlan = plans.find(p => p.id === selectedPlanId);
+                          const lockerCost = targetPlan ? (l.price / 30) * targetPlan.validityDays : l.price;
+                          const isOccupied = occupiedStandaloneLockerIds?.includes(l.id);
+                          return (
+                            <option 
+                              key={l.id} 
+                              value={l.id} 
+                              disabled={isOccupied}
+                            >
+                              {l.name} (+₹{lockerCost.toFixed(0)}) {isOccupied ? "(Occupied)" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                       <div className="space-y-2">
                         <Label htmlFor="startDate">Start Date</Label>
@@ -678,7 +756,60 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 )}
               </div>
 
-              <DialogFooter className="pt-4">
+              {(() => {
+                const targetPlan = plans.find(p => p.id === selectedPlanId);
+                if (!targetPlan) return null;
+                
+                let planFinalPrice = targetPlan.discount ? targetPlan.price - (targetPlan.price * targetPlan.discount / 100) : targetPlan.price;
+                let finalLockerCost = 0;
+                let premiumSurcharge = 0;
+                
+                const chosenSeat = addFormSeatId ? seats.find(s => s.id === addFormSeatId) : null;
+                const seatHasMandatoryLocker = targetPlan.type !== 'FLEXIBLE' && chosenSeat?.hasLocker === true;
+                
+                if (seatHasMandatoryLocker) {
+                  finalLockerCost = (chosenSeat.lockerPriceDaily || 0) * targetPlan.validityDays;
+                } else if (addFormStandaloneLockerId) {
+                  const sl = standaloneLockers?.find(l => l.id === addFormStandaloneLockerId);
+                  if (sl) finalLockerCost = (sl.price / 30) * targetPlan.validityDays;
+                }
+                
+                if (chosenSeat?.type === 'PREMIUM' && chosenSeat.premiumPriceDaily) {
+                  premiumSurcharge = chosenSeat.premiumPriceDaily * targetPlan.validityDays;
+                  if (chosenSeat.syncPremiumOffers !== false && targetPlan.discount) {
+                    premiumSurcharge -= (premiumSurcharge * targetPlan.discount / 100);
+                  }
+                }
+                
+                const totalAmount = Math.round(planFinalPrice + finalLockerCost + premiumSurcharge);
+
+                return (
+                  <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2 mx-6">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Plan Price {targetPlan.discount ? `(${targetPlan.discount}% OFF applied)` : ''}</span>
+                      <span className="font-medium">₹{planFinalPrice.toFixed(0)}</span>
+                    </div>
+                    {premiumSurcharge > 0 && (
+                      <div className="flex justify-between text-sm text-amber-600">
+                        <span>Premium Seat Surcharge</span>
+                        <span className="font-medium">+₹{premiumSurcharge.toFixed(0)}</span>
+                      </div>
+                    )}
+                    {finalLockerCost > 0 && (
+                      <div className="flex justify-between text-sm text-primary">
+                        <span>Locker Add-on</span>
+                        <span className="font-medium">+₹{finalLockerCost.toFixed(0)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base font-black pt-2 border-t border-primary/10 mt-2">
+                      <span>Total Amount</span>
+                      <span>₹{totalAmount.toFixed(0)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <DialogFooter className="pt-4 px-6 pb-6">
                 <Button type="submit" className="w-full" disabled={!verifiedAuthId || addingStudent}>{addingStudent ? "Creating..." : "Create Student & Assign Plan"}</Button>
               </DialogFooter>
             </form>
@@ -686,8 +817,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
         </Dialog>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col mb-8">
-        <div className="p-4 md:p-6 border-b border-border flex flex-col gap-4 bg-muted/20">
+      <div className="bg-white rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col mb-8">
+        <div className="p-4 md:p-6 md:pb-4 border-b border-slate-100 flex flex-col gap-5 bg-white">
           
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:w-96">
@@ -696,14 +827,28 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 placeholder="Search by name, ID, or phone..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-input/50 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm text-foreground"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all text-slate-700 font-medium placeholder:text-slate-400"
               />
-              <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
             </div>
 
             <div className="flex items-center gap-2 self-start md:self-auto">
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+              </div>
               <Sheet>
-                <SheetTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border h-10 px-4 py-2 gap-2 font-medium bg-background border-border hover:bg-muted text-foreground relative">
+                <SheetTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/10 disabled:pointer-events-none disabled:opacity-50 border h-10 px-4 py-2 gap-2 bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm relative">
                   <Filter className="w-4 h-4" /> Filter & Sort
                   {(filterPlanId || sortMethod !== 'LATEST') && (
                     <span className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2" />
@@ -810,264 +955,365 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-muted/50 border-b border-border">
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground w-28">S.No.</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">ID</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Student</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Current Plan</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Status / Seat</th>
-                <th className="p-4 text-xs uppercase tracking-wider font-bold text-muted-foreground text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {displayedBookings.length > 0 ? (
-                displayedBookings.map((booking, index) => {
-                  const endOfDay = new Date(booking.endTime);
-                  endOfDay.setHours(0,0,0,0);
-                  const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
-                  const isExpired = endOfDay < today;
-                  
-                  const isExpanded = expandedRows.has(booking.studentId);
-                  const toggleExpand = () => {
-                    const newSet = new Set(expandedRows);
-                    if (isExpanded) newSet.delete(booking.studentId);
-                    else newSet.add(booking.studentId);
-                    setExpandedRows(newSet);
-                  };
-                  
-                  let rowClass = `hover:bg-muted/30 transition-colors ${isExpanded ? 'bg-muted/10' : ''}`;
-                  let statusBadge = null;
-
-                  if (activeTab === 'ACTIVE') {
-                    if (daysLeft <= 3 && daysLeft >= 0) {
-                      rowClass += " bg-destructive/5 hover:bg-destructive/10 border-l-4 border-l-destructive";
-                    } else if (daysLeft <= 7 && daysLeft > 3) {
-                      rowClass += " bg-warning/5 hover:bg-warning/10 border-l-4 border-l-warning";
-                    } else {
-                      rowClass += " border-l-4 border-l-transparent";
+        
+        {displayedBookings.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center">
+            <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-slate-700">No students found</h3>
+            <p className="text-base text-slate-500 mt-1">Try adjusting your search or switching tabs</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden mt-6">
+            <AnimatePresence mode="wait">
+              {viewMode === 'list' ? (
+                <motion.div 
+                  key="list-view"
+                  initial="hidden"
+                  animate="show"
+                  exit="hidden"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    show: {
+                      opacity: 1,
+                      transition: { staggerChildren: 0.05 }
                     }
-                  }
+                  }}
+                  className="flex flex-col gap-0"
+                >
+                  <div className="hidden sm:flex items-center px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/50 border-y border-slate-100 mb-0">
+                    <div className="w-1/3 pl-14">Students</div>
+                    <div className="flex-1 grid grid-cols-2 gap-4">
+                      <div>Plan</div>
+                      <div>Workspace</div>
+                    </div>
+                    <div className="w-48 text-right pr-6">Actions</div>
+                  </div>
+                  {displayedBookings.map((booking, index) => {
+                    const endOfDay = new Date(booking.endTime);
+                    endOfDay.setHours(0,0,0,0);
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                    const isExpired = endOfDay < today;
+                    
+                    const totalDays = Math.ceil((new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / (1000 * 60 * 60 * 24));
+                    const progress = Math.min(100, Math.max(0, ((totalDays - Math.max(0, daysLeft)) / totalDays) * 100));
 
-                  if (isExpired) {
-                    statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">EXPIRED</span>;
-                  } else if (booking.status === 'CANCELLED') {
-                    statusBadge = (
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">REVOKED</span>
-                        {booking.revokedReason && (
-                          <span 
-                            className="text-[10px] text-muted-foreground max-w-[120px] truncate cursor-pointer hover:underline" 
-                            onClick={() => {
-                              setViewReason(booking.revokedReason ?? "");
-                              setReasonModalOpen(true);
-                            }}
-                          >
-                            Reason: {booking.revokedReason}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  } else if (booking.status === 'CONFIRMED') {
-                    if (booking.isPaused) {
-                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">PAUSED</span>;
-                    } else {
-                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-success/10 text-success">ACTIVE</span>;
-                    }
-                  } else {
-                    statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">{booking.status}</span>;
-                  }
-
-                  const assignedSeat = seats.find(s => s.id === booking.seatId);
-
-                  return (
-                    <Fragment key={booking.id}>
-                    <tr className={rowClass}>
-                      <td className="p-4 text-sm font-medium text-muted-foreground">
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={toggleExpand} 
-                            className="text-muted-foreground hover:text-primary transition-colors focus:outline-none bg-background rounded-full p-0.5 shadow-sm border border-border"
-                          >
-                            {isExpanded ? <MinusCircle className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-                          </button>
-                          {(currentPage - 1) * PAGE_SIZE + index + 1}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        {booking.student.uniqueId ? (
-                          <span className="font-mono text-sm font-bold bg-background px-2 py-1 rounded border border-border">{booking.student.uniqueId}</span>
-                        ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-xs h-7 px-2"
-                            disabled={loadingId === booking.student.id}
-                            onClick={async () => {
-                              setLoadingId(booking.student.id);
-                              try {
-                                const res = await assignUniqueIdToStudent(booking.student.id);
-                                if (res?.error) {
-                                  toast.error(res.error);
-                                } else {
-                                  toast.success("ID generated successfully");
-                                }
-                              } catch (error: unknown) {
-                                toast.error(getErrorMessage(error, "Failed to generate ID"));
-                              } finally {
-                                setLoadingId(null);
-                                router.refresh();
-                              }
-                            }}
-                          >
-                            {loadingId === booking.student.id ? "Generating..." : "Generate ID"}
-                          </Button>
-                        )}
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-foreground">{booking.student.name}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{booking.student.phone || booking.student.email}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-foreground">
-                          {booking.plan?.name}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground mt-1 flex flex-col gap-0.5">
-                          <span>{formatStandardDate(booking.startTime)} - {formatStandardDate(endOfDay)}</span>
-                          {activeTab === 'ACTIVE' && !booking.isPaused && (
-                            <span className={daysLeft <= 3 ? 'text-destructive font-bold' : daysLeft <= 7 ? 'text-warning font-bold' : ''}>
-                              {daysLeft} days remaining
+                    let statusBadge = null;
+                    if (isExpired) {
+                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">EXPIRED</span>;
+                    } else if (booking.status === 'CANCELLED') {
+                      statusBadge = (
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">REVOKED</span>
+                          {booking.revokedReason && (
+                            <span 
+                              className="text-[10px] text-muted-foreground max-w-[120px] truncate cursor-pointer hover:underline" 
+                              onClick={() => {
+                                setViewReason(booking.revokedReason ?? "");
+                                setReasonModalOpen(true);
+                              }}
+                            >
+                              Reason: {booking.revokedReason}
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col items-start gap-2">
-                          {statusBadge}
-                          {assignedSeat ? (
-                            <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-bold">Seat: {assignedSeat.name}</div>
-                          ) : (
-                            <div className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded font-bold">No Seat Assigned</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger disabled={loadingId === booking.id} className="flex items-center gap-2 px-3 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-foreground font-medium text-sm focus:outline-none disabled:opacity-50">
-                            {loadingId === booking.id ? "Loading..." : "Manage"} <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 p-2">
-                            <DropdownMenuGroup>
-                              <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator className="mb-2" />
-                              
-                              {booking.status === 'PENDING_PAYMENT' && (
-                                <DropdownMenuItem 
-                                  onClick={() => setPaymentApprovalId(booking.id)}
-                                  className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
-                                >
-                                  Approve Payment
-                                </DropdownMenuItem>
-                              )}
-                              
-                              <DropdownMenuItem 
-                                onClick={() => setProfileStudentId(booking.student.id)}
-                                className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
-                              >
-                                View Profile
-                              </DropdownMenuItem>
+                      );
+                    } else if (booking.status === 'CONFIRMED') {
+                      if (booking.isPaused) {
+                        statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">PAUSED</span>;
+                      } else {
+                        statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-success/10 text-success">ACTIVE</span>;
+                      }
+                    } else {
+                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-warning/10 text-warning">{booking.status}</span>;
+                    }
 
-                              {booking.status !== 'CANCELLED' && booking.plan?.type === 'FIXED' && (
-                                <DropdownMenuItem 
-                                  onClick={() => {
+                    const assignedSeat = seats.find(s => s.id === booking.seatId);
+
+                    return (
+                      <motion.div 
+                        variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+                        key={booking.id} 
+                        className="group bg-white p-4 sm:p-5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors duration-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 relative overflow-hidden"
+                      >
+                        {/* Progress Bar Background */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ background: `linear-gradient(90deg, #4f46e5 ${progress}%, transparent ${progress}%)` }} />
+
+                        {/* Avatar & Basic Info */}
+                        <div className="flex items-center gap-4 w-full sm:w-1/3 relative z-10">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-100 flex items-center justify-center">
+                              {booking.student.profilePhotoUrl ? (
+                                <img src={booking.student.profilePhotoUrl} alt={booking.student.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-6 h-6 text-slate-400" />
+                              )}
+                            </div>
+                            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${booking.status === 'CONFIRMED' && !isExpired && !booking.isPaused ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          </div>
+                          <div className="flex flex-col">
+                            <h3 className="font-bold text-slate-900 text-sm">{booking.student.name}</h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] font-medium text-slate-500">{booking.student.uniqueId ? `${booking.student.uniqueId} • ` : ''}{booking.student.phone || booking.student.email}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Plan & Status */}
+                        <div className="grid grid-cols-2 gap-4 w-full sm:flex-1 relative z-10">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-semibold text-slate-800">{booking.plan?.name}</span>
+                            <span className="text-[11px] font-medium text-slate-500">{formatStandardDate(booking.startTime)} - {formatStandardDate(booking.endTime)}</span>
+                          </div>
+
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              {assignedSeat ? (
+                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-md border border-emerald-100/50">Seat {assignedSeat.name}{booking.hasLocker ? " + Locker" : ""}</span>
+                              ) : (
+                                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-md border border-indigo-100/50">Flexible Plan{booking.standaloneLockerId ? ` + Locker (${standaloneLockers?.find(l => l.id === booking.standaloneLockerId)?.name})` : ""}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Days Left & Actions */}
+                        <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto relative z-10 mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-0 border-slate-100">
+                          {activeTab === 'ACTIVE' && !booking.isPaused && (
+                            <div className="flex flex-col items-end">
+                              <span className={`text-lg font-black leading-none ${daysLeft <= 3 ? 'text-rose-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-indigo-600'}`}>
+                                {daysLeft}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Days Left</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'CANCELLED') && (
+                              <button 
+                                onClick={() => {
+                                  setRenewModalBookingId(booking.id);
+                                  setRenewSelectedPlanId(booking.planId);
+                                  setRenewSelectedSeatId(booking.seatId || "NONE");
+                                  setRenewHasLocker(booking.hasLocker);
+                                  setRenewStandaloneLockerId(booking.standaloneLockerId);
+                                  setRenewPlanMode('SAME');
+                                }}
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors border border-indigo-100 font-semibold text-xs shadow-sm hover:shadow"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" /> Renew Plan
+                              </button>
+                            )}
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger disabled={loadingId === booking.id} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                {loadingId === booking.id ? <span className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /> : <MoreHorizontal className="w-5 h-5" />}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-xl border-slate-200 shadow-xl bg-white/90 backdrop-blur-xl">
+                                <DropdownMenuGroup>
+                                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-400 font-bold px-2 py-1.5">Manage Student</DropdownMenuLabel>
+                                  <DropdownMenuSeparator className="bg-slate-100/50 my-1" />
+                                  
+                                  {booking.status === 'PENDING_PAYMENT' && (
+                                    <DropdownMenuItem onClick={() => setPaymentApprovalId(booking.id)} className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-emerald-50 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600">
+                                      Approve Payment
+                                    </DropdownMenuItem>
+                                  )}
+                                  
+                                  <DropdownMenuItem onClick={() => setProfileStudentId(booking.student.id)} className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900">
+                                    View Profile
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuItem onClick={() => {
+                                      setSeatChangeBookingId(booking.id);
+                                      setSelectedNewSeatId(booking.seatId || "NONE");
+                                    }} 
+                                    className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900"
+                                  >
+                                    Change Seat
+                                  </DropdownMenuItem>
+
+                                  {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'CANCELLED') && (
+                                    <DropdownMenuItem onClick={() => {
+                                        setRenewModalBookingId(booking.id);
+                                        setRenewSelectedPlanId(booking.planId);
+                                        setRenewSelectedSeatId(booking.seatId || "NONE");
+                                        setRenewHasLocker(booking.hasLocker);
+                                        setRenewStandaloneLockerId(booking.standaloneLockerId);
+                                        setRenewPlanMode('SAME');
+                                      }}
+                                      className="sm:hidden cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-50 text-indigo-600 focus:bg-indigo-50 focus:text-indigo-600"
+                                    >
+                                      Renew Plan
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {booking.status !== 'CANCELLED' && (
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setRfidStudentId(booking.student.id);
+                                        setRfidTagInput(booking.student.rfidTag || "");
+                                        setRfidQrPayload(null);
+                                        setRfidModalOpen(true);
+                                      }}
+                                      className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900"
+                                    >
+                                      {booking.student.rfidTag ? 'Manage RFID' : 'Assign RFID'}
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {booking.status === 'CONFIRMED' && (
+                                    booking.isPaused ? (
+                                      <DropdownMenuItem 
+                                        onClick={async () => {
+                                          setLoadingId(booking.id);
+                                          try {
+                                            const res = await resumeBooking(booking.id);
+                                            toast.success(`Plan resumed! Extended by ${res.extendedDays} days.`);
+                                            router.refresh();
+                                          } catch (error: unknown) {
+                                            toast.error(getErrorMessage(error, "Failed to resume"));
+                                          }
+                                          setLoadingId(null);
+                                        }}
+                                        className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-emerald-50 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600"
+                                      >
+                                        Resume Plan
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem 
+                                        onClick={async (e) => {
+                                          if (booking.plan.type === 'FIXED') { e.preventDefault(); toast.error("Reserved seats cannot be paused."); return; }
+                                          setLoadingId(booking.id);
+                                          try {
+                                            await pauseBooking(booking.id);
+                                            toast.success("Plan paused");
+                                            router.refresh();
+                                          } catch (error: unknown) {
+                                            toast.error(getErrorMessage(error, "Failed to pause"));
+                                          }
+                                          setLoadingId(null);
+                                        }}
+                                        disabled={booking.plan.type === 'FIXED'}
+                                        className={`cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg ${booking.plan.type === 'FIXED' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-amber-50 text-amber-600 focus:bg-amber-50 focus:text-amber-600'}`}
+                                      >
+                                        Pause Plan
+                                      </DropdownMenuItem>
+                                    )
+                                  )}
+
+                                  {booking.status === 'CONFIRMED' && (
+                                    <>
+                                      <DropdownMenuSeparator className="bg-slate-100/50 my-1" />
+                                      <DropdownMenuItem 
+                                        onClick={() => {
+                                          setRevokeBookingId(booking.id);
+                                          setRevokeReason("");
+                                          setRevokeModalOpen(true);
+                                        }}
+                                        className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-rose-50 text-rose-600 focus:bg-rose-50 focus:text-rose-600"
+                                      >
+                                        Revoke Access
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="grid-view"
+                  initial="hidden"
+                  animate="show"
+                  exit="hidden"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    show: {
+                      opacity: 1,
+                      transition: { staggerChildren: 0.05 }
+                    }
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                >
+                  {displayedBookings.map((booking, index) => {
+                    const endOfDay = new Date(booking.endTime);
+                    endOfDay.setHours(0,0,0,0);
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                    const isExpired = endOfDay < today;
+                    const assignedSeat = seats.find(s => s.id === booking.seatId);
+
+                    let statusBadge = null;
+                    if (isExpired) {
+                      statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">EXPIRED</span>;
+                    } else if (booking.status === 'CANCELLED') {
+                      statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">REVOKED</span>;
+                    } else if (booking.status === 'CONFIRMED') {
+                      if (booking.isPaused) {
+                        statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">PAUSED</span>;
+                      } else {
+                        statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">ACTIVE</span>;
+                      }
+                    }
+
+                    return (
+                      <motion.div 
+                        variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
+                        key={booking.id}
+                        className="group bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-50 to-transparent rounded-bl-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform duration-500" />
+                        
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                          <div className="relative">
+                            <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center">
+                              {booking.student.profilePhotoUrl ? (
+                                <img src={booking.student.profilePhotoUrl} alt={booking.student.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-8 h-8 text-slate-300" />
+                              )}
+                            </div>
+                            <div className={`absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full border-[3px] border-white ${booking.status === 'CONFIRMED' && !isExpired && !booking.isPaused ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          </div>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger disabled={loadingId === booking.id} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none">
+                              {loadingId === booking.id ? <span className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /> : <MoreHorizontal className="w-5 h-5" />}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-xl border-slate-200 shadow-xl bg-white/90 backdrop-blur-xl">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-400 font-bold px-2 py-1.5">Manage Student</DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-slate-100/50 my-1" />
+                                
+                                {booking.status === 'PENDING_PAYMENT' && (
+                                  <DropdownMenuItem onClick={() => setPaymentApprovalId(booking.id)} className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-emerald-50 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600">
+                                    Approve Payment
+                                  </DropdownMenuItem>
+                                )}
+                                
+                                <DropdownMenuItem onClick={() => setProfileStudentId(booking.student.id)} className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900">
+                                  View Profile
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem onClick={() => {
                                     setSeatChangeBookingId(booking.id);
                                     setSelectedNewSeatId(booking.seatId || "NONE");
-                                  }}
-                                  className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
+                                  }} 
+                                  className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900"
                                 >
                                   Change Seat
                                 </DropdownMenuItem>
-                              )}
 
-                              {booking.status !== 'CANCELLED' && (
-                                booking.student.rfidTag ? (
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setRfidStudentId(booking.student.id);
-                                      setRfidTagInput(booking.student.rfidTag || "");
-                                      setRfidQrPayload(null);
-                                      setRfidModalOpen(true);
-                                    }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
-                                  >
-                                    Manage RFID
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setRfidStudentId(booking.student.id);
-                                      setRfidTagInput("");
-                                      setRfidQrPayload(null);
-                                      setRfidModalOpen(true);
-                                    }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted"
-                                  >
-                                    Assign RFID
-                                  </DropdownMenuItem>
-                                )
-                              )}
-                              
-                              {booking.status === 'CONFIRMED' && (
-                                booking.isPaused ? (
-                                  <DropdownMenuItem 
-                                    onClick={async () => {
-                                      setLoadingId(booking.id);
-                                      try {
-                                        const res = await resumeBooking(booking.id);
-                                        if (res.extendedDays > 0) {
-                                          toast.success(`Plan resumed! Student's plan was extended by ${res.extendedDays} days.`);
-                                        } else {
-                                          toast.success(`Plan resumed! Pause duration was < 7 days, so plan was not extended.`);
-                                        }
-                                        router.refresh();
-                                      } catch (error: unknown) {
-                                        toast.error(getErrorMessage(error, "Failed to resume"));
-                                      }
-                                      setLoadingId(null);
-                                    }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-success/10 text-success"
-                                  >
-                                    Resume Plan
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem 
-                                    onClick={async () => {
-                                      setLoadingId(booking.id);
-                                      try {
-                                        await pauseBooking(booking.id);
-                                        toast.success("Plan paused successfully");
-                                        router.refresh();
-                                      } catch (error: unknown) {
-                                        toast.error(getErrorMessage(error, "Failed to pause"));
-                                      }
-                                      setLoadingId(null);
-                                    }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-warning/10 text-warning"
-                                  >
-                                    Pause Plan
-                                  </DropdownMenuItem>
-                                )
-                              )}
-
-                              {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'CANCELLED') && (
-                                <>
-                                  <DropdownMenuSeparator className="my-1" />
-                                  <DropdownMenuItem 
-                                    onClick={() => {
+                                {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' || booking.status === 'CANCELLED') && (
+                                  <DropdownMenuItem onClick={() => {
                                       setRenewModalBookingId(booking.id);
                                       setRenewSelectedPlanId(booking.planId);
                                       setRenewSelectedSeatId(booking.seatId || "NONE");
@@ -1075,113 +1321,123 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                       setRenewStandaloneLockerId(booking.standaloneLockerId);
                                       setRenewPlanMode('SAME');
                                     }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-muted text-foreground"
+                                    className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-indigo-50 text-indigo-600 focus:bg-indigo-50 focus:text-indigo-600"
                                   >
                                     Renew Plan
                                   </DropdownMenuItem>
-                                </>
-                              )}
+                                )}
 
-                              {booking.status === 'CONFIRMED' && (
-                                <>
-                                  <DropdownMenuSeparator className="my-1" />
+                                {booking.status !== 'CANCELLED' && (
                                   <DropdownMenuItem 
                                     onClick={() => {
-                                      setRevokeBookingId(booking.id);
-                                      setRevokeReason("");
-                                      setRevokeModalOpen(true);
+                                      setRfidStudentId(booking.student.id);
+                                      setRfidTagInput(booking.student.rfidTag || "");
+                                      setRfidQrPayload(null);
+                                      setRfidModalOpen(true);
                                     }}
-                                    className="cursor-pointer p-2.5 text-sm font-medium rounded-md hover:bg-destructive/10 text-destructive"
+                                    className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-slate-100 text-slate-700 focus:bg-slate-100 focus:text-slate-900"
                                   >
-                                    <UserMinus className="w-4 h-4 mr-2" /> Revoke Access
+                                    {booking.student.rfidTag ? 'Manage RFID' : 'Assign RFID'}
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuGroup>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="bg-muted/5 border-b border-border">
-                        <td colSpan={6} className="p-0">
-                          <div className="px-14 py-4 space-y-3 shadow-inner">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                              <History className="w-3.5 h-3.5" /> Plan History
-                            </h4>
-                            <div className="grid gap-2">
-                              {bookings
-                                .filter(b => b.studentId === booking.studentId)
-                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                .map(hist => {
-                                  const hStart = new Date(hist.startTime);
-                                  const hEnd = new Date(hist.endTime);
-                                  const hIsExpired = hEnd < today;
+                                )}
 
-                                  let displayAmount = 0;
-                                  if (hist.plan) {
-                                    const basePrice = hist.plan.discount ? (hist.plan.price - (hist.plan.price * hist.plan.discount / 100)) : hist.plan.price;
-                                    const lockerMonths = Math.max(1, Math.round(hist.plan.validityDays / 28));
-                                    let lockerCost = 0;
-                                    let premiumCost = 0;
-                                    
-                                    if (hist.seatId) {
-                                      const seat = seats.find(s => s.id === hist.seatId);
-                                      if (seat) {
-                                        if (hist.hasLocker && seat.lockerPriceDaily) {
-                                          lockerCost = seat.lockerPriceDaily * hist.plan.validityDays;
+                                {booking.status === 'CONFIRMED' && (
+                                  booking.isPaused ? (
+                                    <DropdownMenuItem 
+                                      onClick={async () => {
+                                        setLoadingId(booking.id);
+                                        try {
+                                          const res = await resumeBooking(booking.id);
+                                          toast.success(`Plan resumed! Extended by ${res.extendedDays} days.`);
+                                          router.refresh();
+                                        } catch (error: unknown) {
+                                          toast.error(getErrorMessage(error, "Failed to resume"));
                                         }
-                                        if (seat.type === 'PREMIUM' && seat.premiumPriceDaily) {
-                                          premiumCost = seat.premiumPriceDaily * hist.plan.validityDays;
-                                          if (seat.syncPremiumOffers !== false && hist.plan.discount) {
-                                            premiumCost -= (premiumCost * hist.plan.discount / 100);
-                                          }
+                                        setLoadingId(null);
+                                      }}
+                                      className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-emerald-50 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600"
+                                    >
+                                      Resume Plan
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem 
+                                      onClick={async (e) => {
+                                        if (booking.plan.type === 'FIXED') { e.preventDefault(); toast.error("Reserved seats cannot be paused."); return; }
+                                        setLoadingId(booking.id);
+                                        try {
+                                          await pauseBooking(booking.id);
+                                          toast.success("Plan paused");
+                                          router.refresh();
+                                        } catch (error: unknown) {
+                                          toast.error(getErrorMessage(error, "Failed to pause"));
                                         }
-                                      }
-                                    } else if (hist.standaloneLocker) {
-                                      // Standalone lockers were not migrated to daily, prorate by 28 days
-                                      lockerCost = (hist.standaloneLocker.price / 28) * hist.plan.validityDays;
-                                    }
-                                    displayAmount = Math.round(basePrice + lockerCost + premiumCost);
-                                  }
+                                        setLoadingId(null);
+                                      }}
+                                      disabled={booking.plan.type === 'FIXED'}
+                                      className={`cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg ${booking.plan.type === 'FIXED' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-amber-50 text-amber-600 focus:bg-amber-50 focus:text-amber-600'}`}
+                                    >
+                                      Pause Plan
+                                    </DropdownMenuItem>
+                                  )
+                                )}
 
-                                  return (
-                                    <div key={hist.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background shadow-sm text-sm">
-                                      <div>
-                                        <div className="font-bold">{hist.plan?.name} <span className="text-xs font-normal text-muted-foreground ml-2">₹{displayAmount}</span></div>
-                                        <div className="text-xs text-muted-foreground mt-0.5">
-                                          {formatStandardDate(hStart)} - {formatStandardDate(hEnd)}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        {hist.seatId ? <span className="text-xs text-muted-foreground">Seat: {seats.find(s => s.id === hist.seatId)?.name || 'Unknown'}</span> : <span className="text-xs text-muted-foreground">No Seat</span>}
-                                        {hist.status === 'CONFIRMED' && !hist.isPaused && !hIsExpired && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success/10 text-success">ACTIVE</span>}
-                                        {hist.status === 'CONFIRMED' && hist.isPaused && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/10 text-warning">PAUSED</span>}
-                                        {hist.status === 'CONFIRMED' && hIsExpired && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground">EXPIRED</span>}
-                                        {hist.status === 'PENDING_PAYMENT' && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warning/10 text-warning">PENDING</span>}
-                                        {hist.status === 'CANCELLED' && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-destructive/10 text-destructive">REVOKED</span>}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                {booking.status === 'CONFIRMED' && (
+                                  <>
+                                    <DropdownMenuSeparator className="bg-slate-100/50 my-1" />
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setRevokeBookingId(booking.id);
+                                        setRevokeReason("");
+                                        setRevokeModalOpen(true);
+                                      }}
+                                      className="cursor-pointer px-2 py-2 text-sm font-semibold rounded-lg hover:bg-rose-50 text-rose-600 focus:bg-rose-50 focus:text-rose-600"
+                                    >
+                                      Revoke Access
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        <div className="flex-1 relative z-10">
+                          <h3 className="font-extrabold text-slate-900 text-lg leading-tight mb-1">{booking.student.name}</h3>
+                          <p className="text-sm font-medium text-slate-500 mb-6">{booking.student.phone || booking.student.email}</p>
+                          
+                          <div className="space-y-4">
+                            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Plan</span>
+                                {statusBadge}
+                              </div>
+                              <p className="font-bold text-slate-800">{booking.plan?.name}</p>
+                              <p className="text-xs font-medium text-slate-500 mt-1">{formatStandardDate(booking.startTime)} - {formatStandardDate(booking.endTime)}</p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-center">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Seat</span>
+                                <span className="font-bold text-slate-800 text-sm">{assignedSeat ? assignedSeat.name : 'None'}</span>
+                              </div>
+                              <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-center">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Days Left</span>
+                                <span className={`font-bold text-sm ${daysLeft <= 3 ? 'text-rose-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-indigo-600'}`}>
+                                  {daysLeft}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                    </Fragment>
-                  )
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                    No students found.
-                  </td>
-                </tr>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </AnimatePresence>
+          </div>
+        )}
+
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
@@ -1594,23 +1850,38 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               <div className="space-y-2">
                 <Label>Select New Plan</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-1">
-                  {plans.map(p => (
-                    <div 
-                      key={p.id} 
-                      onClick={() => {
-                        setRenewSelectedPlanId(p.id);
-                        if (p.type === 'FLEXIBLE') {
-                          setRenewSelectedSeatId("NONE");
-                          setRenewHasLocker(null);
-                        }
-                      }}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${renewSelectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                    >
-                      <div className="font-bold text-foreground text-sm">{p.name}</div>
-                      <div className="text-xl font-black mt-1">₹{p.price}</div>
-                      <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
-                    </div>
-                  ))}
+                  {plans.map(p => {
+                    const finalPrice = p.discount ? p.price - (p.price * p.discount / 100) : p.price;
+                    return (
+                      <div 
+                        key={p.id} 
+                        onClick={() => {
+                          setRenewSelectedPlanId(p.id);
+                          if (p.type === 'FLEXIBLE') {
+                            setRenewSelectedSeatId("NONE");
+                            setRenewHasLocker(null);
+                          }
+                        }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all ${renewSelectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                      >
+                        <div className="font-bold text-foreground text-sm">{p.name}</div>
+                        <div className="text-xl font-black mt-1">
+                          {p.discount ? (
+                            <>
+                              <span className="line-through text-muted-foreground text-sm mr-2">₹{p.price}</span>
+                              ₹{finalPrice.toFixed(0)}
+                            </>
+                          ) : (
+                            `₹${p.price}`
+                          )}
+                        </div>
+                        {p.discount ? (
+                          <div className="text-xs text-success font-bold mt-1">{p.discount}% OFF applied</div>
+                        ) : null}
+                        <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1668,34 +1939,23 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
             <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
               <Label>Standalone Locker (Optional)</Label>
-              <Select 
-                value={renewStandaloneLockerId || "NONE"} 
-                onValueChange={(val) => setRenewStandaloneLockerId(val === "NONE" ? null : val)}
+              <select 
+                value={renewStandaloneLockerId || ""} 
+                onChange={(e) => setRenewStandaloneLockerId(e.target.value === "" ? null : e.target.value)}
+                className="w-full text-sm rounded-lg border border-border bg-background p-2.5 focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground font-medium"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a standalone locker">
-                    {renewStandaloneLockerId ? standaloneLockers?.find(l => l.id === renewStandaloneLockerId)?.name : "No standalone locker"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">No standalone locker</SelectItem>
-                  {standaloneLockers?.map(l => (
-                    <SelectItem 
-                      key={l.id} 
-                      value={l.id}
-                      disabled={occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId}
-                    >
-                      <div className="flex items-center justify-between w-full pr-4">
-                        <span>
-                          {l.name}
-                          {occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId ? " (Occupied)" : ""}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-2">₹{l.price}/mo</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">No standalone locker</option>
+                {standaloneLockers?.map(l => (
+                  <option 
+                    key={l.id} 
+                    value={l.id}
+                    disabled={occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId}
+                  >
+                    {l.name} - ₹{l.price}/mo
+                    {occupiedStandaloneLockerIds.includes(l.id) && l.id !== renewStandaloneLockerId ? " (Occupied)" : ""}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           

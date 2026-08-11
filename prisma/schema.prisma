@@ -30,6 +30,19 @@ model User {
   consecutiveFailures Int                @default(0)
   failureReasons      String?
   rfidTag             String?            @unique
+
+  // Cashfree KYC Aadhaar Fields
+  kycAadhaarName              String?
+  kycAadhaarDob               DateTime?
+  kycAadhaarGender            String?
+  kycEAadhaar                 String?
+  kycAadhaarMobile            String?
+  kycAadhaarStatus            String?
+  kycAadhaarDocumentRequested String?
+  kycAadhaarDocumentConsent   String?
+  kycAadhaarVerificationId    String?
+  kycAadhaarReferenceId       String?
+  kycAadhaarProfilePhotoUrl   String?
   bookings            Booking[]
   bookingIntents      BookingIntent[]
   canvasState         CanvasState?

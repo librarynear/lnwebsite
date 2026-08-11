@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/app/actions/auth-actions"
+import { getActiveLibrary } from "@/lib/dashboard-utils"
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
@@ -11,17 +12,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const libraryId =
-    session.role === "RECEPTIONIST"
-      ? session.employerLibraryId
-      : (
-          await prisma.library.findFirst({
-            where: session.role === "ADMIN"
-              ? {}
-              : { librarianId: session.userId },
-            select: { id: true },
-          })
-        )?.id
+  const activeLibrary = await getActiveLibrary(session)
+  const libraryId = activeLibrary?.id
   if (!libraryId) {
     return NextResponse.json({ error: "Library not found" }, { status: 404 })
   }

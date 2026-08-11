@@ -7,7 +7,10 @@ import { MobileNav } from "./MobileNav";
 import { logout, getSession } from "@/app/actions/auth-actions";
 import { Suspense } from "react";
 import { CommandPalette } from "@/components/command/CommandPalette";
-import { Search } from "lucide-react";
+import { Search, LayoutDashboard, Users, MessageSquare, HelpCircle, Wallet, Grid, List, ShieldCheck, UserCheck, AppWindow, Settings, LogOut } from "lucide-react";
+import prisma from "@/lib/prisma";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
+import { AdminLibrarySwitcher } from "@/components/AdminLibrarySwitcher";
 
 async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
   const session = await getSession();
@@ -15,6 +18,17 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
   // pages also guard, but the layout ensures no page can accidentally leak.
   if (!session) redirect("/login");
   if (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST') redirect("/");
+
+  let adminLibraries: { id: string; name: string }[] = [];
+  let activeLibraryId = "";
+  if (session.role === 'ADMIN') {
+    const activeLib = await getActiveLibrary(session);
+    if (activeLib) activeLibraryId = activeLib.id;
+    adminLibraries = await prisma.library.findMany({
+      select: { id: true, name: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -32,35 +46,41 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
             </div>
             <kbd className="font-sans text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border tracking-widest opacity-70">⌘K</kbd>
           </div>
+          {session.role === 'ADMIN' && (
+            <AdminLibrarySwitcher 
+              libraries={adminLibraries} 
+              activeLibraryId={activeLibraryId} 
+            />
+          )}
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <NavItem href="/dashboard">
+          <NavItem href="/dashboard" icon={<LayoutDashboard />}>
             Overview
           </NavItem>
-          <NavItem href="/dashboard/students">
+          <NavItem href="/dashboard/students" icon={<Users />}>
             Students
           </NavItem>
-          <NavItem href="/dashboard/queries">
+          <NavItem href="/dashboard/queries" icon={<MessageSquare />}>
             Queries
           </NavItem>
-          <NavItem href="/dashboard/inquiries">
+          <NavItem href="/dashboard/inquiries" icon={<HelpCircle />}>
             Inquiries
           </NavItem>
           {session.role !== 'RECEPTIONIST' && (
             <>
-              <NavItem href="/dashboard/financials">
+              <NavItem href="/dashboard/financials" icon={<Wallet />}>
                 Financials
               </NavItem>
-              <NavItem href="/dashboard/seats">
+              <NavItem href="/dashboard/seats" icon={<Grid />}>
                 Manage Seats
               </NavItem>
-              <NavItem href="/dashboard/plans">
+              <NavItem href="/dashboard/plans" icon={<List />}>
                 Manage Plans
               </NavItem>
             </>
           )}
-          <NavItem href="/dashboard/approvals">
+          <NavItem href="/dashboard/approvals" icon={<ShieldCheck />}>
             Pending Approvals
           </NavItem>
         </nav>
@@ -69,19 +89,20 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
 
           {session.role !== 'RECEPTIONIST' && (
             <>
-              <NavItem href="/dashboard/staff">
+              <NavItem href="/dashboard/staff" icon={<UserCheck />}>
                 Staff & Roles
               </NavItem>
-              <NavItem href="/dashboard/widgets">
+              <NavItem href="/dashboard/widgets" icon={<AppWindow />}>
                 Widgets
               </NavItem>
-              <NavItem href="/dashboard/settings">
+              <NavItem href="/dashboard/settings" icon={<Settings />}>
                 Settings
               </NavItem>
             </>
           )}
           <form action={logout}>
-            <button type="submit" className="w-full text-left px-4 py-2.5 mt-2 rounded-lg font-medium text-destructive hover:bg-destructive/10 transition-colors">
+            <button type="submit" className="w-full text-left px-4 py-2.5 mt-2 rounded-lg font-medium text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-3">
+              <span className="w-5 h-5 flex items-center justify-center shrink-0"><LogOut className="w-5 h-5" /></span>
               Logout
             </button>
           </form>
@@ -96,7 +117,7 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
             <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusX</span>
           </Link>
-          <MobileNav role={session.role} />
+          <MobileNav role={session.role} adminLibraries={adminLibraries} activeLibraryId={activeLibraryId} />
         </header>
         
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-background">

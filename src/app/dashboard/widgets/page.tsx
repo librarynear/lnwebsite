@@ -1,16 +1,17 @@
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { ExternalLink, Code } from "lucide-react";
+import { AlertCircle, Code, Copy, LayoutTemplate, QrCode, ExternalLink } from "lucide-react";
 import { CopyableField } from "@/components/CopyableField";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 
 export default async function WidgetsPage() {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
-    redirect("/dashboard");
+    redirect("/login");
   }
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId }, });
+  const library = await getActiveLibrary(session);
 
   if (!library) redirect("/onboarding");
 

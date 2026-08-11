@@ -4,8 +4,9 @@ import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
+  const cookieStore = await cookies();
+  
   try {
-    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session')?.value;
 
     if (!sessionCookie) {

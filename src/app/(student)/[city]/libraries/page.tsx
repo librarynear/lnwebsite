@@ -218,7 +218,7 @@ async function LibraryList({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 gap-y-10">
           {libraries.map((library, index) => {
-            const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
+            const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 30);
             const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
             const minPrice = plansToUse.length > 0 
               ? Math.min(...plansToUse.map((plan) => plan.price))

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, IBM_Plex_Serif } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import NextTopLoader from 'nextjs-toploader';
 import { WebVitals } from "@/components/web-vitals";
+import Script from "next/script";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -47,7 +48,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "https://ik.imagekit.io/focusdesk/logo.png",
-  }
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -60,11 +62,31 @@ export default function RootLayout({
       lang="en"
       className={`${jakartaSans.variable} ${headingFont.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="preconnect" href="https://focusdesk-95385.firebaseapp.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://apis.google.com" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <NextTopLoader color="hsl(var(--primary))" showSpinner={false} />
         <WebVitals />
         {children}
-        <Toaster position="top-center" />
+        <Toaster position="bottom-center" />
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(
+                  function (registration) {
+                    console.log('Service Worker registration successful with scope: ', registration.scope);
+                  },
+                  function (err) {
+                    console.log('Service Worker registration failed: ', err);
+                  }
+                );
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );

@@ -374,7 +374,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         savedLibraries = savedLibraries.filter((item) => item.id !== library.id);
         setIsSaved(false);
       } else {
-        const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
+        const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 30);
         const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
         const minPrice = plansToUse && plansToUse.length > 0 
           ? Math.min(...plansToUse.map((plan) => plan.price))
@@ -421,7 +421,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       );
       if (locker) {
         // Prorate standalone lockers based on 28-day month since they weren't migrated
-        lockerCost = Math.round((locker.price / 28) * selectedPlan.validityDays);
+        lockerCost = Math.round((locker.price / 30) * selectedPlan.validityDays);
       }
     }
     
@@ -1184,7 +1184,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           </div>
           <div className="text-lg font-black text-foreground">
             ₹{selectedPlan ? totalAmount : (() => {
-              const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 28);
+              const monthlyPlans = library.plans.filter((plan) => plan.validityDays >= 30);
               const plansToUse = monthlyPlans.length > 0 ? monthlyPlans : library.plans;
               return plansToUse.length > 0
                 ? Math.min(...plansToUse.map((plan) => plan.price))

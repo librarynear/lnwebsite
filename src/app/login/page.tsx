@@ -12,6 +12,11 @@ import { auth } from '@/lib/firebase/clientApp'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 import { Loader2 } from 'lucide-react'
 import { syncUserOnSignup, checkUserExists, getPostLoginRedirect } from '@/app/actions/auth-actions'
 import toast from 'react-hot-toast'
@@ -240,7 +245,7 @@ export default function LoginPage() {
         {step === 'PHONE' && (
           <form onSubmit={handleSendOtp} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">Student Contact Number</Label>
               <div className="flex">
                 <div className="flex items-center justify-center bg-muted text-muted-foreground border border-border border-r-0 rounded-l-md px-3 font-medium">
                   +91
@@ -272,20 +277,24 @@ export default function LoginPage() {
           <form ref={otpFormRef} onSubmit={handleVerifyOtp} className="space-y-6">
             <div className="space-y-2 text-center">
               <Label htmlFor="otp">Enter the 6-digit code sent to +91 {phone}</Label>
-              <Input 
-                id="otp" 
-                type="text" 
-                value={otp}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  if (val.length <= 6) setOtp(val);
-                }}
-                placeholder="000000" 
-                className="text-center tracking-widest text-2xl h-14"
-                maxLength={6}
-                required 
-                autoFocus
-              />
+              <div className="flex justify-center">
+                <InputOTP 
+                  id="otp" 
+                  maxLength={6} 
+                  value={otp}
+                  onChange={(val) => setOtp(val)}
+                  autoFocus
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} className="w-12 h-14 text-xl" />
+                    <InputOTPSlot index={1} className="w-12 h-14 text-xl" />
+                    <InputOTPSlot index={2} className="w-12 h-14 text-xl" />
+                    <InputOTPSlot index={3} className="w-12 h-14 text-xl" />
+                    <InputOTPSlot index={4} className="w-12 h-14 text-xl" />
+                    <InputOTPSlot index={5} className="w-12 h-14 text-xl" />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
             </div>
 
             <Button type="submit" className="w-full h-11" disabled={loading || otp.length !== 6}>

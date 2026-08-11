@@ -3,15 +3,14 @@ import { PlansClient } from "./PlansClient";
 import { getSession } from "@/app/actions/auth-actions";
 import { redirect } from "next/navigation";
 
-export default async function PlansManagerPage() {
-  const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
-    redirect("/dashboard");
-  }
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 
-  const library = await prisma.library.findFirst({
-    where: session.role === 'ADMIN' ? {} : { librarianId: session.userId },
-  });
+export default async function ManagePlansPage() {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) redirect("/login");
+
+  const library = await getActiveLibrary(session);
+
   if (!library) redirect("/onboarding");
 
   // Fetch plans from live Supabase DB

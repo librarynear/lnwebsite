@@ -130,3 +130,20 @@ export async function updateAdminNote(libraryId: string, note: string) {
   });
 }
 
+export async function switchAdminLibrary(libraryId: string) {
+  await requireAdmin();
+  
+  const { cookies } = await import('next/headers');
+  
+  // Set the cookie to expire in 30 days
+  (await cookies()).set('admin_active_library_id', libraryId, {
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}

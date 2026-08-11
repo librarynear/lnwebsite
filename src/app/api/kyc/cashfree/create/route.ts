@@ -25,10 +25,13 @@ export async function POST(req: Request) {
     // Restrict the post-KYC redirect to our own origin to prevent the DigiLocker
     // return flow being used as an open redirect (phishing).
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.focusx.in';
-    const safeRedirectUrl =
-      typeof redirectUrl === 'string' && redirectUrl.startsWith(appUrl)
-        ? redirectUrl
-        : `${appUrl}/student/profile`;
+    const isValidRedirect = 
+      typeof redirectUrl === 'string' && 
+      (redirectUrl.startsWith(appUrl) || 
+       redirectUrl.startsWith('https://www.focusx.in') || 
+       redirectUrl.startsWith('https://focusx.in'));
+       
+    const safeRedirectUrl = isValidRedirect ? redirectUrl : `${appUrl}/student/profile`;
 
     const shortId = session.userId.substring(0, 8);
     const verification_id = `KYC_${shortId}_${Date.now()}`;

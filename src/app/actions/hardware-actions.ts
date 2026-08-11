@@ -87,7 +87,16 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       sig: signature
     };
 
-    return { success: true, qrPayload: JSON.stringify(qrData) };
+    const latestLog = await prisma.checkinLog.findFirst({
+      where: { studentId: session.userId, libraryId: libraryId },
+      orderBy: { timestamp: 'desc' }
+    });
+    
+    return { 
+      success: true, 
+      qrPayload: JSON.stringify(qrData), 
+      isCheckedIn: latestLog?.status === 'CHECK_IN' 
+    };
 
   } catch (error: unknown) {
     console.error("Error signing QR:", error);

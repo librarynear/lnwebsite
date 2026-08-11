@@ -140,7 +140,20 @@ export async function POST(req: Request) {
       gender: aadhaarData.gender === 'M' ? 'MALE' : aadhaarData.gender === 'F' ? 'FEMALE' : 'OTHER',
       address: addressStr !== 'Verified Address' ? addressStr : undefined,
       ...(profilePhotoUrl && { profilePhotoUrl }),
-      digilockerVerified: true
+      digilockerVerified: true,
+
+      // Strict KYC Audit Fields
+      kycAadhaarName: aadhaarData.name.trim(),
+      kycAadhaarDob: parsedDob,
+      kycAadhaarGender: aadhaarData.gender,
+      kycEAadhaar: 'Y',
+      kycAadhaarMobile: String(aadhaarData.mobile || aadhaarData.phone || data.mobile || data.phone || ''),
+      kycAadhaarStatus: String(data.status || data.verification_status || 'AUTHENTICATED'),
+      kycAadhaarDocumentRequested: 'AADHAAR',
+      kycAadhaarDocumentConsent: 'AADHAAR',
+      kycAadhaarVerificationId: verification_id,
+      kycAadhaarReferenceId: String(data.reference_id || data.referenceId || ''),
+      kycAadhaarProfilePhotoUrl: profilePhotoUrl,
     };
 
     // Consume the pending key FIRST so it's single-use even if the DB update fails.

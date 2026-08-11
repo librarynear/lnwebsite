@@ -79,6 +79,7 @@ export function FeaturedCarousel({ libraries }: { libraries: FeaturedLibrary[] }
                     src={image}
                     alt={lib.name}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold shadow-sm text-slate-900 flex items-center gap-1">

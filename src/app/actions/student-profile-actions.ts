@@ -75,7 +75,7 @@ export async function updateStudentProfile(formData: FormData): Promise<{ succes
       data: {
         name: isVerified ? undefined : (name || undefined),
         email: email || undefined,
-        phone: phone || null,
+        phone: isVerified ? undefined : (phone || null),
         dob: isVerified ? undefined : (dobStr ? new Date(dobStr) : null),
         gender: isVerified ? undefined : (gender || null),
         address: isVerified ? undefined : (address || null),
@@ -140,6 +140,10 @@ export async function syncUpdatedPhone() {
 
   const firebaseUser = await adminAuth.getUser(dbUser.authId);
   const newPhone = firebaseUser.phoneNumber;
+
+  if (dbUser.digilockerVerified) {
+    throw new Error("Cannot sync phone number after Aadhaar KYC verification is completed.");
+  }
 
   if (!newPhone) {
     throw new Error("No phone number found in Firebase account");

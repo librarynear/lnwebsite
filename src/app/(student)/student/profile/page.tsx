@@ -7,11 +7,49 @@ export default async function StudentProfilePage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId }
-  });
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const [user, entryLogs] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      include: {
+        checkins: {
+          where: { timestamp: { gte: sevenDaysAgo } },
+          orderBy: { timestamp: 'desc' },
+          include: { library: true }
+        }
+      }
+    }),
+    prisma.entryLog.findMany({
+      where: { userId: session.userId, timestamp: { gte: sevenDaysAgo }, status: { in: ["SUCCESS", "IN", "OUT"] } },
+      include: { library: true },
+      orderBy: { timestamp: 'desc' },
+    })
+  ]);
 
   if (!user) redirect("/login");
+
+  // Merge entryLogs and checkinLogs
+  const combinedLogs = [
+    ...user.checkins.map(log => ({
+      id: log.id,
+      library: { name: log.library.name },
+      status: log.status === 'CHECK_IN' || log.status === 'CHECK_OUT' ? log.status : 'CHECK_IN', // Type safety fallback
+      timestamp: log.timestamp
+    })),
+    ...entryLogs.map(log => ({
+      id: log.id,
+      library: { name: log.library.name },
+      status: (log.status === 'OUT' ? 'CHECK_OUT' : 'CHECK_IN') as 'CHECK_IN' | 'CHECK_OUT',
+      timestamp: log.timestamp
+    }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const userWithLogs = {
+    ...user,
+    checkins: combinedLogs
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-6 w-full">
@@ -20,7 +58,7 @@ export default async function StudentProfilePage() {
         <p className="text-muted-foreground mt-2 text-lg">Manage your personal information, KYC details, and profile photo.</p>
       </div>
 
-      <ProfileClient user={user} />
+      <ProfileClient user={userWithLogs as any} />
     </div>
   );
 }

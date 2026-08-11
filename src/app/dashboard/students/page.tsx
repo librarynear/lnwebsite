@@ -3,8 +3,10 @@ import { StudentsClient } from "./StudentsClient";
 import { getSession } from "@/app/actions/auth-actions";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
+import { formatStandardDate } from "@/lib/date-utils";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 
-export default async function ManageStudentsPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function StudentsPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
   const requestedPage = parseInt(searchParams.page as string || "1", 10);
   const page = Number.isFinite(requestedPage) ? Math.max(1, requestedPage) : 1;
@@ -13,9 +15,9 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
   const PAGE_SIZE = 20;
 
   const session = await getSession();
-  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/");
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) redirect("/login");
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : (session.role === 'RECEPTIONIST' ? { id: session.employerLibraryId as string } : { librarianId: session.userId }) });
+  const library = await getActiveLibrary(session);
   if (!library) redirect("/onboarding");
 
   const now = new Date();
@@ -31,9 +33,19 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
     normalizedTab === "EXPIRING"
       ? Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now} AND b."endTime" <= ${sevenDaysFromNow}`
       : normalizedTab === "INACTIVE"
-        ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now}`
+        ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now} AND NOT EXISTS (
+            SELECT 1 FROM "Booking" b2 
+            WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
+          ) AND (
+            SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
+          ) <> 'CANCELLED'`
         : normalizedTab === "REVOKED"
-          ? Prisma.sql`b."status" = 'CANCELLED'`
+          ? Prisma.sql`b."status" = 'CANCELLED' AND NOT EXISTS (
+              SELECT 1 FROM "Booking" b2 
+              WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
+            ) AND (
+              SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
+            ) = 'CANCELLED'`
           : Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now}`;
   const searchPredicate = query
     ? Prisma.sql`AND (
@@ -68,25 +80,30 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
       inactive: number;
       revoked: number;
     }>>(Prisma.sql`
-      SELECT
-        COUNT(DISTINCT b."studentId") FILTER (
-          WHERE b."status" = 'CONFIRMED' AND b."endTime" >= ${now}
-        )::int AS "active",
-        COUNT(DISTINCT b."studentId") FILTER (
-          WHERE b."status" = 'CONFIRMED'
-            AND b."endTime" >= ${now}
-            AND b."endTime" <= ${sevenDaysFromNow}
-        )::int AS "expiring",
-        COUNT(DISTINCT b."studentId") FILTER (
-          WHERE b."status" <> 'CANCELLED' AND b."endTime" < ${now}
-        )::int AS "inactive",
-        COUNT(DISTINCT b."studentId") FILTER (
-          WHERE b."status" = 'CANCELLED'
-        )::int AS "revoked"
-      FROM "Booking" b
-      INNER JOIN "User" u ON u."id" = b."studentId"
-      WHERE b."libraryId" = ${library.id}
-      ${searchPredicate}
+      WITH StudentStates AS (
+        SELECT 
+          b."studentId",
+          BOOL_OR(b."status" = 'CONFIRMED' AND b."endTime" >= ${now}) AS has_active,
+          BOOL_OR(b."status" = 'CONFIRMED' AND b."endTime" >= ${now} AND b."endTime" <= ${sevenDaysFromNow}) AS has_expiring,
+          (
+            SELECT b2."status"
+            FROM "Booking" b2
+            WHERE b2."studentId" = b."studentId" AND b2."libraryId" = ${library.id}
+            ORDER BY b2."createdAt" DESC
+            LIMIT 1
+          ) AS latest_status
+        FROM "Booking" b
+        INNER JOIN "User" u ON u."id" = b."studentId"
+        WHERE b."libraryId" = ${library.id}
+        ${searchPredicate}
+        GROUP BY b."studentId"
+      )
+      SELECT 
+        COUNT(*) FILTER (WHERE has_active)::int AS "active",
+        COUNT(*) FILTER (WHERE has_expiring)::int AS "expiring",
+        COUNT(*) FILTER (WHERE NOT has_active AND latest_status <> 'CANCELLED')::int AS "inactive",
+        COUNT(*) FILTER (WHERE NOT has_active AND latest_status = 'CANCELLED')::int AS "revoked"
+      FROM StudentStates
     `),
   ]);
 
@@ -94,7 +111,18 @@ export default async function ManageStudentsPage(props: { searchParams: Promise<
   const unorderedBookings = await prisma.booking.findMany({
     where: { id: { in: bookingIds } },
     include: {
-      student: true,
+      student: {
+        include: {
+          bookings: {
+            include: {
+              plan: true,
+              seat: true,
+              standaloneLocker: true,
+            },
+            orderBy: { createdAt: 'desc' }
+          }
+        }
+      },
       plan: true,
       seat: true,
       standaloneLocker: true,

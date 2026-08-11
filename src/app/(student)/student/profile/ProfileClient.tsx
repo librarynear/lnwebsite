@@ -30,6 +30,12 @@ type ProfileUser = Omit<
   "dob"
 > & {
   dob: Date | string | null;
+  checkins?: {
+    id: string;
+    library: { name: string };
+    status: 'CHECK_IN' | 'CHECK_OUT';
+    timestamp: Date;
+  }[];
 };
 
 export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
@@ -245,7 +251,60 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-border flex items-center justify-between">
+        {/* Attendance History */}
+        <div className="mt-12 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
+            <h2 className="text-2xl font-bold text-foreground">Attendance History (Last 7 Days)</h2>
+          </div>
+          
+          {(!user.checkins || user.checkins.length === 0) ? (
+            <div className="text-center py-8 text-muted-foreground bg-muted/30 rounded-2xl border border-dashed border-border">
+              <p>No check-in activity in the last 7 days.</p>
+            </div>
+          ) : (
+            <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Time</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Library</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {user.checkins.map((log: any) => (
+                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-foreground">
+                            {new Date(log.timestamp).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div className="text-xs font-medium text-muted-foreground mt-0.5">
+                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-foreground">{log.library.name}</div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            log.status === 'CHECK_IN' 
+                              ? 'bg-success/10 text-success' 
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {log.status === 'CHECK_IN' ? 'Check In' : 'Check Out'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-6 border-t border-border flex items-center justify-between mt-8">
           <div>
             {success && <span className="text-success font-bold text-sm bg-success/10 px-3 py-1 rounded-full">Profile updated successfully!</span>}
           </div>

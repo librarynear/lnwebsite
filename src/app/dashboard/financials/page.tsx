@@ -3,10 +3,11 @@ import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { DollarSign, TrendingDown, TrendingUp } from "lucide-react";
+import { Wallet, TrendingUp, IndianRupee, ArrowDownToLine, Receipt, CalendarClock, ArrowUpRight, ArrowDownRight, Tag, DollarSign, TrendingDown } from "lucide-react";
 import FinancialCharts from "./FinancialCharts";
 import { ExpenseForm, DeleteExpenseButton } from "./ExpenseForm";
 import DateRangeFilter from "@/components/DateRangeFilter";
+import { getActiveLibrary } from "@/lib/dashboard-utils";
 
 export default async function FinancialsPage({
   searchParams
@@ -15,10 +16,10 @@ export default async function FinancialsPage({
 }) {
   const session = await getSession();
   if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN')) {
-    redirect("/dashboard");
+    redirect("/login");
   }
 
-  const library = await prisma.library.findFirst({ where: session.role === 'ADMIN' ? {} : { librarianId: session.userId }, });
+  const library = await getActiveLibrary(session);
   if (!library) redirect("/onboarding");
 
   // Await searchParams properly in Next.js 15
@@ -291,7 +292,7 @@ export default async function FinancialsPage({
                     <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 whitespace-nowrap">
                         <div className="text-sm font-bold">{formatStandardDate(b.createdAt)}</div>
-                        <div className="text-xs text-muted-foreground">{b.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div className="text-xs text-muted-foreground">{b.createdAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}</div>
                       </td>
                       <td className="p-4">
                         <div className="text-sm font-bold text-foreground">{b.student?.name || 'Unknown'}</div>
