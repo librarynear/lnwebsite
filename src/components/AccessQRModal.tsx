@@ -175,12 +175,12 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
               <div className="flex gap-3 mt-4 w-full px-6">
                 <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)}>Close</Button>
                 {libraryId ? (
-                  <Button className="flex-1 font-bold" asChild>
-                    <a href={`/library/${libraryId}`}>Renew Plan</a>
+                  <Button className="flex-1 font-bold" onClick={() => { window.location.href = `/library/${libraryId}`; }}>
+                    Renew Plan
                   </Button>
                 ) : (
-                  <Button className="flex-1 font-bold" asChild>
-                    <a href="/libraries">Explore Libraries</a>
+                  <Button className="flex-1 font-bold" onClick={() => { window.location.href = "/libraries"; }}>
+                    Explore Libraries
                   </Button>
                 )}
               </div>
