@@ -38,8 +38,11 @@ export async function NavbarAuth() {
   }
 
   return (
-    <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors ml-2">
-      Sign In
-    </Link>
+    <div className="flex items-center gap-1 sm:gap-2">
+      <AccessQRModal libraryId="" studentId="" iconOnly />
+      <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors ml-2">
+        Sign In
+      </Link>
+    </div>
   );
 }

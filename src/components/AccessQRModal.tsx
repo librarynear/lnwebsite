@@ -157,27 +157,31 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground animate-pulse">Generating Secure Code...</p>
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-6 py-8">
-              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-2">
+          ) : !qrData ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-4 bg-slate-50/50 rounded-2xl border border-slate-100 p-6">
                 <QrCode className="w-10 h-10 text-rose-500 opacity-50" />
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-xl font-bold text-foreground">No Active Booking</h3>
-                <p className="text-sm text-muted-foreground px-4">
-                  {error === "No active subscription found for this library." 
-                    ? "Your plan has expired. Please renew your plan to generate an access QR code." 
-                    : !libraryId
-                      ? "You don't have an active plan. Explore our libraries and book a plan to get started!"
-                      : error}
-                </p>
-              </div>
-              <div className="flex gap-3 mt-4 w-full px-6">
-                <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)}>Close</Button>
-                {libraryId ? (
-                  <Button className="flex-1 font-bold" onClick={() => { window.location.href = `/library/${libraryId}`; }}>
-                    Renew Plan
-                  </Button>
+                <div className="text-center">
+                  <h3 className="font-bold text-slate-800 text-lg mb-1">{!studentId ? "Not Signed In" : "No Active Plan"}</h3>
+                  <p className="text-sm text-slate-500 font-medium max-w-[250px] mx-auto">
+                    {!studentId
+                      ? "Please sign in to view your library access QR code."
+                      : libraryId 
+                        ? "Your plan has expired. Please renew your plan to generate an access QR code." 
+                        : "You do not have an active booking at any library yet."}
+                  </p>
+                </div>
+                {!studentId ? (
+                  <Link href="/login" onClick={() => setOpen(false)} className="w-full">
+                    <Button className="w-full h-12 rounded-xl text-[15px] font-bold mt-2 shadow-sm">
+                      Sign In
+                    </Button>
+                  </Link>
+                ) : libraryId ? (
+                  <Link href={`/library/${libraryId}/book`} onClick={() => setOpen(false)} className="w-full">
+                    <Button className="w-full h-12 rounded-xl text-[15px] font-bold mt-2 shadow-sm">
+                      Renew Plan
+                    </Button>
+                  </Link>
                 ) : (
                   <Button className="flex-1 font-bold" onClick={() => { window.location.href = "/libraries"; }}>
                     Explore Libraries
