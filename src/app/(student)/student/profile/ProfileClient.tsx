@@ -36,6 +36,7 @@ type ProfileUser = Omit<
     status: 'CHECK_IN' | 'CHECK_OUT';
     timestamp: Date;
   }[];
+  limitHours?: number;
 };
 
 export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
@@ -267,36 +268,94 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-muted/50 border-b border-border">
                     <tr>
-                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Time</th>
-                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Library</th>
-                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground text-right">Action</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Date</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">First In</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground">Last Out</th>
+                      <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-muted-foreground text-right">Duration</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {user.checkins.map((log: any) => (
-                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-foreground">
-                            {new Date(log.timestamp).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </div>
-                          <div className="text-xs font-medium text-muted-foreground mt-0.5">
-                            {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-foreground">{log.library.name}</div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                            log.status === 'CHECK_IN' 
-                              ? 'bg-success/10 text-success' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {log.status === 'CHECK_IN' ? 'Check In' : 'Check Out'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const sorted = [...user.checkins].reverse();
+                      const grouped = new Map<string, any[]>();
+                      
+                      sorted.forEach(log => {
+                        const d = new Date(log.timestamp);
+                        const dateKey = d.toLocaleDateString('en-IN');
+                        if (!grouped.has(dateKey)) grouped.set(dateKey, []);
+                        grouped.get(dateKey)!.push(log);
+                      });
+
+                      const results = Array.from(grouped.entries()).map(([dateStr, logs]) => {
+                        let totalDurationMs = 0;
+                        let lastIn: number | null = null;
+                        
+                        logs.forEach(log => {
+                          const time = new Date(log.timestamp).getTime();
+                          if (log.status === 'CHECK_IN') {
+                            lastIn = time;
+                          } else if (log.status === 'CHECK_OUT' && lastIn) {
+                            totalDurationMs += (time - lastIn);
+                            lastIn = null;
+                          }
+                        });
+                        
+                        const isToday = dateStr === new Date().toLocaleDateString('en-IN');
+                        if (lastIn && isToday) {
+                          totalDurationMs += (new Date().getTime() - lastIn);
+                        }
+                        
+                        const hrs = totalDurationMs / (1000 * 60 * 60);
+                        const diffMins = Math.floor(totalDurationMs / 1000 / 60);
+                        const h = Math.floor(diffMins / 60);
+                        const m = diffMins % 60;
+                        const formatted = `${h}h ${m}m`;
+                        const isOverstaying = (hrs - (user.limitHours || 24)) > 0.5;
+                        
+                        const firstIn = logs.find(l => l.status === 'CHECK_IN');
+                        const lastOut = [...logs].reverse().find(l => l.status === 'CHECK_OUT');
+
+                        return {
+                          date: new Date(logs[0].timestamp),
+                          firstIn,
+                          lastOut,
+                          formatted,
+                          isOverstaying,
+                          isToday,
+                          lastIn
+                        };
+                      }).sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                      return results.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold text-foreground">
+                              {row.date.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-slate-700">
+                              {row.firstIn ? new Date(row.firstIn.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-slate-700">
+                              {row.lastOut ? new Date(row.lastOut.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (row.isToday && row.lastIn ? 'Still In' : '-')}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex flex-col items-end">
+                              <span className={`text-[14px] font-bold ${row.isOverstaying ? 'text-rose-600' : 'text-slate-700'}`}>
+                                {row.formatted}
+                              </span>
+                              {row.isOverstaying && (
+                                <span className="text-[10px] font-black uppercase text-rose-500 tracking-widest mt-0.5">Time Exceeded</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

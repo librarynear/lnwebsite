@@ -10,7 +10,7 @@ export default async function StudentProfilePage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [user, entryLogs] = await Promise.all([
+  const [user, entryLogs, activeBooking] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       include: {
@@ -25,6 +25,11 @@ export default async function StudentProfilePage() {
       where: { userId: session.userId, timestamp: { gte: sevenDaysAgo }, status: { in: ["SUCCESS", "IN", "OUT"] } },
       include: { library: true },
       orderBy: { timestamp: 'desc' },
+    }),
+    prisma.booking.findFirst({
+      where: { studentId: session.userId, status: "CONFIRMED", endTime: { gte: new Date() } },
+      include: { plan: true },
+      orderBy: { startTime: 'desc' }
     })
   ]);
 
@@ -48,7 +53,8 @@ export default async function StudentProfilePage() {
 
   const userWithLogs = {
     ...user,
-    checkins: combinedLogs
+    checkins: combinedLogs,
+    limitHours: activeBooking?.plan?.durationHours || 24
   };
 
   return (

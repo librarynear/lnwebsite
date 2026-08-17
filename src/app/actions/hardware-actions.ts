@@ -91,11 +91,23 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       where: { studentId: session.userId, libraryId: libraryId },
       orderBy: { timestamp: 'desc' }
     });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaysLogs = await prisma.checkinLog.findMany({
+      where: { studentId: session.userId, libraryId: libraryId, timestamp: { gte: today } },
+      orderBy: { timestamp: 'asc' }
+    });
+
+    const firstIn = todaysLogs.find(l => l.status === 'CHECK_IN');
+    const lastOut = [...todaysLogs].reverse().find(l => l.status === 'CHECK_OUT');
     
     return { 
       success: true, 
       qrPayload: JSON.stringify(qrData), 
-      isCheckedIn: latestLog?.status === 'CHECK_IN' 
+      isCheckedIn: latestLog?.status === 'CHECK_IN',
+      firstIn: firstIn ? firstIn.timestamp : null,
+      lastOut: lastOut ? lastOut.timestamp : null
     };
 
   } catch (error: unknown) {

@@ -21,6 +21,8 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
   const [showSuccess, setShowSuccess] = useState(false);
 
   const qrDataRef = useRef<string | null>(null);
+  const [firstIn, setFirstIn] = useState<Date | null>(null);
+  const [lastOut, setLastOut] = useState<Date | null>(null);
   const isCheckedInRef = useRef(isCheckedIn);
 
   // Sync ref with state
@@ -91,6 +93,9 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
         if (res.error) {
           setError(res.error);
         } else if (res.qrPayload) {
+          if (res.firstIn) setFirstIn(new Date(res.firstIn));
+          if (res.lastOut) setLastOut(new Date(res.lastOut));
+          
           // Fallback check (in case realtime failed)
           if (res.isCheckedIn !== undefined && res.isCheckedIn !== isCheckedInRef.current && qrDataRef.current && !showSuccess) {
             triggerSuccess(res.isCheckedIn);
@@ -140,76 +145,93 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
           </Button>
         )
       } />
-      <DialogContent className="sm:max-w-md border-border/50 shadow-xl rounded-2xl">
+      <DialogContent className="sm:max-w-md border-border/50 shadow-xl rounded-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-center font-heading text-xl">
             {isCheckedIn ? "Library Check-out" : "Library Check-in"}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col items-center justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-4">
           {loading && !qrData ? (
-            <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="animate-pulse">Generating secure access code...</p>
+              <p className="text-sm text-muted-foreground animate-pulse">Generating Secure Code...</p>
             </div>
           ) : error ? (
-            <div className="text-center text-red-500 bg-red-50/50 p-4 rounded-xl border border-red-200">
-              <p className="font-bold">Access Denied</p>
-              <p className="text-sm mt-1">{error}</p>
+            <div className="flex flex-col items-center gap-4 py-8 text-destructive">
+              <p className="font-semibold">{error}</p>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
             </div>
           ) : showSuccess ? (
             <motion.div 
-              initial={{ scale: 0.5, rotateY: 180, opacity: 0 }} 
-              animate={{ scale: 1, rotateY: 0, opacity: 1 }} 
-              transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              className="flex flex-col items-center gap-5 py-6 text-center"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 gap-6"
             >
-              <div className="relative">
-                <div className="absolute inset-0 bg-success/20 blur-xl rounded-full" />
-                <CheckCircle2 className="w-24 h-24 text-success relative z-10 drop-shadow-md" />
-              </div>
-              <div>
-                <p className="text-2xl font-black text-foreground mb-2">
-                  {isCheckedIn ? "Checked Out!" : "Checked In!"}
-                </p>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="w-24 h-24 rounded-full bg-success/20 flex items-center justify-center relative"
+              >
+                <div className="absolute inset-0 rounded-full border-4 border-success animate-ping opacity-20" />
+                <CheckCircle2 className="w-12 h-12 text-success" />
+              </motion.div>
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-black text-foreground">
+                  {isCheckedIn ? "Checked In!" : "Checked Out!"}
+                </h3>
                 <p className="text-muted-foreground font-medium">
-                  {isCheckedIn ? "See you next time." : "Have a great session."}
+                  {isCheckedIn ? "Have a productive session." : "See you next time!"}
                 </p>
               </div>
             </motion.div>
           ) : qrData ? (
-            <div className="flex flex-col items-center gap-6">
-              
-              {/* Prominent Status Badge */}
-              <div className={`px-6 py-2.5 rounded-full font-bold text-lg shadow-sm border ${
-                isCheckedIn 
-                  ? 'bg-amber-50 text-amber-600 border-amber-200' 
-                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
-              }`}>
-                {isCheckedIn ? "CHECK-OUT QR" : "CHECK-IN QR"}
-              </div>
-
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={`bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-2 ${
-                  isCheckedIn ? 'border-amber-100' : 'border-emerald-100'
-                }`}
-              >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-100 flex flex-col items-center gap-6 w-full"
+            >
+              <div className="relative">
+                <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 to-transparent rounded-full blur-2xl -z-10" />
                 <QRCode 
                   value={qrData} 
-                  size={240} 
-                  style={{ height: "auto", maxWidth: "100%", width: "100%" }} 
-                  fgColor={isCheckedIn ? "#d97706" : "#059669"} // amber-600 or emerald-600
+                  size={200}
+                  level="Q"
+                  className="rounded-lg shadow-sm" 
+                  fgColor={isCheckedIn ? "#d97706" : "#059669"}
                 />
-              </motion.div>
-              <div className="text-center space-y-1">
-                <p className="font-semibold text-foreground text-lg">Scan at Reception</p>
-                <p className="text-sm text-muted-foreground px-4">
-                  Show this code at the scanner to check {isCheckedIn ? "out of" : "into"} the library.
+                
+                {/* Scanning animation overlay */}
+                <div className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
+                  <motion.div
+                    animate={{ top: ["-10%", "110%"] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                    className="absolute left-0 right-0 h-0.5 bg-primary/50 shadow-[0_0_8px_rgba(var(--primary),0.8)]"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-sm font-bold text-slate-700">Scan at the reception tablet</p>
+                <p className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                  Auto-refreshes every 20s
                 </p>
               </div>
-            </div>
+
+              {/* Today's Times */}
+              <div className="w-full pt-4 border-t border-slate-100 flex flex-col gap-2">
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's First In</span>
+                  <span className="text-sm font-bold text-slate-700">{firstIn ? firstIn.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                </div>
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Last Out</span>
+                  <span className="text-sm font-bold text-slate-700">{lastOut ? lastOut.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (isCheckedIn ? 'Still In' : '-')}</span>
+                </div>
+                <a href="/student/profile" className="text-center text-xs font-bold text-[#0085FF] hover:underline mt-2">View past check-ins</a>
+              </div>
+            </motion.div>
           ) : null}
         </div>
       </DialogContent>
