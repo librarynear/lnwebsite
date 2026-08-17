@@ -105,7 +105,7 @@ export default async function LibrarianDashboardPage() {
         status: { in: ["CONFIRMED", "COMPLETED"] },
         createdAt: { gte: startOfDay },
       },
-      include: { plan: true, standaloneLocker: true, student: true },
+      include: { plan: true, standaloneLocker: true, student: true, seat: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.$queryRaw<Array<{ userId: string; status: string }>>(Prisma.sql`

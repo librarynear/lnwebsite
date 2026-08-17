@@ -46,7 +46,8 @@ export default async function FinancialsPage({
     include: {
       plan: true,
       standaloneLocker: true,
-      student: true
+      student: true,
+      seat: true
     },
     orderBy: { createdAt: 'desc' }
   });
@@ -289,9 +290,7 @@ export default async function FinancialsPage({
                 <tr><td colSpan={4} className="p-8 text-center text-[13px] font-semibold text-slate-500">No transactions found for this period.</td></tr>
               ) : (
                 paginatedBookings.map((b) => {
-                  let price = b.plan?.price || 0;
-                  if (b.plan?.discount) price -= (price * b.plan.discount / 100);
-                  if (b.standaloneLocker) price += b.standaloneLocker.price;
+                  const price = calculateBookingTotal(b);
                   
                   const isRazorpay = b.paymentRef?.startsWith('pay_');
                   const isManual = b.paymentRef?.startsWith('MANUAL_');
