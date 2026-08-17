@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ApprovalActions from "./ApprovalActions";
 import StudentProfileTrigger from "./StudentProfileTrigger";
+import { calculateBookingTotal } from "@/lib/pricing-utils";
 import { AlertTriangle, UserCheck, ShieldCheck, Phone, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { getActiveLibrary } from "@/lib/dashboard-utils";
 import { formatStandardDate } from "@/lib/date-utils";
@@ -88,7 +89,7 @@ export default async function PendingApprovalsPage() {
                     </td>
                     <td className="p-4">
                       <div className="font-bold text-foreground">
-                        ₹{(b.plan.price + (b.standaloneLocker?.price || 0)).toLocaleString()}
+                        ₹{calculateBookingTotal(b).toLocaleString()}
                       </div>
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">

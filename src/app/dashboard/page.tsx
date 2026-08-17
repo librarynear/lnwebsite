@@ -2,6 +2,7 @@ import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getActiveLibrary } from "@/lib/dashboard-utils";
+import { calculateBookingTotal } from "@/lib/pricing-utils";
 import { Prisma } from "@prisma/client";
 import { DashboardOverviewClient } from "./DashboardOverviewClient";
 
@@ -391,11 +392,7 @@ export default async function LibrarianDashboardPage() {
 
   // Formatting Transactions
   const todaysTransactionsData = todaysBookings.map(b => {
-    let planPrice = b.plan.price;
-    if (b.plan.discount) {
-      planPrice = planPrice - (planPrice * b.plan.discount / 100);
-    }
-    const price = Math.round(planPrice + (b.standaloneLocker?.price || 0));
+    const price = calculateBookingTotal(b);
     return {
       id: b.id,
       student: b.student.name,

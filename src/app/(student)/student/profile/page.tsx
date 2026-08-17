@@ -35,25 +35,16 @@ export default async function StudentProfilePage() {
 
   if (!user) redirect("/login");
 
-  // Merge entryLogs and checkinLogs
-  const combinedLogs = [
-    ...user.checkins.map(log => ({
-      id: log.id,
-      library: { name: log.library.name },
-      status: log.status === 'CHECK_IN' || log.status === 'CHECK_OUT' ? log.status : 'CHECK_IN', // Type safety fallback
-      timestamp: log.timestamp
-    })),
-    ...entryLogs.map(log => ({
-      id: log.id,
-      library: { name: log.library.name },
-      status: (log.status === 'OUT' ? 'CHECK_OUT' : 'CHECK_IN') as 'CHECK_IN' | 'CHECK_OUT',
-      timestamp: log.timestamp
-    }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const formattedCheckins = user.checkins.map(log => ({
+    id: log.id,
+    library: { name: log.library.name },
+    status: log.status === 'CHECK_IN' || log.status === 'CHECK_OUT' ? log.status : 'CHECK_IN', // Type safety fallback
+    timestamp: log.timestamp
+  }));
 
   const userWithLogs = {
     ...user,
-    checkins: combinedLogs,
+    checkins: formattedCheckins,
     limitHours: activeBooking?.plan?.durationHours || 24
   };
 
