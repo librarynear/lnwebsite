@@ -188,7 +188,6 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
                   </Button>
                 )}
               </div>
-            </div>
           ) : showSuccess ? (
             <motion.div 
               initial={{ scale: 0.8, opacity: 0 }}
