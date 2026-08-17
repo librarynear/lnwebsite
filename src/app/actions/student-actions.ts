@@ -465,6 +465,8 @@ export async function renewPlan(
       libraryId: booking.libraryId,
       planId: targetPlan.id,
       seatId: targetSeatId,
+      sourceBookingId: booking.id,
+      operation: 'RENEW',
       standaloneLockerId: standaloneLockerId !== undefined ? standaloneLockerId : booking.standaloneLockerId,
       hasLocker: hasLocker !== undefined ? hasLocker : booking.hasLocker,
       requestedStart: startDate,
@@ -777,3 +779,25 @@ export async function getLibraryContext() {
   return { libraryId };
 }
 
+export async function updateCrmNote(studentId: string, note: string, isExpiredLead?: boolean) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: studentId },
+      data: {
+        crmNote: note,
+        ...(isExpiredLead !== undefined ? { isExpiredLead } : {})
+      }
+    });
+    
+    revalidatePath("/dashboard/students");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to update CRM note:", error);
+    return { success: false, message: "Internal server error" };
+  }
+}

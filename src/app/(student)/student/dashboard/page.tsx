@@ -138,7 +138,14 @@ export default async function StudentDashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {activeBookings.map((booking) => (
+                {activeBookings.map((booking) => {
+                  const endOfDay = new Date(booking.endTime);
+                  endOfDay.setHours(0,0,0,0);
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24)) + 1;
+
+                  return (
                   <div key={booking.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col">
                     {/* Header: Status & Date */}
                     <div className="bg-muted/30 px-6 py-3 border-b border-border flex justify-between items-center">
@@ -171,7 +178,7 @@ export default async function StudentDashboardPage() {
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
                               <Calendar className="w-4 h-4 text-muted-foreground" />
-                              <span>Valid: <strong className="text-foreground">{formatDate(booking.startTime)}</strong> to <strong className="text-foreground">{formatDate(booking.endTime)}</strong></span>
+                              <span>Valid: <strong className="text-foreground">{formatDate(booking.startTime)}</strong> to <strong className="text-foreground">{formatDate(booking.endTime)}</strong> <span className={`ml-1 text-xs font-bold ${daysLeft <= 3 ? 'text-rose-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-primary'}`}>({daysLeft} days left)</span></span>
                             </div>
                             <div className="flex items-center gap-2.5 text-foreground/80 text-sm">
                               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -227,12 +234,14 @@ export default async function StudentDashboardPage() {
                       {booking.status === 'CONFIRMED' && (
                         <AccessQRModal 
                           libraryId={booking.libraryId} 
+                          studentId={session.userId}
                           isCheckedIn={latestLog?.status === 'CHECK_IN' && latestLog?.libraryId === booking.libraryId} 
                         />
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

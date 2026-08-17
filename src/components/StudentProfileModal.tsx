@@ -95,7 +95,7 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
     endOfDay.setHours(0,0,0,0);
     const today = new Date();
     today.setHours(0,0,0,0);
-    daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+    daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24)) + 1;
     totalDays = Math.ceil((endOfDay.getTime() - new Date(currentBooking.startTime).getTime()) / (1000 * 60 * 60 * 24));
     totalDays = Math.max(1, totalDays);
     elapsed = totalDays - Math.max(0, daysLeft);
@@ -119,10 +119,10 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                 <div className="flex items-end gap-5">
                   <div className="relative shrink-0 bg-slate-50 rounded-[20px]">
                     {profileStudent.profilePhotoUrl ? (
-                      <img src={profileStudent.profilePhotoUrl} alt="" className="w-24 h-24 rounded-[20px] object-cover shadow-xl ring-4 ring-white" />
+                      <img src={profileStudent.profilePhotoUrl} alt="" className="w-24 h-24 rounded-[20px] object-cover shadow-xl" />
                     ) : (
-                      <div className="w-24 h-24 rounded-[20px] shadow-xl ring-4 ring-white flex items-center justify-center bg-slate-100">
-                        <User className="w-10 h-10 text-slate-300" />
+                      <div className="w-24 h-24 rounded-[20px] bg-gradient-to-br from-indigo-50 to-white shadow-xl flex items-center justify-center relative z-10">
+                        <User className="w-10 h-10 text-indigo-200" />
                       </div>
                     )}
                     {currentBooking && (
@@ -259,7 +259,7 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                         hStart.setHours(0,0,0,0);
                         const todayObj = new Date();
                         todayObj.setHours(0,0,0,0);
-                        const histDaysLeft = Math.ceil((hEnd.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
+                        const histDaysLeft = Math.ceil((hEnd.getTime() - todayObj.getTime()) / (1000 * 3600 * 24)) + 1;
                         const histTotal = Math.ceil((hEnd.getTime() - hStart.getTime()) / (1000 * 60 * 60 * 24));
                         const hIsExpired = hEnd < todayObj;
 

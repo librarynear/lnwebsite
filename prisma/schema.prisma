@@ -43,6 +43,10 @@ model User {
   kycAadhaarVerificationId    String?
   kycAadhaarReferenceId       String?
   kycAadhaarProfilePhotoUrl   String?
+  
+  // CRM Fields
+  crmNote                     String?
+  isExpiredLead               Boolean            @default(false)
   bookings            Booking[]
   bookingIntents      BookingIntent[]
   canvasState         CanvasState?

@@ -6,7 +6,7 @@ import { useState, useEffect, useTransition, Fragment } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, UserPlus, UserMinus, ChevronDown, CheckCircle2, Filter, PlusCircle, MinusCircle, History, Grid, List, User, Lock, Tag, Pause, Ban, RefreshCw, MoreHorizontal } from "lucide-react"
-import { addStudentWithBooking, approveReceptionPayment, revokeBooking, assignUniqueIdToStudent, renewPlan } from "@/app/actions/student-actions"
+import { addStudentWithBooking, approveReceptionPayment, revokeBooking, assignUniqueIdToStudent, renewPlan, updateCrmNote } from "@/app/actions/student-actions"
 import { pauseBooking, resumeBooking, updateBookingSeat } from "@/app/actions/booking-actions"
 import { generateRFIDCommandQR } from "@/app/actions/hardware-actions"
 import QRCode from "react-qr-code"
@@ -102,6 +102,7 @@ interface StudentsClientProps {
     active: number
     expiring: number
     inactive: number
+    expired: number
     revoked: number
   }
   currentPage?: number
@@ -129,7 +130,7 @@ function isSortMethod(value: unknown): value is SortMethod {
   return value === 'LATEST' || value === 'EXPIRY' || value === 'DURATION' || value === 'ALPHABETICAL'
 }
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], standaloneLockers = [], occupiedStandaloneLockerIds = [], occupiedSeatIds = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], standaloneLockers = [], occupiedStandaloneLockerIds = [], occupiedSeatIds = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, expired: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
   const router = useRouter()
   const searchParamsHook = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -179,11 +180,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
   // Tabs & Sorting
-  const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING') || 'ACTIVE'
+  const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING' | 'EXPIRED') || 'ACTIVE'
   const [sortMethod, setSortMethod] = useState<SortMethod>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
   // RFID Modal States
+  const [addFormHasLocker, setAddFormHasLocker] = useState<boolean>(true);
   const [rfidModalOpen, setRfidModalOpen] = useState(false);
   const [rfidStudentId, setRfidStudentId] = useState<string | null>(null);
   const [rfidTagInput, setRfidTagInput] = useState("");
@@ -439,7 +441,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const inactiveBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
-    return b.status !== 'CANCELLED' && end < now;
+    return b.status !== 'CANCELLED' && end < now && !b.student.isExpiredLead;
+  });
+  const expiredBookings = uniqueSearchedBookings.filter((b) => {
+    const end = new Date(b.endTime);
+    end.setHours(0,0,0,0);
+    return b.status !== 'CANCELLED' && end < now && b.student.isExpiredLead;
   });
   const revokedBookings = uniqueSearchedBookings.filter((b) => b.status === 'CANCELLED');
 
@@ -448,6 +455,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
     if (activeTab === 'ACTIVE') list = activeBookings;
     else if (activeTab === 'EXPIRING') list = expiringBookings;
     else if (activeTab === 'INACTIVE') list = inactiveBookings;
+    else if (activeTab === 'EXPIRED') list = expiredBookings;
     else list = revokedBookings;
 
     if (filterPlanId) {
@@ -692,7 +700,8 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               id="hasLocker" 
                               name="hasLocker" 
                               value="true" 
-                              defaultChecked={true}
+                              checked={addFormHasLocker}
+                              onChange={(e) => setAddFormHasLocker(e.target.checked)}
                               className="w-4 h-4 text-primary rounded border-border cursor-pointer accent-primary" 
                             />
                             <Label htmlFor="hasLocker" className="text-sm cursor-pointer font-medium">
@@ -765,7 +774,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 let premiumSurcharge = 0;
                 
                 const chosenSeat = addFormSeatId ? seats.find(s => s.id === addFormSeatId) : null;
-                const seatHasMandatoryLocker = targetPlan.type !== 'FLEXIBLE' && chosenSeat?.hasLocker === true;
+                const seatHasMandatoryLocker = targetPlan.type !== 'FLEXIBLE' && chosenSeat?.hasLocker === true && addFormHasLocker;
                 
                 if (seatHasMandatoryLocker) {
                   finalLockerCost = (chosenSeat.lockerPriceDaily || 0) * targetPlan.validityDays;
@@ -817,7 +826,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
         </Dialog>
       </div>
 
-      <div className="bg-white rounded-[24px] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col mb-8">
+      <div className="bg-white rounded-[3rem] shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden flex flex-col mb-8 border border-slate-100">
         <div className="p-4 md:p-6 md:pb-4 border-b border-slate-100 flex flex-col gap-5 bg-white">
           
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -827,7 +836,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 placeholder="Search by name, ID, or phone..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all text-slate-700 font-medium placeholder:text-slate-400"
+                className="w-full pl-11 pr-4 py-2.5 rounded-full border-none bg-slate-50 hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:ring-inset shadow-sm transition-all text-slate-700 font-medium placeholder:text-slate-400"
               />
               <Search className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
             </div>
@@ -921,38 +930,43 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             </div>
           </div>
 
-          <div className="flex space-x-1 border-b border-border/50 overflow-x-auto relative">
+          <div className="flex p-1.5 space-x-1 bg-slate-50 rounded-full overflow-x-auto relative w-fit shadow-inner">
             <button
-              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'ACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'ACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('ACTIVE')}
             >
               Active ({tabCounts.active})
             </button>
             <button
-              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'EXPIRING' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRING' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('EXPIRING')}
             >
               Expiring Soon ({tabCounts.expiring})
             </button>
             <button
-              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'INACTIVE' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'INACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('INACTIVE')}
             >
-              Inactive/Expired ({tabCounts.inactive})
+              Inactive ({tabCounts.inactive})
             </button>
             <button
-              className={`pb-3 px-4 whitespace-nowrap text-sm font-bold border-b-2 transition-colors ${activeTab === 'REVOKED' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              onClick={() => handleTabChange('EXPIRED')}
+            >
+              Expired ({tabCounts.expired})
+            </button>
+            <button
+              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'REVOKED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('REVOKED')}
             >
               Revoked ({tabCounts.revoked})
             </button>
             {isPending && (
-              <div className="absolute right-2 top-0 flex items-center justify-center h-full">
-                <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></span>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                <span className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></span>
               </div>
             )}
           </div>
-
         </div>
 
         
@@ -963,7 +977,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             <p className="text-base text-slate-500 mt-1">Try adjusting your search or switching tabs</p>
           </div>
         ) : (
-          <div className="overflow-hidden mt-6">
+          <div className="overflow-hidden mt-0">
             <AnimatePresence mode="wait">
               {viewMode === 'list' ? (
                 <motion.div 
@@ -980,7 +994,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   }}
                   className="flex flex-col gap-0"
                 >
-                  <div className="hidden sm:flex items-center px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/50 border-y border-slate-100 mb-0">
+                  <div className="hidden sm:flex items-center px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-white border-b border-slate-100/60 mb-2">
                     <div className="w-1/3 pl-14">Students</div>
                     <div className="flex-1 grid grid-cols-2 gap-4">
                       <div>Plan</div>
@@ -993,7 +1007,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     endOfDay.setHours(0,0,0,0);
                     const today = new Date();
                     today.setHours(0,0,0,0);
-                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24)) + 1;
                     const isExpired = endOfDay < today;
                     
                     const totalDays = Math.ceil((new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / (1000 * 60 * 60 * 24));
@@ -1035,7 +1049,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                       <motion.div 
                         variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
                         key={booking.id} 
-                        className="group bg-white p-4 sm:p-5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors duration-200 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 relative overflow-hidden"
+                        className="group bg-white px-8 py-5 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 relative overflow-hidden hover:shadow-[inset_4px_0_0_0_#4f46e5]"
                       >
                         {/* Progress Bar Background */}
                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ background: `linear-gradient(90deg, #4f46e5 ${progress}%, transparent ${progress}%)` }} />
@@ -1043,7 +1057,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         {/* Avatar & Basic Info */}
                         <div className="flex items-center gap-4 w-full sm:w-1/3 relative z-10">
                           <div className="relative">
-                            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md overflow-hidden bg-slate-100 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center shadow-sm">
                               {booking.student.profilePhotoUrl ? (
                                 <img src={booking.student.profilePhotoUrl} alt={booking.student.name} className="w-full h-full object-cover" />
                               ) : (
@@ -1223,6 +1237,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                             </DropdownMenu>
                           </div>
                         </div>
+
+                        {/* INJECT CRM NOTE FOR LIST VIEW */}
+                        {(activeTab === 'INACTIVE' || activeTab === 'EXPIRED') && (
+                          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30">
+                            <CrmNoteEditor
+                              studentId={booking.student.id}
+                              initialNote={booking.student.crmNote || ""}
+                              isExpired={booking.student.isExpiredLead}
+                              onUpdate={() => router.refresh()}
+                            />
+                          </div>
+                        )}
+
                       </motion.div>
                     );
                   })}
@@ -1247,7 +1274,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                     endOfDay.setHours(0,0,0,0);
                     const today = new Date();
                     today.setHours(0,0,0,0);
-                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24));
+                    const daysLeft = Math.ceil((endOfDay.getTime() - today.getTime()) / (1000 * 3600 * 24)) + 1;
                     const isExpired = endOfDay < today;
                     const assignedSeat = seats.find(s => s.id === booking.seatId);
 
@@ -1274,7 +1301,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         
                         <div className="flex justify-between items-start mb-6 relative z-10">
                           <div className="relative">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
                               {booking.student.profilePhotoUrl ? (
                                 <img src={booking.student.profilePhotoUrl} alt={booking.student.name} className="w-full h-full object-cover" />
                               ) : (
@@ -1427,6 +1454,19 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                                 </span>
                               </div>
                             </div>
+
+                            {/* INJECT CRM NOTE FOR GRID VIEW */}
+                            {(activeTab === 'INACTIVE' || activeTab === 'EXPIRED') && (
+                              <div className="mt-4">
+                                <CrmNoteEditor
+                                  studentId={booking.student.id}
+                                  initialNote={booking.student.crmNote || ""}
+                                  isExpired={booking.student.isExpiredLead}
+                                  onUpdate={() => router.refresh()}
+                                />
+                              </div>
+                            )}
+                            
                           </div>
                         </div>
                       </motion.div>
@@ -2162,4 +2202,72 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
       />
     </>
   )
+}
+
+function CrmNoteEditor({ 
+  studentId, 
+  initialNote, 
+  isExpired,
+  onUpdate 
+}: { 
+  studentId: string; 
+  initialNote: string; 
+  isExpired: boolean;
+  onUpdate: () => void;
+}) {
+  const [note, setNote] = useState(initialNote);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const handleSave = async (expiredState?: boolean) => {
+    if (expiredState === true && !note.trim()) {
+      toast.error("A note is required to mark as expired.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await updateCrmNote(studentId, note, expiredState);
+      if (res.success) {
+        toast.success("Note updated");
+        onUpdate();
+      } else {
+        toast.error(res.message || "Failed to update note");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update note");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="w-full mt-2">
+      <Textarea 
+        placeholder="Note..."
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        className="text-sm min-h-[60px] bg-slate-50/50 resize-none border-slate-200"
+        disabled={isSaving}
+      />
+      <div className="flex justify-end gap-2 mt-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleSave()} 
+          disabled={isSaving || note === initialNote}
+        >
+          {isSaving ? "Saving..." : "Save Note"}
+        </Button>
+        {!isExpired && (
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => handleSave(true)}
+            disabled={isSaving || !note.trim()}
+          >
+            Mark as Expired
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }

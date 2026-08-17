@@ -8,7 +8,11 @@ import { QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { generateEntryQR } from "@/app/actions/hardware-actions";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function AccessQRModal({ libraryId, iconOnly, isCheckedIn: initialIsCheckedIn }: { libraryId: string; iconOnly?: boolean; isCheckedIn?: boolean }) {
+import confetti from "canvas-confetti";
+
+import { supabase } from "@/lib/supabase-client";
+
+export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: initialIsCheckedIn }: { libraryId: string; studentId: string; iconOnly?: boolean; isCheckedIn?: boolean }) {
   const [qrData, setQrData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,28 +28,79 @@ export function AccessQRModal({ libraryId, iconOnly, isCheckedIn: initialIsCheck
     isCheckedInRef.current = isCheckedIn;
   }, [isCheckedIn]);
 
+  const triggerSuccess = (newStatus: boolean) => {
+    setShowSuccess(true);
+    
+    // Single satisfying vibration
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate([200]);
+    }
+    
+    // Confetti burst
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#22c55e', '#3b82f6', '#f59e0b']
+    });
+
+    setTimeout(() => {
+      setOpen(false);
+      setShowSuccess(false);
+      setIsCheckedIn(newStatus);
+    }, 3000);
+  };
+
+  // Real-time listener for instant feedback
+  useEffect(() => {
+    if (!open || !studentId) return;
+
+    const channel = supabase
+      .channel('checkin-logs-modal')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'CheckinLog', filter: `studentId=eq.${studentId}` },
+        (payload) => {
+          const newStatus = payload.new.status === 'CHECK_IN';
+          if (newStatus !== isCheckedInRef.current && qrDataRef.current) {
+            triggerSuccess(newStatus);
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) console.error("Supabase realtime error:", err);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, studentId]);
+
+  // Generate secure QR payload
   useEffect(() => {
     if (!open) return;
 
     const fetchQR = async () => {
-      setLoading(true);
+      // Don't poll if we're already showing success
+      if (showSuccess) return;
+      
+      if (!qrDataRef.current) setLoading(true);
       setError(null);
       try {
         const res = await generateEntryQR(libraryId);
         if (res.error) {
           setError(res.error);
         } else if (res.qrPayload) {
-          // Check if status changed
-          if (res.isCheckedIn !== undefined && res.isCheckedIn !== isCheckedInRef.current && qrDataRef.current) {
-            setShowSuccess(true);
-            setTimeout(() => {
-              setOpen(false);
-              setShowSuccess(false);
-              setIsCheckedIn(res.isCheckedIn!);
-            }, 2000);
+          // Fallback check (in case realtime failed)
+          if (res.isCheckedIn !== undefined && res.isCheckedIn !== isCheckedInRef.current && qrDataRef.current && !showSuccess) {
+            triggerSuccess(res.isCheckedIn);
           } else {
             qrDataRef.current = res.qrPayload;
             setQrData(res.qrPayload);
+            // Sync the initial check-in state silently on load
+            if (res.isCheckedIn !== undefined && res.isCheckedIn !== isCheckedInRef.current) {
+              setIsCheckedIn(res.isCheckedIn);
+            }
           }
         }
       } catch {
@@ -56,10 +111,11 @@ export function AccessQRModal({ libraryId, iconOnly, isCheckedIn: initialIsCheck
     };
 
     fetchQR();
-    const interval = setInterval(fetchQR, 10000);
+    // 20 second refresh for security and fallback polling
+    const interval = setInterval(fetchQR, 20000);
 
     return () => clearInterval(interval);
-  }, [open, libraryId]);
+  }, [open, libraryId, showSuccess]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
@@ -84,41 +140,75 @@ export function AccessQRModal({ libraryId, iconOnly, isCheckedIn: initialIsCheck
           </Button>
         )
       } />
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md border-border/50 shadow-xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{isCheckedIn ? "Library Check-out QR" : "Library Check-in QR"}</DialogTitle>
+          <DialogTitle className="text-center font-heading text-xl">
+            {isCheckedIn ? "Library Check-out" : "Library Check-in"}
+          </DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col items-center justify-center py-6">
+        <div className="flex flex-col items-center justify-center py-8">
           {loading && !qrData ? (
             <div className="flex flex-col items-center gap-4 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p>Generating secure access code...</p>
+              <p className="animate-pulse">Generating secure access code...</p>
             </div>
           ) : error ? (
-            <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg border border-red-200">
-              <p className="font-semibold">Access Denied</p>
+            <div className="text-center text-red-500 bg-red-50/50 p-4 rounded-xl border border-red-200">
+              <p className="font-bold">Access Denied</p>
               <p className="text-sm mt-1">{error}</p>
             </div>
           ) : showSuccess ? (
             <motion.div 
-              initial={{ scale: 0.5, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              className="flex flex-col items-center gap-4 py-8"
+              initial={{ scale: 0.5, rotateY: 180, opacity: 0 }} 
+              animate={{ scale: 1, rotateY: 0, opacity: 1 }} 
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="flex flex-col items-center gap-5 py-6 text-center"
             >
-              <CheckCircle2 className="w-24 h-24 text-success" />
-              <p className="text-xl font-bold text-foreground">
-                {isCheckedIn ? "Checked Out Successfully!" : "Checked In Successfully!"}
-              </p>
+              <div className="relative">
+                <div className="absolute inset-0 bg-success/20 blur-xl rounded-full" />
+                <CheckCircle2 className="w-24 h-24 text-success relative z-10 drop-shadow-md" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-foreground mb-2">
+                  {isCheckedIn ? "Checked Out!" : "Checked In!"}
+                </p>
+                <p className="text-muted-foreground font-medium">
+                  {isCheckedIn ? "See you next time." : "Have a great session."}
+                </p>
+              </div>
             </motion.div>
           ) : qrData ? (
             <div className="flex flex-col items-center gap-6">
-              <div className="bg-white p-4 rounded-xl shadow-sm border">
-                <QRCode value={qrData} size={256} />
+              
+              {/* Prominent Status Badge */}
+              <div className={`px-6 py-2.5 rounded-full font-bold text-lg shadow-sm border ${
+                isCheckedIn 
+                  ? 'bg-amber-50 text-amber-600 border-amber-200' 
+                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+              }`}>
+                {isCheckedIn ? "CHECK-OUT QR" : "CHECK-IN QR"}
               </div>
-              <p className="text-sm text-center text-muted-foreground">
-                Hold this QR code up to the scanner at the door. <br/>
-                <span className="text-xs font-semibold text-primary">Automatically refreshes for security.</span>
-              </p>
+
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className={`bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-2 ${
+                  isCheckedIn ? 'border-amber-100' : 'border-emerald-100'
+                }`}
+              >
+                <QRCode 
+                  value={qrData} 
+                  size={240} 
+                  style={{ height: "auto", maxWidth: "100%", width: "100%" }} 
+                  fgColor={isCheckedIn ? "#d97706" : "#059669"} // amber-600 or emerald-600
+                />
+              </motion.div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-foreground text-lg">Scan at Reception</p>
+                <p className="text-sm text-muted-foreground px-4">
+                  Show this code at the scanner to check {isCheckedIn ? "out of" : "into"} the library.
+                </p>
+              </div>
             </div>
           ) : null}
         </div>

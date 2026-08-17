@@ -61,7 +61,7 @@ export default function DateRangeFilter() {
   };
 
   return (
-    <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center mb-8 justify-between">
+    <div className="flex flex-col md:flex-row gap-3 items-center justify-between w-full">
       <div className="flex items-center gap-2 text-foreground font-medium">
         <Calendar className="w-5 h-5 text-primary" />
         <span>Filter by Date</span>

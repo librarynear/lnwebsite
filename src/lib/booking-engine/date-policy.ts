@@ -1,13 +1,10 @@
 import type { BookingDraft, BookingFacts } from './types';
 
-// Simplified port of endOfDayIST without importing external libraries in the pure core
-function endOfDayIST(date: Date, addDays: number): Date {
-  const d = new Date(date.getTime());
-  d.setDate(d.getDate() + addDays);
-  // Assuming the system handles timezone normalization outside, or we do UTC math.
-  // For pure engine, we do local UTC math as a proxy for the date boundaries.
-  d.setUTCHours(18, 29, 59, 999); // 23:59:59 IST is 18:29:59 UTC
-  return d;
+function endOfDayIST(date: Date, daysToAdd: number = 0): Date {
+  const istTime = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
+  istTime.setUTCDate(istTime.getUTCDate() + daysToAdd);
+  istTime.setUTCHours(23, 59, 59, 999);
+  return new Date(istTime.getTime() - 5.5 * 60 * 60 * 1000);
 }
 
 export function calculateBookingDates(
@@ -19,12 +16,18 @@ export function calculateBookingDates(
   const selectedPlan = facts.activePlans.find(p => p.id === draft.planId);
   if (!selectedPlan) return null;
 
-  const requestedStart = draft.requestedStart ?? facts.authoritativeCurrentTime;
+  let startsAt: Date;
   
-  // If the user already has a current booking window supplied by the fact loader
-  const startsAt = facts.currentBookingWindow && facts.currentBookingWindow.endsAt >= requestedStart
-    ? new Date(facts.currentBookingWindow.endsAt.getTime() + 1)
-    : requestedStart;
+  // If the librarian explicitly requests a start date, honor it exactly.
+  if (draft.requestedStart) {
+    startsAt = draft.requestedStart;
+  } else {
+    // Otherwise, default to current time. If the student has an active booking that hasn't expired, append to it.
+    const defaultStart = facts.authoritativeCurrentTime;
+    startsAt = facts.currentBookingWindow && facts.currentBookingWindow.endsAt >= defaultStart
+      ? new Date(facts.currentBookingWindow.endsAt.getTime() + 1)
+      : defaultStart;
+  }
 
   const validityDays = selectedPlan.validityDays;
   const endsAt = endOfDayIST(startsAt, Math.max(0, validityDays - 1));

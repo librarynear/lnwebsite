@@ -26,26 +26,33 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
   const sevenDaysFromNow = new Date(now);
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
-  const normalizedTab = ["ACTIVE", "EXPIRING", "INACTIVE", "REVOKED"].includes(tab)
+  const normalizedTab = ["ACTIVE", "EXPIRING", "INACTIVE", "EXPIRED", "REVOKED"].includes(tab)
     ? tab
     : "ACTIVE";
   const tabPredicate =
     normalizedTab === "EXPIRING"
       ? Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now} AND b."endTime" <= ${sevenDaysFromNow}`
-      : normalizedTab === "INACTIVE"
-        ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now} AND NOT EXISTS (
-            SELECT 1 FROM "Booking" b2 
-            WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
-          ) AND (
-            SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
-          ) <> 'CANCELLED'`
-        : normalizedTab === "REVOKED"
-          ? Prisma.sql`b."status" = 'CANCELLED' AND NOT EXISTS (
+        : normalizedTab === "INACTIVE"
+          ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now} AND (u."isExpiredLead" IS NULL OR u."isExpiredLead" = false) AND NOT EXISTS (
               SELECT 1 FROM "Booking" b2 
               WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
             ) AND (
               SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
-            ) = 'CANCELLED'`
+            ) <> 'CANCELLED'`
+          : normalizedTab === "EXPIRED"
+            ? Prisma.sql`b."status" <> 'CANCELLED' AND b."endTime" < ${now} AND u."isExpiredLead" = true AND NOT EXISTS (
+                SELECT 1 FROM "Booking" b2 
+                WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
+              ) AND (
+                SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
+              ) <> 'CANCELLED'`
+            : normalizedTab === "REVOKED"
+              ? Prisma.sql`b."status" = 'CANCELLED' AND NOT EXISTS (
+                  SELECT 1 FROM "Booking" b2 
+                  WHERE b2."studentId" = b."studentId" AND b2."status" = 'CONFIRMED' AND b2."endTime" >= ${now} AND b2."libraryId" = ${library.id}
+                ) AND (
+                  SELECT b3."status" FROM "Booking" b3 WHERE b3."studentId" = b."studentId" AND b3."libraryId" = ${library.id} ORDER BY b3."createdAt" DESC LIMIT 1
+                ) = 'CANCELLED'`
           : Prisma.sql`b."status" = 'CONFIRMED' AND b."endTime" >= ${now}`;
   const searchPredicate = query
     ? Prisma.sql`AND (
@@ -78,6 +85,7 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
       active: number;
       expiring: number;
       inactive: number;
+      expired: number;
       revoked: number;
     }>>(Prisma.sql`
       WITH StudentStates AS (
@@ -91,7 +99,8 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
             WHERE b2."studentId" = b."studentId" AND b2."libraryId" = ${library.id}
             ORDER BY b2."createdAt" DESC
             LIMIT 1
-          ) AS latest_status
+          ) AS latest_status,
+          BOOL_OR(u."isExpiredLead" = true) AS is_expired_lead
         FROM "Booking" b
         INNER JOIN "User" u ON u."id" = b."studentId"
         WHERE b."libraryId" = ${library.id}
@@ -101,7 +110,8 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
       SELECT 
         COUNT(*) FILTER (WHERE has_active)::int AS "active",
         COUNT(*) FILTER (WHERE has_expiring)::int AS "expiring",
-        COUNT(*) FILTER (WHERE NOT has_active AND latest_status <> 'CANCELLED')::int AS "inactive",
+        COUNT(*) FILTER (WHERE NOT has_active AND latest_status <> 'CANCELLED' AND NOT is_expired_lead)::int AS "inactive",
+        COUNT(*) FILTER (WHERE NOT has_active AND latest_status <> 'CANCELLED' AND is_expired_lead)::int AS "expired",
         COUNT(*) FILTER (WHERE NOT has_active AND latest_status = 'CANCELLED')::int AS "revoked"
       FROM StudentStates
     `),
@@ -137,6 +147,7 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
     active: 0,
     expiring: 0,
     inactive: 0,
+    expired: 0,
     revoked: 0,
   };
   const totalStudentsCount =
@@ -144,9 +155,11 @@ export default async function StudentsPage(props: { searchParams: Promise<{ [key
       ? counts.expiring
       : normalizedTab === "INACTIVE"
         ? counts.inactive
-        : normalizedTab === "REVOKED"
-          ? counts.revoked
-          : counts.active;
+        : normalizedTab === "EXPIRED"
+          ? counts.expired
+          : normalizedTab === "REVOKED"
+            ? counts.revoked
+            : counts.active;
 
   const plans = await prisma.plan.findMany({
     where: { libraryId: library.id, isActive: true }

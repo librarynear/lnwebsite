@@ -81,6 +81,7 @@ type PreparedSelection = Required<
   endsAt: Date
   expectedAmountPaise: number
   resources: Resource[]
+  sourceBookingId: string | null
 }
 
 export type CreateOnlineIntentInput = BookingSelection & {
@@ -259,7 +260,7 @@ async function assertNoPendingStudentConflict(
   tx: AuthorityTx,
   selection: Pick<
     PreparedSelection,
-    "studentId" | "libraryId" | "startsAt" | "endsAt"
+    "studentId" | "libraryId" | "startsAt" | "endsAt" | "sourceBookingId"
   >,
 ): Promise<void> {
   const [intentClash, bookingClash] = await Promise.all([
@@ -282,6 +283,7 @@ async function assertNoPendingStudentConflict(
     }),
     tx.booking.findFirst({
       where: {
+        id: selection.sourceBookingId ? { not: selection.sourceBookingId } : undefined,
         studentId: selection.studentId,
         libraryId: selection.libraryId,
         OR: [
@@ -360,9 +362,12 @@ async function prepareSelection(
       seatId: result.normalizedDraft.seatId ?? null, 
       standaloneLockerId: result.normalizedDraft.standaloneLockerId ?? null 
     }),
+    sourceBookingId: input.sourceBookingId ?? null,
   }
 
-  await assertNoPendingStudentConflict(tx, prepared)
+  if (draft.operation !== 'RENEW') {
+    await assertNoPendingStudentConflict(tx, prepared)
+  }
   return prepared
 }
 
@@ -373,12 +378,14 @@ async function assertNoBookingConflict(
     "seatId" | "standaloneLockerId" | "startsAt" | "endsAt"
   >,
   excludeBookingId?: string,
+  excludeStudentId?: string,
 ): Promise<void> {
   if (selection.seatId) {
     const clash = await tx.booking.findFirst({
       where: {
         seatId: selection.seatId,
         id: excludeBookingId ? { not: excludeBookingId } : undefined,
+        studentId: excludeStudentId ? { not: excludeStudentId } : undefined,
         OR: [
           { status: BookingStatus.CONFIRMED },
           {
@@ -401,6 +408,7 @@ async function assertNoBookingConflict(
       where: {
         standaloneLockerId: selection.standaloneLockerId,
         id: excludeBookingId ? { not: excludeBookingId } : undefined,
+        studentId: excludeStudentId ? { not: excludeStudentId } : undefined,
         OR: [
           { status: BookingStatus.CONFIRMED },
           {
@@ -694,7 +702,7 @@ export async function createOnlineBookingIntent(
         idempotencyKey: scopedIdempotencyKey,
       })
       await acquireResources(tx, intent, prepared.resources, holdExpiresAt)
-      await assertNoBookingConflict(tx, prepared)
+      await assertNoBookingConflict(tx, prepared, prepared.sourceBookingId ?? undefined)
       return intent
     })
   } catch (error) {
@@ -1029,7 +1037,12 @@ async function createManualConfirmedBookingInTransaction(
     holdExpiresAt,
   })
   await acquireResources(tx, intent, prepared.resources, holdExpiresAt)
-  await assertNoBookingConflict(tx, prepared)
+  await assertNoBookingConflict(
+    tx, 
+    prepared, 
+    prepared.sourceBookingId ?? undefined,
+    input.operation === 'RENEW' ? prepared.studentId : undefined
+  )
   const booking = await createConfirmedBookingForIntent(tx, intent, input.paymentRef)
   await tx.bookingIntent.update({
     where: { id: intent.id },
@@ -1127,7 +1140,7 @@ export async function createPendingReceptionBooking(
         idempotencyKey: scopedIdempotencyKey,
       })
       await acquireResources(tx, intent, prepared.resources, holdExpiresAt)
-      await assertNoBookingConflict(tx, prepared)
+      await assertNoBookingConflict(tx, prepared, prepared.sourceBookingId ?? undefined)
 
       const booking = await tx.booking.create({
         data: {

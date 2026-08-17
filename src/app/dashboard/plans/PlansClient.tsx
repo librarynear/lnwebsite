@@ -51,10 +51,10 @@ type EditableRowFields = Pick<Row, "included" | "basePriceOverride" | "discountP
 
 const DURATIONS = [
   { months: 0, days: 1 },
-  { months: 1, days: 28 },
-  { months: 3, days: 84 },
-  { months: 6, days: 168 },
-  { months: 12, days: 336 }
+  { months: 1, days: 30 },
+  { months: 3, days: 90 },
+  { months: 6, days: 180 },
+  { months: 12, days: 365 }
 ]
 
 const DEFAULT_ROW_CONFIGURATION: RowConfiguration = {

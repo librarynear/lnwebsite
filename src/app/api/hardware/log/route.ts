@@ -134,7 +134,10 @@ export async function POST(request: Request) {
       skipDuplicates: true
     });
 
-    // Update user failure counts for flagged students logic
+    // Update user failure counts for flagged students logic, and insert CheckinLogs
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
     for (const log of finalInsertData) {
       if (log.userId && log.userId !== "UNKNOWN") {
         if (log.status === "DENIED") {
@@ -151,7 +154,7 @@ export async function POST(request: Request) {
                }
              });
           }
-        } else if (log.status === "SUCCESS" || !log.status) {
+        } else if (log.status === "SUCCESS" || log.status === "IN" || log.status === "OUT" || !log.status) {
           // Reset failures on success
           await prisma.user.update({
             where: { id: log.userId },
@@ -160,6 +163,41 @@ export async function POST(request: Request) {
               failureReasons: null
             }
           });
+
+          // Toggle CheckinLog state so realtime UI updates and tracking works
+          await prisma.$transaction(async (tx) => {
+            const lastLog = await tx.checkinLog.findFirst({
+              where: { 
+                studentId: log.userId as string, 
+                libraryId: log.libraryId, 
+                timestamp: { gte: startOfDay } 
+              },
+              orderBy: { timestamp: 'desc' },
+            });
+
+            let newStatus: "CHECK_IN" | "CHECK_OUT" = "CHECK_IN";
+            if (log.status === "IN") {
+              newStatus = "CHECK_IN";
+            } else if (log.status === "OUT") {
+              newStatus = "CHECK_OUT";
+            } else {
+              // Fallback to toggling if status is just "SUCCESS"
+              newStatus = (lastLog && lastLog.status === "CHECK_IN") ? "CHECK_OUT" : "CHECK_IN";
+            }
+
+            // Only insert if it represents an actual change, or if it's the first log
+            if (!lastLog || lastLog.status !== newStatus) {
+              await tx.checkinLog.create({
+                data: {
+                  studentId: log.userId as string,
+                  libraryId: log.libraryId,
+                  status: newStatus,
+                  isOfflineSync: false,
+                  timestamp: log.timestamp // Use the hardware timestamp to match exactly
+                },
+              });
+            }
+          }, { isolationLevel: 'Serializable' }).catch(err => console.error("Failed to insert CheckinLog:", err));
         }
       }
     }

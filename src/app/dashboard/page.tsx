@@ -138,7 +138,7 @@ export default async function LibrarianDashboardPage() {
   });
 
   // Formatting Live Access
-  const combinedLogs = [
+  const combinedLogsUnfiltered = [
     ...checkinLogsRaw.map(log => ({
       id: log.id,
       studentId: log.studentId,
@@ -155,7 +155,18 @@ export default async function LibrarianDashboardPage() {
       action: (log.status === 'OUT' ? 'CHECK_OUT' : 'CHECK_IN') as 'CHECK_IN' | 'CHECK_OUT',
       timestamp: log.timestamp
     }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  ];
+
+  const seenEvents = new Set<string>();
+  const combinedLogs = combinedLogsUnfiltered.filter(log => {
+    if (!log.studentId) return false;
+    // Discard milliseconds for deduplication to prevent slight desyncs
+    const timeKey = Math.floor(new Date(log.timestamp).getTime() / 1000);
+    const key = `${log.studentId}-${timeKey}-${log.action}`;
+    if (seenEvents.has(key)) return false;
+    seenEvents.add(key);
+    return true;
+  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const liveAccess = combinedLogs.slice(0, 15).map(log => ({
     id: log.id,
@@ -273,7 +284,27 @@ export default async function LibrarianDashboardPage() {
     if (firstIn) {
       const endTime = lastOut ? new Date(lastOut.timestamp).getTime() : new Date().getTime();
       const startTime = new Date(firstIn.timestamp).getTime();
-      const diffMins = Math.floor((endTime - startTime) / 1000 / 60);
+      
+      let totalBreakMs = 0;
+      let lastOutTime: number | null = null;
+
+      for (const event of sortedEvents) {
+        const eventTime = new Date((event as any).timestamp).getTime();
+        if (eventTime < startTime) continue;
+
+        if ((event as any).action === 'CHECK_OUT') {
+           lastOutTime = eventTime;
+        } else if ((event as any).action === 'CHECK_IN' && lastOutTime) {
+           const breakMs = eventTime - lastOutTime;
+           if (breakMs > 1.5 * 60 * 60 * 1000) {
+             totalBreakMs += breakMs;
+           }
+           lastOutTime = null;
+        }
+      }
+
+      const totalDurationMs = Math.max(0, (endTime - startTime) - totalBreakMs);
+      const diffMins = Math.floor(totalDurationMs / 1000 / 60);
       const hrs = Math.floor(diffMins / 60);
       const mins = diffMins % 60;
       totalHrs = `${hrs}h ${mins}m`;
@@ -282,6 +313,7 @@ export default async function LibrarianDashboardPage() {
     const avgData = studentAvgMap.get(student.studentId) || { avgHrs: 0, optedHrs: 24, overstayHrs: 0, image: null };
 
     return {
+      studentId: student.studentId,
       name: student.name,
       image: avgData.image,
       phone: student.phone,

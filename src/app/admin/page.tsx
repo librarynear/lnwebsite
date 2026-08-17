@@ -45,10 +45,13 @@ export default async function AdminDashboardPage() {
                   <p className="text-muted-foreground flex items-center gap-1.5 text-sm mb-3">
                     <MapPin className="w-4 h-4" /> {lib.address}
                   </p>
-                  <div className="flex gap-4 text-sm">
+                  <div className="flex gap-4 text-sm mb-3">
                     <div><span className="text-muted-foreground">Manager:</span> {lib.managerName || "N/A"}</div>
                     <div><span className="text-muted-foreground">Phone:</span> {lib.managerPhone || "N/A"}</div>
                     <div><span className="text-muted-foreground">Seats:</span> {lib.seatsAvailable || 0}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted/50 w-fit px-2 py-1 rounded">
+                    Received: {new Date(lib.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} (IST)
                   </div>
                 </div>
                 

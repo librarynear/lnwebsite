@@ -94,31 +94,37 @@ export async function loadBookingFacts(
   // 5. Load Current Booking Window (if student is known)
   let currentBookingWindow: { startsAt: Date, endsAt: Date } | null = null;
   if (draft.studentId) {
-    const activeBooking = await db.booking.findFirst({
+    const latestBooking = await db.booking.findFirst({
       where: {
         studentId: draft.studentId,
         libraryId,
-        status: 'CONFIRMED',
-        endTime: { gt: authoritativeCurrentTime }
+        status: 'CONFIRMED'
       },
       orderBy: { endTime: 'desc' },
       select: { startTime: true, endTime: true }
     });
 
-    if (activeBooking) {
+    if (latestBooking) {
       currentBookingWindow = {
-        startsAt: activeBooking.startTime,
-        endsAt: activeBooking.endTime
+        startsAt: latestBooking.startTime,
+        endsAt: latestBooking.endTime
       };
     }
   }
 
   // 6. Calculate Snapshot Window for Availability Check
-  const requestedStart = draft.requestedStart ?? authoritativeCurrentTime;
   const validityDays = selectedPlan ? selectedPlan.validityDays : 30; // default assumption for checking
-  const startsAt = currentBookingWindow && currentBookingWindow.endsAt >= requestedStart
-    ? new Date(currentBookingWindow.endsAt.getTime() + 1)
-    : requestedStart;
+  
+  let startsAt: Date;
+  if (draft.requestedStart) {
+    startsAt = draft.requestedStart;
+  } else {
+    const defaultStart = authoritativeCurrentTime;
+    startsAt = currentBookingWindow && currentBookingWindow.endsAt >= defaultStart
+      ? new Date(currentBookingWindow.endsAt.getTime() + 1)
+      : defaultStart;
+  }
+  
   const endsAt = endOfDayIST(startsAt, Math.max(0, validityDays - 1));
 
   // 7. Load Seat Availability Snapshot

@@ -9,7 +9,7 @@ import {
   type StandaloneLockerLayoutItem,
 } from "@/app/actions/seat-actions";
 import LiveSeatMap, { type LiveSeat } from "@/components/LiveSeatMap";
-import { useRealtimeSeats } from "@/hooks/useRealtimeSeats";
+import { useAdminRealtimeSeats } from "@/hooks/useAdminRealtimeSeats";
 import { formatStandardDate } from "@/lib/date-utils";
 
 type SeatBookingDetails = {
@@ -25,6 +25,11 @@ type SeatBookingDetails = {
   } | null;
 };
 
+type CheckinLog = {
+  status: 'CHECK_IN' | 'CHECK_OUT';
+  timestamp: string;
+};
+
 export default function SeatsManagerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,14 +42,14 @@ export default function SeatsManagerPage() {
   
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
 
-  const [previewMode, setPreviewMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'LIVE' | 'EDIT'>('LIVE');
   const [popupSeatId, setPopupSeatId] = useState<string | null>(null);
   const [popupSeatLabel, setPopupSeatLabel] = useState<string | null>(null);
-  const [popupData, setPopupData] = useState<SeatBookingDetails | null>(null);
+  const [popupData, setPopupData] = useState<{ booking: SeatBookingDetails | null, latestCheckin: CheckinLog | null } | null>(null);
   const [isPopupLoading, setIsPopupLoading] = useState(false);
   const [libraryId, setLibraryId] = useState<string>("");
   const [initialOccupied, setInitialOccupied] = useState<string[]>([]);
-  const realtimeOccupiedSeatIds = useRealtimeSeats(libraryId, initialOccupied);
+  const { occupiedSeatIds: realtimeOccupiedSeatIds, occupantData } = useAdminRealtimeSeats(libraryId, initialOccupied);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -84,20 +89,27 @@ export default function SeatsManagerPage() {
   };
 
   const handlePreviewSeatClick = async (seat: LiveSeat) => {
-    if (!realtimeOccupiedSeatIds.includes(seat.id)) return; // Only fetch if occupied
+    if (seat.type === 'NON_RESERVABLE' || seat.type === 'EMPTY') return;
 
     setPopupSeatId(seat.id);
     setPopupSeatLabel(seat.name || seat.id);
-    setIsPopupLoading(true);
     setPopupData(null);
+
+    if (!realtimeOccupiedSeatIds.includes(seat.id)) {
+      // Seat is vacant, no need to fetch booking details
+      return;
+    }
+
+    setIsPopupLoading(true);
 
     try {
       const res = await fetch(`/api/library/seat-details?libraryId=${libraryId}&seatId=${seat.id}`);
       if (res.ok) {
         const data = await res.json() as {
-          booking?: SeatBookingDetails | null;
+          booking: SeatBookingDetails | null;
+          latestCheckin: CheckinLog | null;
         };
-        setPopupData(data.booking ?? null);
+        setPopupData(data.booking ? data : null);
       } else {
         setPopupData(null);
       }
@@ -275,6 +287,24 @@ export default function SeatsManagerPage() {
           <h1 className="text-3xl font-heading font-bold text-foreground">Seat Plan & Lockers</h1>
           <p className="text-muted-foreground mt-1">Design your library layout and manage locker pricing.</p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex p-1 bg-muted/50 rounded-xl border border-border shadow-inner">
+            <button 
+              onClick={() => setViewMode('LIVE')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'LIVE' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Live View
+            </button>
+            <button 
+              onClick={() => setViewMode('EDIT')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'EDIT' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Edit Layout
+            </button>
+          </div>
+        </div>
+        
+        {viewMode === 'EDIT' && (
         <div className="flex gap-2 items-center">
           <select 
             value={seatNaming}
@@ -297,8 +327,11 @@ export default function SeatsManagerPage() {
             {isSaving ? 'Saving...' : 'Save Layout & Lockers'}
           </button>
         </div>
+        )}
       </div>
 
+      {viewMode === 'EDIT' ? (
+      <>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         {/* Left Sidebar */}
@@ -430,12 +463,6 @@ export default function SeatsManagerPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
               <h2 className="font-bold text-foreground">Interactive Seat Grid</h2>
               <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setPreviewMode(true)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors bg-muted border-border text-muted-foreground hover:bg-muted/80`}
-                >
-                  Preview Student View
-                </button>
                 <div className="flex gap-4 text-xs font-medium text-muted-foreground">
                   <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-background"></div> Normal</span>
                   <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm border border-border bg-muted"></div> Reserved</span>
@@ -569,25 +596,10 @@ export default function SeatsManagerPage() {
         )}
       </div>
       
-      {/* Preview Modal Overlay */}
-      {previewMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-4xl max-h-[90vh] rounded-3xl border border-border shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-black text-foreground">Student View Preview</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This is how the seat map will look to students when they are booking a seat.
-                </p>
-              </div>
-              <button 
-                onClick={() => setPreviewMode(false)}
-                className="p-3 hover:bg-muted rounded-full transition-colors flex items-center justify-center"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto bg-muted/10 relative">
+      </>
+      ) : (
+        <div className="bg-card rounded-3xl border border-border shadow-sm flex flex-col relative min-h-[70vh]">
+          <div className="p-6 overflow-y-auto bg-muted/10 relative h-full">
               <LiveSeatMap 
                 library={{
                   seats: seats.map(s => ({
@@ -599,7 +611,8 @@ export default function SeatsManagerPage() {
                   })),
                 }}
                 occupiedSeatIds={realtimeOccupiedSeatIds} 
-                compactMode={true}
+                occupantData={occupantData}
+                compactMode={false}
                 interactive={true}
                 adminMode={true}
                 onSeatSelect={handlePreviewSeatClick}
@@ -621,46 +634,94 @@ export default function SeatsManagerPage() {
                     <div className="flex justify-center py-4">
                       <Loader2 className="w-6 h-6 animate-spin text-primary" />
                     </div>
-                  ) : popupData ? (
+                  ) : popupData?.booking ? (
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 bg-muted/50 p-3 rounded-xl border border-border/50">
-                        {popupData.student.profilePhotoUrl ? (
-                          // User profile photos can come from arbitrary providers,
-                          // so they cannot use a fixed Next.js remote-image allowlist.
+                        {popupData.booking.student.profilePhotoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={popupData.student.profilePhotoUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-border" />
+                          <img src={popupData.booking.student.profilePhotoUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-border" />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {popupData.student.name.charAt(0)}
+                            {popupData.booking.student.name.charAt(0)}
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-sm text-foreground">{popupData.student.name}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{popupData.student.phone}</p>
+                          <p className="font-semibold text-sm text-foreground">{popupData.booking.student.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{popupData.booking.student.phone}</p>
                         </div>
                       </div>
-                      <div className="text-sm space-y-1">
-                        <p><span className="text-muted-foreground">Plan:</span> {popupData.plan?.name || "Custom"}</p>
-                        <p><span className="text-muted-foreground">Valid Until:</span> {formatStandardDate(popupData.endTime)} {new Date(popupData.endTime).toLocaleTimeString()}</p>
+                      
+                      <div className="text-sm space-y-2 border-t border-border pt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Plan</span>
+                          <span className="font-medium">{popupData.booking.plan?.name || "Custom"}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Valid Until</span>
+                          <span className="font-medium">{formatStandardDate(popupData.booking.endTime)} {new Date(popupData.booking.endTime).toLocaleTimeString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-border/50">
+                          <span className="text-muted-foreground">Current Status</span>
+                          {popupData.latestCheckin ? (
+                            <span className={`font-bold ${popupData.latestCheckin.status === 'CHECK_IN' ? 'text-green-600' : 'text-amber-600'}`}>
+                              {popupData.latestCheckin.status === 'CHECK_IN' ? 'Checked In' : 'Checked Out'}
+                              <span className="text-muted-foreground font-normal text-xs ml-2">
+                                at {new Date(popupData.latestCheckin.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground font-medium">No check-in data</span>
+                          )}
+                        </div>
                       </div>
+
                       <a 
-                        href={`/dashboard/students/${popupData.student.id}`} 
+                        href={`/dashboard/students/${popupData.booking.student.id}`} 
                         className="block w-full text-center py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity"
                         target="_blank"
                       >
                         View Profile
                       </a>
                     </div>
-                  ) : (
-                    <div className="text-center text-sm text-muted-foreground py-4">
-                      Seat is currently vacant.
-                    </div>
-                  )}
+                  ) : (() => {
+                    const clickedSeat = seats.find(s => s.id === popupSeatId);
+                    return (
+                      <div className="space-y-4">
+                        <div className="text-center pb-3 border-b border-border/50">
+                          <p className="font-bold text-success flex items-center justify-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(0,200,0,0.8)]"></span>
+                            Available for Booking
+                          </p>
+                        </div>
+                        <div className="text-sm space-y-2 pt-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Seat Type</span>
+                            <span className={`font-medium ${clickedSeat?.type === 'PREMIUM' ? 'text-amber-600' : ''}`}>{clickedSeat?.type === 'PREMIUM' ? 'Premium' : 'General'}</span>
+                          </div>
+                          {clickedSeat?.type === 'PREMIUM' && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Premium Price</span>
+                              <span className="font-medium text-amber-600">₹{clickedSeat.premiumPriceDaily}/day</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Attached Locker</span>
+                            <span className="font-medium">{clickedSeat?.hasLocker ? 'Yes' : 'No'}</span>
+                          </div>
+                          {clickedSeat?.hasLocker && (
+                            <div className="flex justify-between items-center text-foreground">
+                              <span className="text-muted-foreground">Locker Price</span>
+                              <span className="font-medium">₹{clickedSeat.lockerPriceDaily}/day</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
           </div>
-        </div>
       )}
     </div>
   );

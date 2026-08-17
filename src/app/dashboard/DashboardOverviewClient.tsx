@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { formatStandardDate } from "@/lib/date-utils";
+import { StudentProfileModal } from "@/components/StudentProfileModal";
 
 export function DashboardOverviewClient({
   library,
@@ -32,6 +33,7 @@ export function DashboardOverviewClient({
   todaysTransactions
 }: any) {
   const [expandedStudent, setExpandedStudent] = useState<string | null>(todaysAttendance[0]?.name || null);
+  const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
   const [activeChartData, setActiveChartData] = useState(chartData);
   const [dateRange, setDateRange] = useState("30d");
   const [customStart, setCustomStart] = useState("");
@@ -466,7 +468,13 @@ export function DashboardOverviewClient({
                           className="bg-white hover:bg-slate-50/50 transition-colors cursor-pointer group"
                         >
                           <td className="px-8 py-5">
-                            <div className="flex items-center gap-4">
+                            <div 
+                              className="flex items-center gap-4 hover:bg-slate-50 p-1.5 -m-1.5 rounded-lg transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProfileStudentId(student.studentId);
+                              }}
+                            >
                               <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200 shrink-0 overflow-hidden">
                                 {student.image ? (
                                   <img src={student.image} alt={student.name} className="w-full h-full object-cover" />
@@ -725,6 +733,12 @@ export function DashboardOverviewClient({
          </div>
 
       </div>
+
+      <StudentProfileModal 
+        studentId={profileStudentId}
+        open={!!profileStudentId}
+        onOpenChange={(open) => !open && setProfileStudentId(null)}
+      />
     </div>
   );
 }

@@ -35,7 +35,7 @@ export async function NavbarAuth() {
     return (
       <div className="flex items-center gap-1 sm:gap-2">
         {activeBooking && (
-          <AccessQRModal libraryId={activeBooking.libraryId} iconOnly />
+          <AccessQRModal libraryId={activeBooking.libraryId} studentId={session.userId} iconOnly />
         )}
         <NotificationBell notifications={notifications} />
         <UserNav user={user} />

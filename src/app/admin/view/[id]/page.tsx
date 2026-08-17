@@ -5,11 +5,14 @@ import { Check, X, Edit, ArrowLeft, MapPin, Building, CreditCard, Users } from "
 import { approveLibrary, rejectLibrary } from "@/app/actions/admin-actions";
 import { getSession } from "@/app/actions/auth-actions";
 
-export default async function AdminViewLibraryPage({ params }: { params: { id: string } }) {
+export default async function AdminViewLibraryPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session || session.role !== 'ADMIN') redirect("/");
+  
+  const { id } = await params;
+  
   const library = await prisma.library.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { librarian: true }
   });
 

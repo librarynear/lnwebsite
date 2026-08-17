@@ -26,6 +26,7 @@ interface LiveSeatMapProps {
   selectedPlan?: unknown;
   onSeatSelect?: (seat: LiveSeat) => void;
   compactMode?: boolean;
+  occupantData?: Record<string, { name: string; profilePhotoUrl: string | null }>;
 }
 
 export default function LiveSeatMap({ 
@@ -36,14 +37,16 @@ export default function LiveSeatMap({
   interactive = false,
   adminMode = false,
   selectedSeat,
-  onSeatSelect
+  onSeatSelect,
+  compactMode = false,
+  occupantData
 }: LiveSeatMapProps) {
   
   const maxX = Math.max(...(library.seats?.map((seat) => seat.gridX) || [0]), 0);
   const maxY = Math.max(...(library.seats?.map((seat) => seat.gridY) || [0]), 0);
 
   const renderSeat = (seat: LiveSeat | null | undefined, emptyKey?: string | number) => {
-    if (!seat) return <div key={emptyKey} className="w-12 h-12"></div>;
+    if (!seat || seat.type === 'EMPTY') return <div key={emptyKey || seat?.id} className="w-12 h-12 shrink-0"></div>;
 
     const isOccupied = occupiedSeatIds.includes(seat.id);
     const isSelected = selectedSeat?.id === seat.id;
@@ -103,9 +106,23 @@ export default function LiveSeatMap({
         }}
         className={`relative w-12 h-12 rounded-lg border-2 flex items-center justify-center font-bold text-xs transition-all duration-300 shrink-0 ${seatClass}`}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          {seat.name}
-        </div>
+        {isOccupied && occupantData && occupantData[seat.id] ? (
+          <div className="w-full h-full rounded-[inherit] overflow-hidden">
+            {occupantData[seat.id].profilePhotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={occupantData[seat.id].profilePhotoUrl!} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
+                {occupantData[seat.id].name.charAt(0)}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            {seat.name}
+          </div>
+        )}
+        
         {seat.hasLocker && (
           <div className="absolute -top-3 -right-2 bg-foreground text-background p-0.5 rounded-full shadow-lg z-10">
             <Lock className="w-2.5 h-2.5" />
@@ -127,7 +144,7 @@ export default function LiveSeatMap({
         centerOnInit={true}
         wheel={{ step: 0.1 }}
       >
-        <TransformComponent wrapperClass="!w-full !h-[300px] cursor-grab active:cursor-grabbing">
+        <TransformComponent wrapperClass={`!w-full ${compactMode ? '!h-[300px]' : '!h-[calc(100vh-250px)]'} cursor-grab active:cursor-grabbing`}>
           <div className="w-full h-full p-8 flex items-center justify-center">
             <div className="w-max mx-auto flex flex-col gap-3 transition-transform duration-500 ease-out">
               {Array.from({ length: maxY + 1 }).map((_, y) => (
