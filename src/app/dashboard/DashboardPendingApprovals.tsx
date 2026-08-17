@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { approveReceptionPayment } from "@/app/actions/student-actions"
+import { calculateBookingTotal } from "@/lib/pricing-utils"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import {
@@ -69,9 +70,9 @@ export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprova
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {booking.student?.phone || booking.student?.email}
                   </p>
-                  <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-wider">
-                    {booking.plan?.name} • ₹{booking.plan?.price}
-                  </p>
+                  <div className="text-[11px] font-medium text-slate-500 mt-0.5">
+                    {booking.plan?.name} • ₹{calculateBookingTotal(booking)}
+                  </div>
                 </div>
                 <Button 
                   size="sm" 
