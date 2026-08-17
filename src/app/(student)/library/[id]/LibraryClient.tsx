@@ -601,11 +601,10 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
       return a - b;
     });
 
-  const availableMonths = Array.from(
+  const availableDurations = Array.from(
     new Set(
-      library.plans.map((plan) =>
-        Math.max(1, Math.round(plan.validityDays / 30))),
-    ),
+      library.plans.map((plan) => plan.validityDays)
+    )
   ).sort((a, b) => a - b);
 
   const filteredPlans = library.plans
@@ -613,7 +612,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     .filter(
       (plan) =>
         monthFilter === "ALL"
-        || Math.max(1, Math.round(plan.validityDays / 30)) === monthFilter,
+        || plan.validityDays === monthFilter
     )
     .sort((a, b) => {
       const priceA = a.discount ? a.price - (a.price * a.discount / 100) : a.price;
@@ -766,25 +765,30 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                   onClick={() => setMonthFilter("ALL")}
                   className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${monthFilter === "ALL" ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 >
-                  All Months
+                  All Durations
                 </button>
-                {availableMonths.map((m) => (
-                  <button 
-                    key={m}
-                    onClick={() => setMonthFilter(m)}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${monthFilter === m ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-                  >
-                    {m} Month{m > 1 ? 's' : ''}
-                  </button>
-                ))}
+                {availableDurations.map((d) => {
+                  const isDaily = d < 30;
+                  const label = isDaily ? `${d} Day${d > 1 ? 's' : ''}` : `${Math.max(1, Math.round(d / 30))} Month${Math.round(d / 30) > 1 ? 's' : ''}`;
+                  return (
+                    <button 
+                      key={d}
+                      onClick={() => setMonthFilter(d)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${monthFilter === d ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="grid grid-cols-1 gap-3 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
                 {filteredPlans.map((plan) => {
                   const isSelected = selectedPlan?.id === plan.id;
                   const finalPrice = plan.discount ? plan.price - (plan.price * plan.discount / 100) : plan.price;
-                  const months = Math.max(1, Math.round(plan.validityDays / 30));
-                  const perMonth = (finalPrice / months).toFixed(0);
+                  const isDaily = plan.validityDays < 30;
+                  const months = isDaily ? 0 : Math.max(1, Math.round(plan.validityDays / 30));
+                  const perMonth = isDaily ? finalPrice.toFixed(0) : (finalPrice / months).toFixed(0);
                   const isFullDay = plan.durationHours === null;
                   
                   return (
@@ -814,7 +818,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           {/* Title & Subtitle */}
                           <div className="mb-2">
                             <h3 className={`text-[22px] md:text-[24px] font-black tracking-tight leading-none transition-colors truncate group-hover:text-primary ${isSelected ? 'text-primary' : 'text-slate-900'}`}>
-                              {months} Month{months > 1 ? 's' : ''}
+                              {isDaily ? `${plan.validityDays} Day${plan.validityDays > 1 ? 's' : ''}` : `${months} Month${months > 1 ? 's' : ''}`}
                             </h3>
                             <div className="text-[13px] font-bold text-slate-700 mt-2 truncate bg-primary/10 inline-block px-2 py-0.5 rounded text-primary">
                               {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
@@ -850,10 +854,10 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
                           <div className="flex items-baseline justify-end gap-0.5 mb-1.5 truncate w-full">
                             <span className="text-[16px] font-bold text-slate-900">₹</span>
                             <span className="text-[32px] font-black tracking-tighter text-slate-900">{perMonth}</span>
-                            <span className="text-[12px] font-bold text-slate-500">/mo</span>
+                            {!isDaily && <span className="text-[12px] font-bold text-slate-500">/mo</span>}
                           </div>
                           <div className="text-[12px] font-semibold text-slate-500 leading-tight flex flex-col items-end gap-1 mt-1 truncate w-full">
-                            <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>
+                            {!isDaily && <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>}
                             {(plan.discount ?? 0) > 0 && (
                               <span className="line-through opacity-60 text-muted-foreground truncate w-full text-right">₹{plan.price.toFixed(0)}</span>
                             )}
