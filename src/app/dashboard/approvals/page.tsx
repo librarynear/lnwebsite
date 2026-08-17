@@ -2,6 +2,7 @@ import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import ApprovalActions from "./ApprovalActions";
+import StudentProfileTrigger from "./StudentProfileTrigger";
 import { AlertTriangle, UserCheck, ShieldCheck, Phone, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { getActiveLibrary } from "@/lib/dashboard-utils";
 import { formatStandardDate } from "@/lib/date-utils";
@@ -60,9 +61,12 @@ export default async function PendingApprovalsPage() {
                 {pendingBookings.map((b) => (
                   <tr key={b.id} className="hover:bg-muted/10 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-foreground">{b.student.name}</div>
-                      <div className="text-xs text-muted-foreground">{b.student.email || "No Email"}</div>
-                      {b.student.phone && <div className="text-xs text-muted-foreground">{b.student.phone}</div>}
+                      <StudentProfileTrigger studentId={b.studentId}>
+                        <div className="font-medium text-primary hover:underline">{b.student.name}</div>
+                        <div className="text-xs font-semibold text-muted-foreground mt-0.5">FD ID: {b.student.uniqueId}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{b.student.email || "No Email"}</div>
+                        {b.student.phone && <div className="text-xs text-muted-foreground">{b.student.phone}</div>}
+                      </StudentProfileTrigger>
                     </td>
                     <td className="p-4">
                       <div className="font-medium text-foreground">{b.plan.name}</div>

@@ -167,7 +167,9 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
                 <p className="text-sm text-muted-foreground px-4">
                   {error === "No active subscription found for this library." 
                     ? "Your plan has expired. Please renew your plan to generate an access QR code." 
-                    : error}
+                    : !libraryId
+                      ? "You don't have an active plan. Explore our libraries and book a plan to get started!"
+                      : error}
                 </p>
               </div>
               <div className="flex gap-3 mt-4 w-full px-6">
@@ -178,7 +180,7 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
                   </Button>
                 ) : (
                   <Button className="flex-1 font-bold" asChild>
-                    <a href="/student/dashboard">Dashboard</a>
+                    <a href="/libraries">Explore Libraries</a>
                   </Button>
                 )}
               </div>

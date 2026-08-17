@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { evaluateBookingSelection } from '../evaluate-selection';
