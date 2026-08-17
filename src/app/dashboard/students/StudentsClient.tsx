@@ -947,13 +947,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
               className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'INACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('INACTIVE')}
             >
-              Inactive ({tabCounts.inactive})
+              Expired ({tabCounts.inactive})
             </button>
             <button
               className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('EXPIRED')}
             >
-              Expired ({tabCounts.expired})
+              Inactive ({tabCounts.expired})
             </button>
             <button
               className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'REVOKED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
@@ -1015,7 +1015,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
                     let statusBadge = null;
                     if (isExpired) {
-                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">EXPIRED</span>;
+                      statusBadge = <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-destructive/10 text-destructive">INACTIVE</span>;
                     } else if (booking.status === 'CANCELLED') {
                       statusBadge = (
                         <div className="flex flex-col gap-1 items-start">
@@ -1280,7 +1280,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
 
                     let statusBadge = null;
                     if (isExpired) {
-                      statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">EXPIRED</span>;
+                      statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">INACTIVE</span>;
                     } else if (booking.status === 'CANCELLED') {
                       statusBadge = <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">REVOKED</span>;
                     } else if (booking.status === 'CONFIRMED') {
@@ -1842,7 +1842,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                 <div className="flex justify-between items-center text-sm pb-3 border-b border-primary/10">
                   <span className="text-muted-foreground">Current Expiry:</span>
                   {new Date(renewBookingData.endTime) < new Date() ? (
-                    <span className="font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded text-xs">Expired</span>
+                    <span className="font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded text-xs">Inactive</span>
                   ) : (
                     <span className="font-medium text-foreground">{formatStandardDate(renewBookingData.endTime)}</span>
                   )}
@@ -2218,14 +2218,14 @@ function CrmNoteEditor({
   const [note, setNote] = useState(initialNote);
   const [isSaving, setIsSaving] = useState(false);
   
-  const handleSave = async (expiredState?: boolean) => {
-    if (expiredState === true && !note.trim()) {
-      toast.error("A note is required to mark as expired.");
+  const handleSave = async (inactiveState?: boolean) => {
+    if (inactiveState === true && !note.trim()) {
+      toast.error("A note is required to mark as inactive.");
       return;
     }
     setIsSaving(true);
     try {
-      const res = await updateCrmNote(studentId, note, expiredState);
+      const res = await updateCrmNote(studentId, note, inactiveState);
       if (res.success) {
         toast.success("Note updated");
         onUpdate();
@@ -2264,7 +2264,7 @@ function CrmNoteEditor({
             onClick={() => handleSave(true)}
             disabled={isSaving || !note.trim()}
           >
-            Mark as Expired
+            Mark as Inactive
           </Button>
         )}
       </div>
