@@ -1,4 +1,5 @@
 import { formatStandardDate } from "@/lib/date-utils";
+import { calculateBookingTotal } from "@/lib/pricing-utils";
 import { getSession } from "@/app/actions/auth-actions";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -79,23 +80,12 @@ export default async function FinancialsPage({
 
   let totalRealizedRevenue = 0;
   bookings.forEach(b => {
-    let price = b.plan.price;
-    if (b.plan.discount) {
-      price = price - (price * b.plan.discount / 100);
-    }
-    totalRealizedRevenue += price;
-    if (b.standaloneLocker) {
-      totalRealizedRevenue += b.standaloneLocker.price;
-    }
+    totalRealizedRevenue += calculateBookingTotal(b);
   });
 
   let totalLostRevenue = 0;
   cancelledBookings.forEach(b => {
-    let price = b.plan.price;
-    if (b.plan.discount) {
-      price = price - (price * b.plan.discount / 100);
-    }
-    totalLostRevenue += price;
+    totalLostRevenue += calculateBookingTotal(b);
   });
 
   const suspiciousRevocations = cancelledBookings.filter(b => {
