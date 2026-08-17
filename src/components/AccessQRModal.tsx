@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { generateEntryQR } from "@/app/actions/hardware-actions";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 import confetti from "canvas-confetti";
 
