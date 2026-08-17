@@ -15,8 +15,9 @@ interface PlanCardProps {
 export function PlanCard({ plan, isSelected = false, onClick, className = '' }: PlanCardProps) {
   const discount = plan.discount ?? 0;
   const finalPrice = discount ? plan.price - (plan.price * discount / 100) : plan.price;
-  const months = Math.max(1, Math.round(plan.validityDays / 30));
-  const perMonth = (finalPrice / months).toFixed(0);
+  const isDaily = plan.validityDays < 30;
+  const months = isDaily ? 0 : Math.max(1, Math.round(plan.validityDays / 30));
+  const perMonth = isDaily ? finalPrice.toFixed(0) : (finalPrice / months).toFixed(0);
   const isFullDay = plan.durationHours === null;
   
   return (
@@ -37,7 +38,7 @@ export function PlanCard({ plan, isSelected = false, onClick, className = '' }: 
           {/* Title & Subtitle */}
           <div className="mb-2">
             <h3 className={`text-[22px] md:text-[24px] font-black tracking-tight leading-none transition-colors truncate group-hover:text-primary ${isSelected ? 'text-primary' : 'text-slate-900 group-aria-[selected=true]:text-primary'}`}>
-              {months} Month{months > 1 ? 's' : ''}
+              {isDaily ? `${plan.validityDays} Day${plan.validityDays > 1 ? 's' : ''}` : `${months} Month${months > 1 ? 's' : ''}`}
             </h3>
             <div className="text-[13px] font-bold text-slate-700 mt-2 truncate bg-primary/10 inline-block px-2 py-0.5 rounded text-primary">
               {isFullDay ? 'Full Day Access' : `${plan.durationHours} Hrs Daily`}
@@ -73,10 +74,10 @@ export function PlanCard({ plan, isSelected = false, onClick, className = '' }: 
           <div className="flex items-baseline justify-end gap-0.5 mb-1.5 truncate w-full">
             <span className="text-[16px] font-bold text-slate-900">₹</span>
             <span className="text-[32px] font-black tracking-tighter text-slate-900">{perMonth}</span>
-            <span className="text-[12px] font-bold text-slate-500">/mo</span>
+            {!isDaily && <span className="text-[12px] font-bold text-slate-500">/mo</span>}
           </div>
           <div className="text-[12px] font-semibold text-slate-500 leading-tight flex flex-col items-end gap-1 mt-1 truncate w-full">
-            <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>
+            {!isDaily && <span className="truncate w-full text-right">Total ₹{finalPrice.toFixed(0)}</span>}
             {discount > 0 && (
               <span className="line-through opacity-60 text-muted-foreground truncate w-full text-right">₹{plan.price.toFixed(0)}</span>
             )}
