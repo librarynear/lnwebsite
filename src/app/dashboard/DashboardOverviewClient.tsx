@@ -506,9 +506,14 @@ export function DashboardOverviewClient({
                             </div>
                           </td>
                           <td className="px-8 py-5">
-                            <div className="flex items-center justify-between w-full">
-                              <span className={`text-[14px] font-bold ${student.overstayHrs > 0.5 ? 'text-rose-600' : 'text-slate-400'}`}>{student.totalHrs}</span>
-                              <button className="text-[13px] font-bold text-slate-400 group-hover:text-[#0085FF] flex items-center transition-colors">
+                            <div className="flex items-start justify-between w-full">
+                              <div className="flex flex-col">
+                                <span className={`text-[14px] font-bold ${(student.todayHrs - student.optedHrs) > 0.5 ? 'text-rose-600' : 'text-slate-400'}`}>{student.totalHrs}</span>
+                                {(student.todayHrs - student.optedHrs) > 0.5 && (
+                                  <span className="text-[10px] font-black uppercase text-rose-500 tracking-widest mt-0.5">Overstaying</span>
+                                )}
+                              </div>
+                              <button className="text-[13px] font-bold text-slate-400 group-hover:text-[#0085FF] flex items-center transition-colors mt-0.5">
                                  <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-[#0085FF]' : ''}`} />
                               </button>
                             </div>

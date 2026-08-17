@@ -281,6 +281,7 @@ export default async function LibrarianDashboardPage() {
     sortedEvents.reverse();
 
     let totalHrs = "0h 0m";
+    let todayHrs = 0;
     if (firstIn) {
       const endTime = lastOut ? new Date(lastOut.timestamp).getTime() : new Date().getTime();
       const startTime = new Date(firstIn.timestamp).getTime();
@@ -308,6 +309,7 @@ export default async function LibrarianDashboardPage() {
       const hrs = Math.floor(diffMins / 60);
       const mins = diffMins % 60;
       totalHrs = `${hrs}h ${mins}m`;
+      todayHrs = diffMins / 60;
     }
 
     const avgData = studentAvgMap.get(student.studentId) || { avgHrs: 0, optedHrs: 24, overstayHrs: 0, image: null };
@@ -320,6 +322,7 @@ export default async function LibrarianDashboardPage() {
       firstIn: firstIn ? new Date(firstIn.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '-',
       lastOut: lastOut ? new Date(lastOut.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : 'Still In',
       totalHrs,
+      todayHrs,
       avgHrs: avgData.avgHrs,
       optedHrs: avgData.optedHrs,
       overstayHrs: avgData.overstayHrs,
