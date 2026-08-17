@@ -20,23 +20,17 @@ export async function NavbarAuth() {
       take: 20
     });
     
-    // Find if the user has an active booking to show the QR Code icon
+    // Find the user's most recent booking to provide library context for the QR Code icon
     activeBooking = await prisma.booking.findFirst({
-      where: {
-        studentId: session.userId,
-        status: "CONFIRMED",
-        startTime: { lte: new Date() },
-        endTime: { gt: new Date() }
-      }
+      where: { studentId: session.userId },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
   if (session && user) {
     return (
       <div className="flex items-center gap-1 sm:gap-2">
-        {activeBooking && (
-          <AccessQRModal libraryId={activeBooking.libraryId} studentId={session.userId} iconOnly />
-        )}
+        <AccessQRModal libraryId={activeBooking?.libraryId || ""} studentId={session.userId} iconOnly />
         <NotificationBell notifications={notifications} />
         <UserNav user={user} />
       </div>

@@ -158,9 +158,30 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
               <p className="text-sm text-muted-foreground animate-pulse">Generating Secure Code...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center gap-4 py-8 text-destructive">
-              <p className="font-semibold">{error}</p>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
+            <div className="flex flex-col items-center gap-6 py-8">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-2">
+                <QrCode className="w-10 h-10 text-rose-500 opacity-50" />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-bold text-foreground">No Active Booking</h3>
+                <p className="text-sm text-muted-foreground px-4">
+                  {error === "No active subscription found for this library." 
+                    ? "Your plan has expired. Please renew your plan to generate an access QR code." 
+                    : error}
+                </p>
+              </div>
+              <div className="flex gap-3 mt-4 w-full px-6">
+                <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)}>Close</Button>
+                {libraryId ? (
+                  <Button className="flex-1 font-bold" asChild>
+                    <a href={`/library/${libraryId}`}>Renew Plan</a>
+                  </Button>
+                ) : (
+                  <Button className="flex-1 font-bold" asChild>
+                    <a href="/student/dashboard">Dashboard</a>
+                  </Button>
+                )}
+              </div>
             </div>
           ) : showSuccess ? (
             <motion.div 
