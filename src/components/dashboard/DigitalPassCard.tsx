@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Flame, Key, User as UserIcon } from 'lucide-react';
 import { AccessQRModal } from '@/components/AccessQRModal';
 
@@ -17,48 +16,13 @@ interface DigitalPassCardProps {
 }
 
 export function DigitalPassCard({ student, currentStreak, libraryId, studentId, isCheckedIn }: DigitalPassCardProps) {
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-      // Very subtle tilt: limit between -15 and 15 degrees
-      let beta = event.beta || 0; // x-axis (-180 to 180)
-      let gamma = event.gamma || 0; // y-axis (-90 to 90)
-      
-      // clamp
-      beta = Math.max(-15, Math.min(15, beta));
-      gamma = Math.max(-15, Math.min(15, gamma));
-      
-      setTilt({ x: beta, y: gamma });
-    };
-
-    if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
-      window.addEventListener('deviceorientation', handleOrientation);
-    }
-    
-    return () => {
-      if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
-        window.removeEventListener('deviceorientation', handleOrientation);
-      }
-    };
-  }, []);
-
   return (
     <div 
-      ref={cardRef}
-      className="bg-card rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative group transition-transform duration-200"
-      style={{
-        transform: `perspective(1000px) rotateX(${-tilt.x}deg) rotateY(${tilt.y}deg)`,
-        transformStyle: 'preserve-3d'
-      }}
+      className="bg-card rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative group"
     >
       {/* Subtle Holographic glare effect */}
       <div 
-        className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none transition-transform duration-75"
-        style={{
-          transform: `translateX(${tilt.y * 2}%) translateY(${tilt.x * 2}%)`
-        }}
+        className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"
       />
 
       {/* Streak header banner inside card */}
