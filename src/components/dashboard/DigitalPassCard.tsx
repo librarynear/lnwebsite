@@ -25,17 +25,16 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
         className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"
       />
 
-      {/* Streak header banner inside card */}
-      <div className="bg-gradient-to-r from-orange-500/10 to-orange-400/10 border-b border-orange-500/20 px-6 py-3 flex items-center justify-between">
-        <span className="font-heading font-bold text-sm tracking-wide text-orange-600 dark:text-orange-400">Activity Streak</span>
-        <div className="flex items-center gap-1.5 bg-background rounded-full px-3 py-1 shadow-sm border border-orange-500/20 text-orange-600 dark:text-orange-400 font-bold text-sm">
-          <Flame className="w-4 h-4 fill-current animate-pulse" />
+      {/* Floating Streak Badge */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg border border-white/10">
+        <Flame className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+        <span className="bg-gradient-to-r from-orange-400 to-rose-400 bg-clip-text text-transparent font-bold text-xs uppercase tracking-wider">
           {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
-        </div>
+        </span>
       </div>
 
       {/* Profile Info */}
-      <div className="p-6 pb-4 flex flex-col items-center text-center relative z-10" style={{ transform: 'translateZ(20px)' }}>
+      <div className="pt-10 px-6 pb-4 flex flex-col items-center text-center relative z-10" style={{ transform: 'translateZ(20px)' }}>
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4 shadow-inner ring-4 ring-background relative">
           {student.profilePhotoUrl ? (
             <img src={student.profilePhotoUrl} alt={student.name || ''} className="w-full h-full rounded-full object-cover" />
@@ -61,9 +60,12 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
               if (navigator.vibrate) navigator.vibrate(15);
             }}
           >
-            {/* Vibrant flowing gradient instead of QR blur */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-purple-500/80 to-orange-500/80 bg-[length:200%_200%] animate-liquid opacity-90" />
-            <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" />
+            {/* Faded QR Mockup */}
+            <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-contain bg-center bg-no-repeat opacity-[0.15] scale-110" />
+            
+            {/* Vibrant flowing gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-purple-500/60 to-orange-500/60 bg-[length:200%_200%] animate-liquid mix-blend-overlay" />
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" />
             
             <div className="absolute inset-0 flex flex-col items-center justify-center transition-all">
               <div className="bg-background/90 text-foreground text-xs font-bold px-4 py-2 rounded-full shadow-xl border border-border backdrop-blur-md flex items-center gap-2">
