@@ -1,6 +1,10 @@
 export function calculateBookingTotal(booking: any) {
   if (!booking.plan) return 0;
   
+  if (booking.bookingIntent?.expectedAmountPaise !== undefined) {
+    return Math.round(booking.bookingIntent.expectedAmountPaise / 100);
+  }
+  
   const basePrice = booking.plan.discount 
     ? booking.plan.price - (booking.plan.price * booking.plan.discount / 100) 
     : booking.plan.price;

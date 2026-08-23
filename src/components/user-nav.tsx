@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, User, Heart, Calendar, LayoutDashboard } from "lucide-react"
+import { LogOut, User, Heart, Calendar, LayoutDashboard, Share2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +70,23 @@ export function UserNav({ user }: { user: UserRecord }) {
           <DropdownMenuItem onClick={() => router.push("/student/saved")} className="rounded-lg cursor-pointer py-2.5 focus:bg-muted focus:text-black text-black">
             <Heart className="mr-3 h-[18px] w-[18px] text-muted-foreground" />
             <span className="font-medium text-[14px]">Saved libraries</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: 'FocusX - Best Library Booking App',
+                  text: 'Check out FocusX, the easiest way to find and book library seats!',
+                  url: window.location.origin,
+                }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(window.location.origin);
+              }
+            }} 
+            className="rounded-lg cursor-pointer py-2.5 focus:bg-muted focus:text-black text-black"
+          >
+            <Share2 className="mr-3 h-[18px] w-[18px] text-muted-foreground" />
+            <span className="font-medium text-[14px]">Refer & Share</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator className="bg-border/60 mx-1 my-1" />

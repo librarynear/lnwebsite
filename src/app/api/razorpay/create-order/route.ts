@@ -26,6 +26,8 @@ type CheckoutBody = {
   standaloneLockerId?: unknown
   idToken?: unknown
   idempotencyKey?: unknown
+  operation?: unknown
+  sourceBookingId?: unknown
 }
 
 function getAppUrl(req: NextRequest): string {
@@ -140,6 +142,8 @@ export async function POST(req: NextRequest) {
       standaloneLockerId,
       hasLocker,
       idempotencyKey: suppliedIdempotencyKey,
+      operation: typeof body.operation === "string" ? (body.operation as any) : undefined,
+      sourceBookingId: typeof body.sourceBookingId === "string" ? body.sourceBookingId : undefined,
     })
     createdIntentId = intent.id
 

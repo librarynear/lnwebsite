@@ -18,7 +18,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
       {/* Top Navbar */}
       <header className="navbar-sticky sticky top-0 z-50 w-full border-b border-border bg-white transition-transform duration-300 ease-in-out">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20 md:px-10">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/?explore=true" className="flex items-center gap-2 group">
             <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-2xl tracking-tight hidden sm:block">
               <span className="text-primary font-heading font-bold text-[22px]">FocusX</span>

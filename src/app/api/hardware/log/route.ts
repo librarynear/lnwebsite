@@ -62,17 +62,20 @@ export async function POST(request: Request) {
           finalUserId = null;
         }
       } else if (finalUserId && isUUID(finalUserId)) {
-        // It's a valid UUID. If the reason is 'Unknown RFID', the hardware knew the UUID
-        // but rejected it (likely because they aren't in the active cache). Let's fetch the name.
-        if (finalReason === "Unknown RFID" || finalReason === "Unregistered RFID") {
-          const userById = await prisma.user.findUnique({
-            where: { id: finalUserId }
-          });
-          if (userById) {
+        // It's a valid UUID. Let's verify it actually exists in our database
+        // to prevent foreign key constraint failures on EntryLog insertion.
+        const userById = await prisma.user.findUnique({
+          where: { id: finalUserId }
+        });
+        
+        if (userById) {
+          if (finalReason === "Unknown RFID" || finalReason === "Unregistered RFID") {
             finalReason = `Access Denied: Inactive/Expired Plan (${userById.name || 'Unknown User'})`;
-          } else {
-            finalReason = "Access Denied: Inactive/Expired Plan";
           }
+        } else {
+          // The UUID does not exist (perhaps deleted). Fallback to null to prevent FK error.
+          finalReason = finalReason ? `${finalReason} (Invalid ID: ${finalUserId})` : `Invalid ID: ${finalUserId}`;
+          finalUserId = null;
         }
       }
 

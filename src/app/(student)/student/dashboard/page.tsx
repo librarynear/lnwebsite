@@ -1,4 +1,5 @@
-import { Calendar, Clock, MapPin, User as UserIcon, BookOpen, Key } from "lucide-react";
+import { Calendar, Clock, MapPin, User as UserIcon, BookOpen, Key, Flame } from "lucide-react";
+import { FocusActivityCalendar } from "./FocusActivityCalendar";
 import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
@@ -6,7 +7,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PauseResumeButton from "./PauseResumeButton";
 import BookingSuccessToast from "./BookingSuccessToast";
-import LocateSeatModal from "./LocateSeatModal";
 import ExtendPlanModal from "./ExtendPlanModal";
 import { AccessQRModal } from "@/components/AccessQRModal";
 
@@ -23,7 +23,7 @@ export default async function StudentDashboardPage() {
 
   const now = new Date();
 
-  const [student, allBookings, latestLog] = await Promise.all([
+  const [student, allBookings, recentLogs] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
     }),
@@ -38,9 +38,12 @@ export default async function StudentDashboardPage() {
       take: 50,
       orderBy: { createdAt: 'desc' }
     }),
-    prisma.checkinLog.findFirst({
-      where: { studentId: session.userId },
-      orderBy: { timestamp: 'desc' }
+    prisma.checkinLog.findMany({
+      where: { 
+        studentId: session.userId,
+        timestamp: { gte: new Date(new Date().setDate(now.getDate() - 35)) }
+      },
+      orderBy: { timestamp: 'asc' }
     })
   ]);
 
@@ -48,6 +51,41 @@ export default async function StudentDashboardPage() {
 
   const activeBookings = allBookings.filter(b => b.endTime > now && b.status !== 'CANCELLED');
   const pastBookings = allBookings.filter(b => b.endTime <= now || b.status === 'CANCELLED');
+
+  // Calculate Streak
+  let currentStreak = 0;
+  const uniqueCheckinDates = new Set(
+    recentLogs
+      .filter(l => l.status === 'CHECK_IN')
+      .map(l => new Date(l.timestamp).toISOString().split('T')[0])
+  );
+  
+  const todayStr = now.toISOString().split('T')[0];
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  let checkDate = new Date();
+  if (uniqueCheckinDates.has(todayStr)) {
+    // start from today
+  } else if (uniqueCheckinDates.has(yesterdayStr)) {
+    // start from yesterday
+    checkDate = yesterday;
+  } else {
+    checkDate = null as any; // no streak
+  }
+
+  if (checkDate) {
+    while (true) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      if (uniqueCheckinDates.has(dateStr)) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+  }
 
   const calculateTotalAmount = (booking: typeof allBookings[0]) => {
     let displayAmount = 0;
@@ -72,9 +110,6 @@ export default async function StudentDashboardPage() {
       }
       displayAmount = Math.round(basePrice + lockerCost + premiumCost);
     }
-    return displayAmount;
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Suspense fallback={null}><BookingSuccessToast /></Suspense>
@@ -82,8 +117,36 @@ export default async function StudentDashboardPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Profile Card */}
+        {/* Left Column: Pass, Streak, Profile, Calendar */}
         <div className="lg:col-span-1 space-y-6">
+          
+          {/* Digital Pass & Streak Card */}
+          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm flex flex-col items-center relative overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors">
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+            <AccessQRModal 
+              libraryId={activeBookings[0]?.libraryId || ""} 
+              studentId={session.userId}
+              isCheckedIn={recentLogs.length > 0 && recentLogs[recentLogs.length - 1].status === 'CHECK_IN' && recentLogs[recentLogs.length - 1].libraryId === activeBookings[0]?.libraryId}
+            >
+              <div className="w-full flex flex-col items-center">
+                <div className="w-24 h-24 bg-white rounded-xl p-2 shadow-sm border border-border mb-3 relative overflow-hidden group-hover:shadow-md transition-shadow">
+                  {/* Mock QR pattern for the collapsed state */}
+                  <div className="w-full h-full bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-contain bg-center opacity-80" />
+                  <div className="absolute inset-0 bg-black/5 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
+                    <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full">Tap to Expand</span>
+                  </div>
+                </div>
+                <h3 className="font-heading font-black text-xl text-foreground mb-1 tracking-tight">Digital Pass</h3>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active Subscription</p>
+              </div>
+            </AccessQRModal>
+            
+            <div className="mt-6 flex items-center gap-2 bg-orange-500/10 text-orange-600 dark:text-orange-400 px-4 py-2 rounded-full border border-orange-500/20 shadow-sm relative z-10">
+              <Flame className="w-5 h-5 fill-current animate-pulse" />
+              <span className="font-bold text-sm">{currentStreak} Day Study Streak</span>
+            </div>
+          </div>
+
           <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
@@ -118,13 +181,13 @@ export default async function StudentDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Focus Activity Calendar */}
+          <FocusActivityCalendar logs={recentLogs} />
         </div>
 
         {/* Bookings Section */}
         <div className="lg:col-span-2 space-y-8">
-          
-          {/* Active Bookings */}
-          <div>
             <h2 className="text-2xl font-heading font-bold text-foreground mb-4">Active Bookings</h2>
             
             {activeBookings.length === 0 ? (
@@ -192,17 +255,7 @@ export default async function StudentDashboardPage() {
                         </div>
 
                         <div className="flex gap-3 sm:flex-col items-center sm:items-center justify-center sm:justify-center shrink-0 border-t sm:border-t-0 sm:border-l border-border pt-5 sm:pt-0 sm:pl-5 w-full sm:w-[140px]">
-                          {booking.seat ? (
-                            <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
-                              <p className="text-[10px] text-primary uppercase tracking-widest font-bold mb-0.5">Seat</p>
-                              <p className="text-2xl font-black text-primary">{booking.seat.name}</p>
-                            </div>
-                          ) : (
-                            <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Seat</p>
-                              <p className="text-sm font-bold text-foreground mt-1">FLEXIBLE</p>
-                            </div>
-                          )}
+                          {/* Seat display removed as per user request */}
 
                           {booking.hasLocker && (
                             <div className="bg-transparent border border-border px-5 py-3 rounded-xl text-center min-w-[90px]">
@@ -217,7 +270,7 @@ export default async function StudentDashboardPage() {
                     </div>
 
                     {/* Action Footer */}
-                    <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-4 bg-muted/20 border-t border-border grid grid-cols-2 sm:grid-cols-5 gap-3">
                       <PauseResumeButton bookingId={booking.id} isPaused={booking.isPaused} />
                       <ExtendPlanModal 
                         libraryId={booking.libraryId}
@@ -226,18 +279,14 @@ export default async function StudentDashboardPage() {
                         standaloneLockerId={booking.standaloneLockerId}
                         studentId={session.userId}
                       />
-                      <LocateSeatModal 
-                        libraryId={booking.libraryId} 
-                        targetSeatId={booking.seatId} 
-                        isFlexible={booking.plan.type === "FLEXIBLE"} 
-                      />
-                      {booking.status === 'CONFIRMED' && (
-                        <AccessQRModal 
-                          libraryId={booking.libraryId} 
-                          studentId={session.userId}
-                          isCheckedIn={latestLog?.status === 'CHECK_IN' && latestLog?.libraryId === booking.libraryId} 
-                        />
-                      )}
+                      <Link
+                        href={`/library/${booking.libraryId}?upgrade=${booking.id}`}
+                        className="w-full text-primary hover:text-primary/80 text-sm font-medium py-2 rounded-xl transition-colors flex items-center justify-center gap-2 hover:bg-primary/10 border border-primary/20 bg-primary/5"
+                        title="Upgrade to a better plan"
+                      >
+                        Upgrade Plan
+                      </Link>
+                      {/* AccessQRModal removed from footer, now at the top of the dashboard */}
                     </div>
                   </div>
                   );
@@ -265,9 +314,15 @@ export default async function StudentDashboardPage() {
                         </span>
                       </div>
                     </div>
-                    <Link href={`/library/${booking.libraryId}`} className="text-sm font-medium text-primary hover:underline self-start sm:self-center shrink-0">
-                      Book Again
-                    </Link>
+                    <div className="shrink-0">
+                      <ExtendPlanModal 
+                        libraryId={booking.libraryId}
+                        planId={booking.planId}
+                        seatId={booking.seatId}
+                        standaloneLockerId={booking.standaloneLockerId}
+                        studentId={session.userId}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

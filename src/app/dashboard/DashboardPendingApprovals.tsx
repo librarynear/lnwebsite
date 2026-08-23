@@ -13,8 +13,11 @@ import {
 } from "@/components/ui/dialog"
 import Link from "next/link"
 
+import StudentProfileTrigger from "@/app/dashboard/approvals/StudentProfileTrigger"
+
 interface PendingApproval {
   id: string;
+  studentId: string;
   student?: {
     name: string;
     phone: string | null;
@@ -66,7 +69,9 @@ export function DashboardPendingApprovals({ pendingApprovals }: { pendingApprova
             pendingApprovals.map((booking, index) => (
               <div key={booking.id} className="flex justify-between items-center p-4 border border-border rounded-xl hover:bg-muted/30 transition-colors">
                 <div>
-                  <p className="text-sm font-bold text-foreground">#{index + 1}. {booking.student?.name || 'Unknown'}</p>
+                  <StudentProfileTrigger studentId={booking.studentId}>
+                    <p className="text-sm font-bold text-primary hover:underline cursor-pointer">#{index + 1}. {booking.student?.name || 'Unknown'}</p>
+                  </StudentProfileTrigger>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {booking.student?.phone || booking.student?.email}
                   </p>

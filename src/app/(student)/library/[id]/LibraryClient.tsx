@@ -5,7 +5,7 @@ import {
   MapPin, Check, Loader2, Clock, Phone, Navigation, Lock, Share, Heart,
   Snowflake, Droplet, Video, Car, ShieldCheck, VolumeX, Wifi, Bath, Coffee, Plug, CheckCircle2 
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LibraryPhotoGallery } from "@/components/library-photo-gallery"
 import { InquiryForm } from "./InquiryForm";
 import dynamic from "next/dynamic"
@@ -161,7 +161,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   
   const [selectedStandaloneLockerId, setSelectedStandaloneLockerId] = useState<string>("");
   
-  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION">("ONLINE");
+  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "RECEPTION" | null>(null);
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   
   // Feedback State
@@ -435,8 +435,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
 
   const totalAmount = Math.round(planPrice + lockerCost + premiumSurcharge);
 
+  const searchParams = useSearchParams();
+  const upgradeBookingId = searchParams.get('upgrade');
+
   let startDate = new Date();
-  if (dynamicState.currentPlanEndDate) {
+  if (dynamicState.currentPlanEndDate && !upgradeBookingId) {
     startDate = new Date(dynamicState.currentPlanEndDate);
   }
   const endDate = new Date(startDate);
@@ -470,6 +473,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
         !seatHasMandatoryLocker && selectedStandaloneLockerId
           ? selectedStandaloneLockerId
           : null,
+      upgradeBookingId,
     });
     if (checkoutIdempotencyRef.current?.fingerprint !== checkoutFingerprint) {
       checkoutIdempotencyRef.current = {
@@ -479,6 +483,20 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
     }
     const idempotencyKey = checkoutIdempotencyRef.current.key;
 
+    const requestBody = {
+      studentId: dynamicState.studentId,
+      libraryId: library.id,
+      seatId: checkoutSeatId,
+      planId: selectedPlan.id,
+      hasLocker: seatHasMandatoryLocker,
+      standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
+      idToken,
+      ...(upgradeBookingId ? {
+        operation: 'UPGRADE_PLAN',
+        sourceBookingId: upgradeBookingId,
+      } : {})
+    };
+
     if (mode === "RECEPTION") {
       try {
         const res = await fetch('/api/checkout/reception', {
@@ -487,15 +505,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
             'Content-Type': 'application/json',
             'Idempotency-Key': idempotencyKey,
           },
-          body: JSON.stringify({
-            studentId: dynamicState.studentId,
-            libraryId: library.id,
-            seatId: checkoutSeatId,
-            planId: selectedPlan.id,
-            hasLocker: seatHasMandatoryLocker,
-            standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
-            idToken
-          })
+          body: JSON.stringify(requestBody)
         });
         const data = await res.json();
         if (data.success) {
@@ -520,13 +530,7 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify({
-          planId: selectedPlan.id,
-          seatId: checkoutSeatId,
-          hasLocker: seatHasMandatoryLocker,
-          standaloneLockerId: !seatHasMandatoryLocker && selectedStandaloneLockerId ? selectedStandaloneLockerId : null,
-          idToken
-        })
+        body: JSON.stringify(requestBody)
       });
       const data = await orderRes.json();
 
@@ -547,6 +551,11 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
   };
 
   const handleCheckout = async (overrideMode?: "ONLINE" | "RECEPTION") => {
+    if (overrideMode === "RECEPTION") {
+      executeCheckout(undefined, "RECEPTION");
+      return;
+    }
+
     if (checkoutLockRef.current) return;
     
     const user = auth.currentUser;
@@ -1015,9 +1024,14 @@ export function LibraryClient({ library, occupiedSeatIds: initialOccupiedSeatIds
               </button>
             </div>
             
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground mt-2">
               You will be asked to select a payment method next.
             </p>
+            {upgradeBookingId && (
+              <p className="text-center text-xs font-medium text-primary mt-2">
+                A prorated credit for your current active plan will be applied automatically at checkout!
+              </p>
+            )}
           </div>
         </div>
 

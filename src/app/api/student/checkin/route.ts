@@ -71,6 +71,16 @@ export async function POST(request: Request) {
     // that the phone passes to the local relay to physically unlock the door over local WiFi/BLE.
     // Or, if the relay is connected to WebSockets/MQTT, the backend would trigger it here.
     
+    // Check duration and notify if they exceeded their limit (only on checkout)
+    if (newStatus === "CHECK_OUT") {
+      // Import dynamically to avoid circular dependencies if any, or just import at top. Wait, better to import at top.
+      // I will use require here for simplicity or replace the whole file. Actually I'll replace the top of the file too.
+      // Wait, I only selected lines 70-80, so I can't import at top. Let's do a multi_replace instead.
+      // Ah, I'll just use a local require:
+      const { checkDurationAndNotify } = require("@/lib/notification-utils");
+      await checkDurationAndNotify(studentId, relay.libraryId);
+    }
+
     return NextResponse.json({ 
       success: true, 
       status: newStatus,

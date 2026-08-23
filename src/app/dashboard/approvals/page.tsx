@@ -96,7 +96,7 @@ export default async function PendingApprovalsPage() {
                       {new Date(b.createdAt).toLocaleString()}
                     </td>
                     <td className="p-4">
-                      <ApprovalActions bookingId={b.id} />
+                      <ApprovalActions bookingId={b.id} totalAmount={calculateBookingTotal(b)} />
                     </td>
                   </tr>
                 ))}

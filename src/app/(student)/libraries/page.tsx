@@ -38,7 +38,11 @@ export default async function LibrariesPage({ searchParams }: LibrariesPageProps
   let libraries: LibraryWithPlans[] | string | null = null;
 
   if (!isNearMe) {
-    libraries = await redis.get<LibraryWithPlans[] | string>(cacheKey);
+    try {
+      libraries = await redis.get<LibraryWithPlans[] | string>(cacheKey);
+    } catch (e) {
+      console.error("Redis get error:", e);
+    }
   }
 
   if (!libraries) {
@@ -62,15 +66,22 @@ export default async function LibrariesPage({ searchParams }: LibrariesPageProps
     });
 
     if (!isNearMe && libraries) {
-      // Cache searches for 1 hour
-      await redis.set(cacheKey, JSON.stringify(libraries), { ex: 60 * 60 });
+      try {
+        await redis.set(cacheKey, JSON.stringify(libraries), { ex: 60 * 60 });
+      } catch (e) {
+        console.error("Redis set error:", e);
+      }
     }
   } else if (typeof libraries === 'string') {
-    const parsed: unknown = JSON.parse(libraries);
-    libraries = Array.isArray(parsed) ? parsed as LibraryWithPlans[] : [];
+    try {
+      const parsed: unknown = JSON.parse(libraries);
+      libraries = Array.isArray(parsed) ? parsed as LibraryWithPlans[] : [];
+    } catch {
+      libraries = [];
+    }
   }
 
-  const visibleLibraries = libraries ?? [];
+  const visibleLibraries = Array.isArray(libraries) ? [...libraries] : [];
 
   // Sort by distance if Near Me is active
   visibleLibraries.sort((a, b) => {

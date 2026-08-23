@@ -53,7 +53,12 @@ export async function GET(req: Request) {
     }
 
     const cacheKey = activeBookingsCacheKey(libraryId);
-    const cachedBookings: unknown = await redis.get(cacheKey);
+    let cachedBookings: unknown = null;
+    try {
+      cachedBookings = await redis.get(cacheKey);
+    } catch (e) {
+      console.error("Redis get error:", e);
+    }
     let activeBookings: ActiveBooking[] = [];
 
     if (!cachedBookings) {
@@ -71,10 +76,18 @@ export async function GET(req: Request) {
           standaloneLockerId: true
         }
       });
-      await redis.set(cacheKey, activeBookings, { ex: 15 });
+      try {
+        await redis.set(cacheKey, activeBookings, { ex: 15 });
+      } catch (e) {
+        console.error("Redis set error:", e);
+      }
     } else if (typeof cachedBookings === 'string') {
-      const parsed: unknown = JSON.parse(cachedBookings);
-      if (isActiveBookingArray(parsed)) activeBookings = parsed;
+      try {
+        const parsed: unknown = JSON.parse(cachedBookings);
+        if (isActiveBookingArray(parsed)) activeBookings = parsed;
+      } catch (e) {
+        console.error("Redis parse error:", e);
+      }
     } else if (isActiveBookingArray(cachedBookings)) {
       activeBookings = cachedBookings;
     }

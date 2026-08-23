@@ -30,6 +30,8 @@ export async function POST(req: Request) {
       hasLocker,
       standaloneLockerId,
       idToken,
+      operation,
+      sourceBookingId,
     } = body;
     const idempotencyKey =
       req.headers.get("idempotency-key")?.trim().slice(0, 128) ?? "";
@@ -139,18 +141,30 @@ export async function POST(req: Request) {
       planId,
       hasLocker: Boolean(hasLocker),
       standaloneLockerId: standaloneLockerId || null,
+      operation: typeof operation === 'string' ? (operation as any) : undefined,
+      sourceBookingId: typeof sourceBookingId === 'string' ? sourceBookingId : undefined,
     };
+    
+    // Parse payment details from body (expected in Paise)
+    const amountPaidCashPaise = body.amountPaidCashPaise ? Number(body.amountPaidCashPaise) : undefined;
+    const amountPaidOnlinePaise = body.amountPaidOnlinePaise ? Number(body.amountPaidOnlinePaise) : undefined;
+    const amountDuePaise = body.amountDuePaise ? Number(body.amountDuePaise) : undefined;
+
     const staffPaymentRef = idempotencyKey
-      ? `RECEPTION_CASH_${crypto
+      ? `RECEPTION_MIXED_${crypto
           .createHash("sha256")
           .update(`${studentId}:${idempotencyKey}`)
           .digest("hex")}`
-      : manualPaymentReference("RECEPTION_CASH");
+      : manualPaymentReference("RECEPTION_MIXED");
+      
     const booking = isLibrarianOrAdmin
       ? await createManualConfirmedBooking({
           ...selection,
           source: BookingIntentSource.RECEPTION,
           paymentRef: staffPaymentRef,
+          amountPaidCashPaise,
+          amountPaidOnlinePaise,
+          amountDuePaise,
         })
       : await createPendingReceptionBooking({
           ...selection,

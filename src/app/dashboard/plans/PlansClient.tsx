@@ -574,16 +574,27 @@ export function PlansClient({ initialPlans }: { initialPlans: Plan[] }) {
                   </span>
                   <h3 className="text-xl font-bold text-foreground line-clamp-2">{plan.name}</h3>
                 </div>
-                <h2 className="text-2xl font-black text-foreground flex items-center gap-2">
-                  {plan.discount && plan.discount > 0 ? (
-                    <>
-                      <span className="text-muted-foreground line-through text-lg">₹{plan.price}</span>
-                      <span className="text-success">₹{Math.round(plan.price - (plan.price * plan.discount / 100))}</span>
-                    </>
-                  ) : (
-                    <>₹{plan.price}</>
+                <div className="flex flex-col items-end">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-foreground">
+                      ₹{plan.validityDays < 30 ? Math.round(plan.price * (1 - (plan.discount || 0) / 100)) : Math.round((plan.price * (1 - (plan.discount || 0) / 100)) / Math.max(1, Math.round(plan.validityDays / 30)))}
+                    </span>
+                    {plan.validityDays >= 30 && <span className="text-sm font-bold text-muted-foreground">/mo</span>}
+                  </div>
+                  {plan.validityDays >= 30 && (
+                    <div className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                      <span>Total ₹{Math.round(plan.price * (1 - (plan.discount || 0) / 100))}</span>
+                      {(plan.discount || 0) > 0 && (
+                        <span className="line-through opacity-60">₹{plan.price}</span>
+                      )}
+                    </div>
                   )}
-                </h2>
+                  {plan.validityDays < 30 && (plan.discount || 0) > 0 && (
+                    <div className="text-xs font-semibold text-muted-foreground line-through opacity-60">
+                      ₹{plan.price}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="space-y-3 mb-6 mt-auto">

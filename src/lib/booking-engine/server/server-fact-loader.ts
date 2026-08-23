@@ -29,6 +29,7 @@ export async function loadBookingFacts(
       name: true,
       type: true,
       validityDays: true,
+      durationHours: true,
       price: true,
       discount: true,
       isActive: true,
@@ -41,6 +42,7 @@ export async function loadBookingFacts(
     name: p.name,
     type: p.type,
     validityDays: p.validityDays,
+    durationHours: p.durationHours,
     pricePaise: Math.round(p.price * 100),
     discountPercentage: p.discount,
     isActive: p.isActive
@@ -183,12 +185,46 @@ export async function loadBookingFacts(
     }
   }
 
+  // 10. Load Source Booking
+  let sourceBookingFact = null;
+  if (draft.sourceBookingId) {
+    const sourceBooking = await db.booking.findUnique({
+      where: { id: draft.sourceBookingId },
+      select: {
+        id: true,
+        studentId: true,
+        libraryId: true,
+        planId: true,
+        seatId: true,
+        hasLocker: true,
+        standaloneLockerId: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+      }
+    });
+    if (sourceBooking) {
+      sourceBookingFact = {
+        id: sourceBooking.id,
+        studentId: sourceBooking.studentId,
+        libraryId: sourceBooking.libraryId,
+        planId: sourceBooking.planId,
+        seatId: sourceBooking.seatId,
+        hasLocker: sourceBooking.hasLocker,
+        standaloneLockerId: sourceBooking.standaloneLockerId,
+        startTime: sourceBooking.startTime,
+        endTime: sourceBooking.endTime,
+        status: sourceBooking.status as any,
+      };
+    }
+  }
+
   return {
     policyVersion: CURRENT_POLICY_VERSION,
     authoritativeCurrentTime,
     actorCapabilities: actor,
     student: studentFact,
-    sourceBooking: null, // Omitted for brevity unless needed for renewal mutation diffs
+    sourceBooking: sourceBookingFact,
     activePlans,
     selectedPlan,
     eligibleSeats,

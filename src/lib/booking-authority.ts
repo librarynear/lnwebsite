@@ -54,7 +54,7 @@ export class BookingAuthorityError extends Error {
 }
 
 export type BookingSelection = {
-  operation?: 'ADD_STUDENT' | 'RENEW' | 'CHANGE_SEAT' | 'CHANGE_PLAN'
+  operation?: 'ADD_STUDENT' | 'RENEW' | 'CHANGE_SEAT' | 'CHANGE_PLAN' | 'UPGRADE_PLAN'
   sourceBookingId?: string | null
   studentId: string
   libraryId: string
@@ -91,6 +91,9 @@ export type CreateOnlineIntentInput = BookingSelection & {
 export type ManualBookingInput = BookingSelection & {
   source: Exclude<BookingIntentSource, "RAZORPAY">
   paymentRef: string
+  amountPaidCashPaise?: number
+  amountPaidOnlinePaise?: number
+  amountDuePaise?: number
 }
 
 export type ConfirmOnlinePaymentInput = {
@@ -823,6 +826,11 @@ async function createConfirmedBookingForIntent(
   tx: AuthorityTx,
   intent: BookingIntent,
   paymentRef: string,
+  payments?: {
+    amountPaidCashPaise?: number;
+    amountPaidOnlinePaise?: number;
+    amountDuePaise?: number;
+  }
 ): Promise<Booking> {
   const existingByPayment = await tx.booking.findUnique({
     where: { paymentRef },
@@ -837,12 +845,34 @@ async function createConfirmedBookingForIntent(
     return existingByPayment
   }
 
-  await assertNoBookingConflict(tx, {
-    seatId: intent.seatId,
-    standaloneLockerId: intent.standaloneLockerId,
-    startsAt: intent.startsAt,
-    endsAt: intent.endsAt,
+  const overlappingBooking = await tx.booking.findFirst({
+    where: {
+      studentId: intent.studentId,
+      libraryId: intent.libraryId,
+      status: BookingStatus.CONFIRMED,
+      startTime: { lt: intent.endsAt },
+      endTime: { gt: intent.startsAt },
+    },
+    select: { id: true },
   })
+
+  if (overlappingBooking) {
+    await tx.booking.update({
+      where: { id: overlappingBooking.id },
+      data: { endTime: intent.startsAt },
+    })
+  }
+
+  await assertNoBookingConflict(
+    tx,
+    {
+      seatId: intent.seatId,
+      standaloneLockerId: intent.standaloneLockerId,
+      startsAt: intent.startsAt,
+      endsAt: intent.endsAt,
+    },
+    overlappingBooking?.id,
+  )
 
   return tx.booking.create({
     data: {
@@ -856,6 +886,9 @@ async function createConfirmedBookingForIntent(
       endTime: intent.endsAt,
       status: BookingStatus.CONFIRMED,
       paymentRef,
+      amountPaidCashPaise: payments?.amountPaidCashPaise,
+      amountPaidOnlinePaise: payments?.amountPaidOnlinePaise,
+      amountDuePaise: payments?.amountDuePaise,
     },
   })
 }
@@ -1043,7 +1076,11 @@ async function createManualConfirmedBookingInTransaction(
     prepared.sourceBookingId ?? undefined,
     input.operation === 'RENEW' ? prepared.studentId : undefined
   )
-  const booking = await createConfirmedBookingForIntent(tx, intent, input.paymentRef)
+  const booking = await createConfirmedBookingForIntent(tx, intent, input.paymentRef, {
+    amountPaidCashPaise: input.amountPaidCashPaise,
+    amountPaidOnlinePaise: input.amountPaidOnlinePaise,
+    amountDuePaise: input.amountDuePaise,
+  })
   await tx.bookingIntent.update({
     where: { id: intent.id },
     data: {
@@ -1233,6 +1270,11 @@ async function createLegacyPendingIntent(
 export async function confirmPendingReceptionBooking(
   bookingId: string,
   paymentMethod: string,
+  payments?: {
+    amountPaidCashPaise?: number;
+    amountPaidOnlinePaise?: number;
+    amountDuePaise?: number;
+  }
 ): Promise<Booking> {
   return serializable(async (tx) => {
     const booking = await tx.booking.findUnique({
@@ -1293,7 +1335,10 @@ export async function confirmPendingReceptionBooking(
         status: BookingStatus.CONFIRMED,
         startTime: window.startsAt,
         endTime: window.endsAt,
-        paymentRef: manualPaymentReference(`RECEPTION_${paymentMethod}`),
+        paymentRef: manualPaymentReference(`RECEPTION_MIXED`),
+        amountPaidCashPaise: payments?.amountPaidCashPaise,
+        amountPaidOnlinePaise: payments?.amountPaidOnlinePaise,
+        amountDuePaise: payments?.amountDuePaise,
       },
     })
     await tx.bookingIntent.update({

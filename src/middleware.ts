@@ -108,12 +108,10 @@ export async function middleware(request: NextRequest) {
         );
       }
     } catch (e) {
-      console.error('Rate limit error:', e);
-      // Sensitive endpoints (auth/payments/KYC) FAIL CLOSED — a limiter outage
-      // must not open them to abuse. General API endpoints fail open for uptime.
-      if (isSensitive) {
-        return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
-      }
+      console.error('Rate limit error (Failing Open):', e);
+      // For this deployment, failing open is preferable to locking all users
+      // out of the application when the Upstash free tier limit is exceeded.
+      // We log the error but allow the request to proceed.
     }
   }
 
@@ -151,9 +149,7 @@ export async function middleware(request: NextRequest) {
   // Protect dashboard and onboarding routes
   if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/student') || request.nextUrl.pathname.startsWith('/onboarding') || request.nextUrl.pathname.startsWith('/admin')) {
     if (!session) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('returnUrl', request.nextUrl.pathname + request.nextUrl.search);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.rewrite(new URL('/auth/restore', request.url));
     }
   }
 

@@ -1,6 +1,6 @@
 export type PolicyVersion = '1.0.0';
 
-export type BookingOperation = 'ADD_STUDENT' | 'RENEW' | 'CHANGE_SEAT' | 'CHANGE_PLAN';
+export type BookingOperation = 'ADD_STUDENT' | 'RENEW' | 'CHANGE_SEAT' | 'CHANGE_PLAN' | 'UPGRADE_PLAN';
 
 export interface BookingDraft {
   operation: BookingOperation;
@@ -34,6 +34,7 @@ export interface PlanFact {
   name: string;
   type: 'FIXED' | 'FLEXIBLE';
   validityDays: number;
+  durationHours: number | null;
   pricePaise: number; // Converted to paise by fact loader
   discountPercentage: number | null;
   isActive: boolean;

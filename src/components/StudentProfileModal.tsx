@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { getStudentProfile } from "@/app/actions/student-actions"
+import { getStudentProfile, collectDues } from "@/app/actions/student-actions"
 import toast from "react-hot-toast"
 import { Loader2, ShieldCheck, CalendarDays, Lock, LayoutGrid, RefreshCw, History, User } from "lucide-react"
 import { AttendanceCalendar } from "./AttendanceCalendar"
@@ -32,6 +32,10 @@ type ProfileStudent = Prisma.UserGetPayload<{
 export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSeat, onRenewPlan }: StudentProfileModalProps) {
   const [profileStudent, setProfileStudent] = useState<ProfileStudent | null>(null);
   const [loading, setLoading] = useState(false);
+  const [collectingDuesId, setCollectingDuesId] = useState<string | null>(null);
+  const [duesCashInput, setDuesCashInput] = useState("");
+  const [duesOnlineInput, setDuesOnlineInput] = useState("");
+  const [isSubmittingDues, setIsSubmittingDues] = useState(false);
   const now = new Date();
 
   useEffect(() => {
@@ -60,6 +64,37 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
       window.clearTimeout(timer);
     };
   }, [open, studentId, onOpenChange]);
+
+  const handleCollectDues = async (bookingId: string) => {
+    setIsSubmittingDues(true);
+    const cashPaise = Math.round(Number(duesCashInput || 0) * 100);
+    const onlinePaise = Math.round(Number(duesOnlineInput || 0) * 100);
+    
+    if (cashPaise === 0 && onlinePaise === 0) {
+      toast.error("Enter a valid amount to collect");
+      setIsSubmittingDues(false);
+      return;
+    }
+
+    const res = await collectDues(bookingId, cashPaise, onlinePaise);
+    if (res.success) {
+      toast.success("Dues collected successfully");
+      setCollectingDuesId(null);
+      setDuesCashInput("");
+      setDuesOnlineInput("");
+      // Optimistically update the state
+      setProfileStudent(prev => {
+        if (!prev) return prev;
+        const updatedBookings = prev.bookings.map(b => 
+          b.id === bookingId ? { ...b, amountPaidCashPaise: res.booking.amountPaidCashPaise, amountPaidOnlinePaise: res.booking.amountPaidOnlinePaise, amountDuePaise: res.booking.amountDuePaise } : b
+        );
+        return { ...prev, bookings: updatedBookings };
+      });
+    } else {
+      toast.error(res.error || "Failed to collect dues");
+    }
+    setIsSubmittingDues(false);
+  };
 
   function formatStandardDate(isoString: string | Date | undefined | null) {
     if (!isoString) return "N/A";
@@ -269,6 +304,25 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                             <div className="flex-1 min-w-0 pr-4">
                               <div className="font-black text-[15px] text-slate-800 tracking-tight truncate">{hist.plan?.name}</div>
                               <div className="text-[12px] font-medium text-slate-500 mt-1 truncate">{formatStandardDate(hist.startTime)} → {formatStandardDate(hist.endTime)} <span className="opacity-60 hidden sm:inline">({histTotal} days)</span></div>
+                              {(hist.amountDuePaise || 0) > 0 && (
+                                <div className="mt-2">
+                                  <span className="text-[10px] font-bold bg-rose-50 text-rose-600 px-2 py-1 rounded border border-rose-200 inline-block">
+                                    Dues: ₹{((hist.amountDuePaise || 0) / 100).toFixed(0)}
+                                  </span>
+                                  {collectingDuesId !== hist.id ? (
+                                    <button 
+                                      onClick={() => {
+                                        setCollectingDuesId(hist.id);
+                                        setDuesCashInput("");
+                                        setDuesOnlineInput("");
+                                      }}
+                                      className="ml-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+                                    >
+                                      Collect
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )}
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
@@ -280,6 +334,50 @@ export function StudentProfileModal({ studentId, open, onOpenChange, onChangeSea
                               </span>
                             </div>
                           </div>
+
+                          {collectingDuesId === hist.id && (
+                            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                              <div className="text-xs font-bold text-slate-600 mb-2">Collect Pending Dues</div>
+                              <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-400">Cash Received</label>
+                                  <input 
+                                    type="number" 
+                                    className="w-full text-sm p-2 border border-slate-200 rounded bg-white outline-none focus:border-indigo-500" 
+                                    placeholder="₹"
+                                    value={duesCashInput}
+                                    onChange={(e) => setDuesCashInput(e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-400">Online Received</label>
+                                  <input 
+                                    type="number" 
+                                    className="w-full text-sm p-2 border border-slate-200 rounded bg-white outline-none focus:border-indigo-500" 
+                                    placeholder="₹"
+                                    value={duesOnlineInput}
+                                    onChange={(e) => setDuesOnlineInput(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button 
+                                  onClick={() => setCollectingDuesId(null)}
+                                  className="text-[11px] font-bold px-3 py-1.5 text-slate-500 hover:bg-slate-200 rounded"
+                                >
+                                  Cancel
+                                </button>
+                                <button 
+                                  onClick={() => handleCollectDues(hist.id)}
+                                  disabled={isSubmittingDues}
+                                  className="text-[11px] font-bold px-3 py-1.5 bg-indigo-600 text-white hover:opacity-90 rounded disabled:opacity-50 flex items-center"
+                                >
+                                  {isSubmittingDues && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                                  Confirm
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         );
                       })}

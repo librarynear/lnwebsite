@@ -52,6 +52,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
+import { Suspense } from "react";
+import { SessionRestorerWrapper } from "@/components/SessionRestorerWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,6 +72,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <NextTopLoader color="hsl(var(--primary))" showSpinner={false} />
         <WebVitals />
+        <Suspense fallback={null}>
+          <SessionRestorerWrapper />
+        </Suspense>
         {children}
         <Toaster position="bottom-center" />
         <Script id="register-sw" strategy="afterInteractive">

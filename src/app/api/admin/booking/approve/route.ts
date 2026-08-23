@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { bookingId, paymentMethod } = await req.json();
+    const { bookingId, paymentMethod, amountPaidCashPaise, amountPaidOnlinePaise, amountDuePaise } = await req.json();
 
     if (!bookingId || !paymentMethod) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -40,6 +40,11 @@ export async function POST(req: Request) {
     const updatedBooking = await confirmPendingReceptionBooking(
       bookingId,
       paymentMethod,
+      {
+        amountPaidCashPaise: typeof amountPaidCashPaise === 'number' ? amountPaidCashPaise : undefined,
+        amountPaidOnlinePaise: typeof amountPaidOnlinePaise === 'number' ? amountPaidOnlinePaise : undefined,
+        amountDuePaise: typeof amountDuePaise === 'number' ? amountDuePaise : undefined,
+      }
     );
     await invalidateLibraryRuntimeCache(updatedBooking.libraryId);
 

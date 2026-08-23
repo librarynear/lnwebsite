@@ -58,6 +58,8 @@ export async function GET(request: Request) {
 
     // Auto checkout these students
     let createdCount = 0;
+    const { checkDurationAndNotify } = require("@/lib/notification-utils");
+    
     for (const { studentId, libraryId } of pendingCheckouts) {
       await prisma.checkinLog.create({
         data: {
@@ -69,6 +71,9 @@ export async function GET(request: Request) {
         }
       });
       createdCount++;
+      
+      // We don't want to block the cron execution if one notify fails
+      checkDurationAndNotify(studentId, libraryId).catch(console.error);
     }
 
     return NextResponse.json({ success: true, checkedOutCount: createdCount });

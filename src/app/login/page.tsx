@@ -72,6 +72,15 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('loggedOut') === 'true') {
+      auth.signOut();
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Handle countdown for resend OTP
   useEffect(() => {
     if (resendTimer > 0) {
@@ -145,6 +154,10 @@ export default function LoginPage() {
       const idToken = await user.getIdToken()
       const dbCheck = await checkUserExists(formattedPhone, idToken);
 
+      if (dbCheck.error) {
+        throw new Error(dbCheck.error);
+      }
+
       if (dbCheck.exists) {
         await completeLogin(user, formattedPhone, '')
       } else {
@@ -153,7 +166,7 @@ export default function LoginPage() {
       }
     } catch (error: unknown) {
       console.error(error)
-      toast.error("Invalid OTP code.")
+      toast.error(getErrorMessage(error, "Invalid OTP code."))
       setLoading(false)
     } finally {
       submittingOtpRef.current = false;

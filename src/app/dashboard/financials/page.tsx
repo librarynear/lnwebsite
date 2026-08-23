@@ -47,7 +47,8 @@ export default async function FinancialsPage({
       plan: true,
       standaloneLocker: true,
       student: true,
-      seat: true
+      seat: true,
+      bookingIntent: true
     },
     orderBy: { createdAt: 'desc' }
   });
@@ -60,7 +61,8 @@ export default async function FinancialsPage({
     },
     include: {
       plan: true,
-      student: true
+      student: true,
+      bookingIntent: true
     },
     orderBy: { updatedAt: 'desc' }
   });
@@ -80,8 +82,26 @@ export default async function FinancialsPage({
   const paginatedBookings = bookings.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   let totalRealizedRevenue = 0;
+  let totalCashCollected = 0;
+  let totalOnlineCollected = 0;
+  let totalDuesPending = 0;
+
   bookings.forEach(b => {
-    totalRealizedRevenue += calculateBookingTotal(b);
+    const total = calculateBookingTotal(b);
+    totalRealizedRevenue += total;
+
+    if (b.amountPaidCashPaise != null || b.amountPaidOnlinePaise != null || b.amountDuePaise != null) {
+      totalCashCollected += (b.amountPaidCashPaise || 0) / 100;
+      totalOnlineCollected += (b.amountPaidOnlinePaise || 0) / 100;
+      totalDuesPending += (b.amountDuePaise || 0) / 100;
+    } else {
+      // Legacy bookings fallback
+      if (b.paymentRef?.startsWith('RECEPTION_')) {
+        totalCashCollected += total;
+      } else {
+        totalOnlineCollected += total;
+      }
+    }
   });
 
   let totalLostRevenue = 0;
@@ -143,8 +163,12 @@ export default async function FinancialsPage({
             </div>
           </div>
           <div className="relative z-10 mt-auto">
-            <h3 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">₹{totalRealizedRevenue.toLocaleString()}</h3>
-            <MathReveal mathText="SUM OF ALL ACTIVE & COMPLETED BOOKINGS. EXCLUDES REFUNDS/CANCELLATIONS." theme="lime" />
+            <h3 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">₹{(totalCashCollected + totalOnlineCollected).toLocaleString()}</h3>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-700">
+              <span className="bg-white/50 px-2 py-1 rounded-md">Cash: ₹{totalCashCollected.toLocaleString()}</span>
+              <span className="bg-white/50 px-2 py-1 rounded-md">Online: ₹{totalOnlineCollected.toLocaleString()}</span>
+              {totalDuesPending > 0 && <span className="bg-rose-500 text-white px-2 py-1 rounded-md">Dues: ₹{totalDuesPending.toLocaleString()}</span>}
+            </div>
           </div>
         </div>
 

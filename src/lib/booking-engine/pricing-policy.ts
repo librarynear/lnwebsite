@@ -43,5 +43,23 @@ export function calculatePricing(
     expectedAmountPaise += Math.round((locker.pricePaise / 28) * plan.validityDays);
   }
 
+  // Handle Prorated Credit for Upgrades
+  if (draft.operation === 'UPGRADE_PLAN' && facts.sourceBooking) {
+    const oldPlan = facts.activePlans.find(p => p.id === facts.sourceBooking!.planId);
+    if (oldPlan) {
+      const unusedMs = facts.sourceBooking.endTime.getTime() - facts.authoritativeCurrentTime.getTime();
+      const unusedDays = Math.max(0, unusedMs / (1000 * 60 * 60 * 24));
+      
+      const oldPlanActualPrice = oldPlan.discountPercentage
+        ? oldPlan.pricePaise - Math.round((oldPlan.pricePaise * oldPlan.discountPercentage) / 100)
+        : oldPlan.pricePaise;
+        
+      const oldPlanDailyRate = oldPlanActualPrice / oldPlan.validityDays;
+      const creditPaise = Math.round(unusedDays * oldPlanDailyRate);
+      
+      expectedAmountPaise = Math.max(0, expectedAmountPaise - creditPaise);
+    }
+  }
+
   return expectedAmountPaise;
 }

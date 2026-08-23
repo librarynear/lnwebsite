@@ -3,8 +3,10 @@ import prisma from "@/lib/prisma";
 import { UserNav } from "@/components/user-nav";
 import Link from "next/link";
 import { NotificationBell } from "./NotificationBell";
+import { NotificationListener } from "./NotificationListener";
 import { AccessQRModal } from "./AccessQRModal";
 import type { Notification } from "@prisma/client";
+import { Button } from "@/components/ui/button";
 
 export async function NavbarAuth() {
   const session = await getSession();
@@ -30,6 +32,7 @@ export async function NavbarAuth() {
   if (session && user) {
     return (
       <div className="flex items-center gap-1 sm:gap-2">
+        <NotificationListener notifications={notifications} />
         <AccessQRModal libraryId={activeBooking?.libraryId || ""} studentId={session.userId} iconOnly />
         <NotificationBell notifications={notifications} />
         <UserNav user={user} />
@@ -40,8 +43,10 @@ export async function NavbarAuth() {
   return (
     <div className="flex items-center gap-1 sm:gap-2">
       <AccessQRModal libraryId="" studentId="" iconOnly />
-      <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors ml-2">
-        Sign In
+      <Link href="/login" className="ml-1 sm:ml-2">
+        <Button className="h-9 px-5 rounded-full font-bold text-sm shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+          Sign In
+        </Button>
       </Link>
     </div>
   );

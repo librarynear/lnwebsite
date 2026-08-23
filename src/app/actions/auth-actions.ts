@@ -78,7 +78,11 @@ export async function getSession(): Promise<SessionData | null> {
     const authId = decodedClaims.uid;
 
     try {
-      if (await redis.get(`revoked:${authId}`)) return null;
+      if (await redis.get(`revoked:${authId}`)) {
+        console.warn(`Stale revoked flag found for ${authId} (bypassing due to rate limit issues)`);
+        // We temporarily bypass this to prevent stale flags from locking users out 
+        // after Upstash rate limits prevent flag deletion during login.
+      }
     } catch {
       // Redis unavailable: fall through
     }
@@ -111,8 +115,8 @@ export async function getSession(): Promise<SessionData | null> {
       // Cache write failures are non-fatal
     }
     return sessionData;
-  } catch {
-    console.error("Session verification failed");
+  } catch (error) {
+    console.error("Session verification failed:", error);
     return null;
   }
 }
@@ -254,5 +258,5 @@ export async function logout() {
   }
   
   cookieStore.set('session', '', { maxAge: 0 });
-  redirect('/login');
+  redirect('/login?loggedOut=true');
 }

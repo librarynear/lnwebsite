@@ -100,6 +100,8 @@ interface StudentsClientProps {
   totalCount?: number
   tabCounts?: {
     active: number
+    paused: number
+    dues: number
     expiring: number
     inactive: number
     expired: number
@@ -130,7 +132,7 @@ function isSortMethod(value: unknown): value is SortMethod {
   return value === 'LATEST' || value === 'EXPIRY' || value === 'DURATION' || value === 'ALPHABETICAL'
 }
 
-export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], standaloneLockers = [], occupiedStandaloneLockerIds = [], occupiedSeatIds = [], totalCount = 0, tabCounts = { active: 0, expiring: 0, inactive: 0, expired: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
+export function StudentsClient({ bookings, plans, logs = [], relays = [], seats = [], standaloneLockers = [], occupiedStandaloneLockerIds = [], occupiedSeatIds = [], totalCount = 0, tabCounts = { active: 0, paused: 0, dues: 0, expiring: 0, inactive: 0, expired: 0, revoked: 0 }, currentPage = 1, searchQuery = "" }: StudentsClientProps) {
   const router = useRouter()
   const searchParamsHook = useSearchParams()
   const [isPending, startTransition] = useTransition()
@@ -180,7 +182,7 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const [renewLoadingMethod, setRenewLoadingMethod] = useState<'CASH' | 'ONLINE' | null>(null);
 
   // Tabs & Sorting
-  const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'INACTIVE' | 'REVOKED' | 'EXPIRING' | 'EXPIRED') || 'ACTIVE'
+  const activeTab = (searchParamsHook.get('tab') as 'ACTIVE' | 'PAUSED' | 'DUES' | 'INACTIVE' | 'REVOKED' | 'EXPIRING' | 'EXPIRED') || 'ACTIVE'
   const [sortMethod, setSortMethod] = useState<SortMethod>('LATEST')
   const [filterPlanId, setFilterPlanId] = useState<string | null>(null)
 
@@ -429,14 +431,16 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const activeBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
-    return b.status === 'CONFIRMED' && end >= now;
+    return b.status === 'CONFIRMED' && end >= now && !b.isPaused;
   });
+  const pausedBookings = uniqueSearchedBookings.filter((b) => b.status === 'CONFIRMED' && b.isPaused);
+  const duesBookings = uniqueSearchedBookings.filter((b) => b.status === 'CONFIRMED' && (b.amountDuePaise ?? 0) > 0);
   const expiringBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
     end.setHours(0,0,0,0);
     const sevenDaysFromNow = new Date(now);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    return b.status === 'CONFIRMED' && end >= now && end <= sevenDaysFromNow;
+    return b.status === 'CONFIRMED' && end >= now && end <= sevenDaysFromNow && !b.isPaused;
   });
   const inactiveBookings = uniqueSearchedBookings.filter((b) => {
     const end = new Date(b.endTime);
@@ -453,10 +457,12 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
   const getFilteredBookings = () => {
     let list: BookingWithDetails[] = [];
     if (activeTab === 'ACTIVE') list = activeBookings;
+    else if (activeTab === 'PAUSED') list = pausedBookings;
+    else if (activeTab === 'DUES') list = duesBookings;
     else if (activeTab === 'EXPIRING') list = expiringBookings;
     else if (activeTab === 'INACTIVE') list = inactiveBookings;
     else if (activeTab === 'EXPIRED') list = expiredBookings;
-    else list = revokedBookings;
+    else if (activeTab === 'REVOKED') list = revokedBookings;
 
     if (filterPlanId) {
       list = list.filter(b => b.planId === filterPlanId);
@@ -650,19 +656,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
                             >
                               <div className="font-bold text-foreground text-sm">{p.name}</div>
-                              <div className="text-xl font-black mt-1">
-                                {p.discount ? (
-                                  <>
-                                    <span className="line-through text-muted-foreground text-sm mr-2">₹{p.price}</span>
-                                    ₹{finalPrice.toFixed(0)}
-                                  </>
-                                ) : (
-                                  `₹${p.price}`
-                                )}
-                              </div>
-                              {p.discount ? (
-                                <div className="text-xs text-success font-bold mt-1">{p.discount}% OFF applied</div>
-                              ) : null}
+                        <div className="flex flex-col mt-1">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-foreground">
+                              ₹{p.validityDays < 30 ? Math.round(p.price * (1 - (p.discount || 0) / 100)) : Math.round((p.price * (1 - (p.discount || 0) / 100)) / Math.max(1, Math.round(p.validityDays / 30)))}
+                            </span>
+                            {p.validityDays >= 30 && <span className="text-xs font-bold text-muted-foreground">/mo</span>}
+                          </div>
+                          {p.validityDays >= 30 && (
+                            <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <span>Total ₹{finalPrice.toFixed(0)}</span>
+                              {(p.discount || 0) > 0 && (
+                                <span className="line-through opacity-60">₹{p.price}</span>
+                              )}
+                            </div>
+                          )}
+                          {p.validityDays < 30 && (p.discount || 0) > 0 && (
+                            <div className="text-[11px] font-semibold text-muted-foreground line-through opacity-60 mt-0.5">
+                              ₹{p.price}
+                            </div>
+                          )}
+                        </div>
                               <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
                             </div>
                           );
@@ -930,33 +944,45 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
             </div>
           </div>
 
-          <div className="flex p-1.5 space-x-1 bg-slate-50 rounded-full overflow-x-auto relative w-fit shadow-inner">
+          <div className="flex p-1.5 space-x-1 bg-slate-50 rounded-full overflow-x-auto relative w-full shadow-inner scrollbar-hide">
             <button
-              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'ACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'ACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('ACTIVE')}
             >
               Active ({tabCounts.active})
             </button>
             <button
-              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRING' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'PAUSED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              onClick={() => handleTabChange('PAUSED')}
+            >
+              Paused ({tabCounts.paused})
+            </button>
+            <button
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'DUES' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              onClick={() => handleTabChange('DUES')}
+            >
+              Dues ({tabCounts.dues})
+            </button>
+            <button
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRING' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('EXPIRING')}
             >
               Expiring Soon ({tabCounts.expiring})
             </button>
             <button
-              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'INACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'INACTIVE' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('INACTIVE')}
             >
               Expired ({tabCounts.inactive})
             </button>
             <button
-              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'EXPIRED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('EXPIRED')}
             >
               Inactive ({tabCounts.expired})
             </button>
             <button
-              className={`px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'REVOKED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
+              className={`flex-1 px-5 py-2.5 whitespace-nowrap text-sm font-semibold rounded-full transition-all ${activeTab === 'REVOKED' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}
               onClick={() => handleTabChange('REVOKED')}
             >
               Revoked ({tabCounts.revoked})
@@ -994,13 +1020,13 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                   }}
                   className="flex flex-col gap-0"
                 >
-                  <div className="hidden sm:flex items-center px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-white border-b border-slate-100/60 mb-2">
-                    <div className="w-1/3 pl-14">Students</div>
+                  <div className="hidden sm:flex items-center px-8 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-50/80 border-b border-slate-200">
+                    <div className="w-1/3 pl-[64px]">Students</div>
                     <div className="flex-1 grid grid-cols-2 gap-4">
                       <div>Plan</div>
                       <div>Workspace</div>
                     </div>
-                    <div className="w-48 text-right pr-6">Actions</div>
+                    <div className="w-48 text-right">Actions</div>
                   </div>
                   {displayedBookings.map((booking, index) => {
                     const endOfDay = new Date(booking.endTime);
@@ -1079,6 +1105,17 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                           <div className="flex flex-col gap-1">
                             <span className="text-sm font-semibold text-slate-800">{booking.plan?.name}</span>
                             <span className="text-[11px] font-medium text-slate-500">{formatStandardDate(booking.startTime)} - {formatStandardDate(booking.endTime)}</span>
+                            {booking.isPaused && booking.pausedAt && (
+                              <span className="text-[11px] font-medium text-amber-600 mt-0.5 flex items-center gap-1">
+                                <Pause className="w-3 h-3" /> 
+                                Paused on {new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(booking.pausedAt))}
+                              </span>
+                            )}
+                            {(booking.amountDuePaise ?? 0) > 0 && (
+                              <span className="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded-sm w-fit mt-0.5">
+                                Pending Dues: ₹{(booking.amountDuePaise ?? 0) / 100}
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex flex-col gap-1">
@@ -1440,6 +1477,17 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                               </div>
                               <p className="font-bold text-slate-800">{booking.plan?.name}</p>
                               <p className="text-xs font-medium text-slate-500 mt-1">{formatStandardDate(booking.startTime)} - {formatStandardDate(booking.endTime)}</p>
+                              {booking.isPaused && booking.pausedAt && (
+                                <p className="text-[11px] font-medium text-amber-600 mt-1.5 flex items-center gap-1">
+                                  <Pause className="w-3 h-3" /> 
+                                  Paused on {new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(booking.pausedAt))}
+                                </p>
+                              )}
+                              {(booking.amountDuePaise ?? 0) > 0 && (
+                                <p className="text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded-sm w-fit mt-1.5">
+                                  Pending Dues: ₹{(booking.amountDuePaise ?? 0) / 100}
+                                </p>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -1905,19 +1953,27 @@ export function StudentsClient({ bookings, plans, logs = [], relays = [], seats 
                         className={`p-4 rounded-xl border cursor-pointer transition-all ${renewSelectedPlanId === p.id ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-border hover:border-primary/50'}`}
                       >
                         <div className="font-bold text-foreground text-sm">{p.name}</div>
-                        <div className="text-xl font-black mt-1">
-                          {p.discount ? (
-                            <>
-                              <span className="line-through text-muted-foreground text-sm mr-2">₹{p.price}</span>
-                              ₹{finalPrice.toFixed(0)}
-                            </>
-                          ) : (
-                            `₹${p.price}`
+                        <div className="flex flex-col mt-1">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-foreground">
+                              ₹{p.validityDays < 30 ? Math.round(p.price * (1 - (p.discount || 0) / 100)) : Math.round((p.price * (1 - (p.discount || 0) / 100)) / Math.max(1, Math.round(p.validityDays / 30)))}
+                            </span>
+                            {p.validityDays >= 30 && <span className="text-xs font-bold text-muted-foreground">/mo</span>}
+                          </div>
+                          {p.validityDays >= 30 && (
+                            <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <span>Total ₹{finalPrice.toFixed(0)}</span>
+                              {(p.discount || 0) > 0 && (
+                                <span className="line-through opacity-60">₹{p.price}</span>
+                              )}
+                            </div>
+                          )}
+                          {p.validityDays < 30 && (p.discount || 0) > 0 && (
+                            <div className="text-[11px] font-semibold text-muted-foreground line-through opacity-60 mt-0.5">
+                              ₹{p.price}
+                            </div>
                           )}
                         </div>
-                        {p.discount ? (
-                          <div className="text-xs text-success font-bold mt-1">{p.discount}% OFF applied</div>
-                        ) : null}
                         <div className="text-xs text-muted-foreground mt-2">{p.validityDays} Days Validity</div>
                       </div>
                     );

@@ -67,6 +67,16 @@ export async function POST(request: Request) {
 
     if (validEntries.length > 0) {
       await prisma.checkinLog.createMany({ data: validEntries, skipDuplicates: true });
+      
+      // Check duration for users checking out
+      const checkoutEntries = validEntries.filter(e => e.status === "CHECK_OUT");
+      if (checkoutEntries.length > 0) {
+        const { checkDurationAndNotify } = require("@/lib/notification-utils");
+        // Use Promise.allSettled to not block response
+        Promise.allSettled(
+          checkoutEntries.map(e => checkDurationAndNotify(e.studentId, e.libraryId))
+        ).catch(console.error);
+      }
     }
 
     // Update relay last sync

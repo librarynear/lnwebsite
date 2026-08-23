@@ -47,6 +47,12 @@ model User {
   // CRM Fields
   crmNote                     String?
   isExpiredLead               Boolean            @default(false)
+  
+  // Refer & Share Fields
+  referralCode                String?            @unique
+  referredById                String?
+  walletBalance               Int                @default(0)
+
   bookings            Booking[]
   bookingIntents      BookingIntent[]
   canvasState         CanvasState?
@@ -57,6 +63,8 @@ model User {
   platformFeedbacks   PlatformFeedback[] @relation("SubmitterPlatformFeedback")
   queries             Query[]
   employerLibrary     Library?           @relation("LibraryStaff", fields: [employerLibraryId], references: [id])
+  referredBy          User?              @relation("UserReferrals", fields: [referredById], references: [id])
+  referredUsers       User[]             @relation("UserReferrals")
 
   @@index([name])
   @@index([phone])
@@ -181,6 +189,12 @@ model Booking {
   pausedAt           DateTime?
   totalPausedDays    Int               @default(0)
   revokedReason      String?
+  
+  // Payment Tracking
+  amountPaidCashPaise   Int?
+  amountPaidOnlinePaise Int?
+  amountDuePaise        Int?
+
   library            Library           @relation(fields: [libraryId], references: [id])
   plan               Plan              @relation(fields: [planId], references: [id])
   seat               Seat?             @relation(fields: [seatId], references: [id])
@@ -396,13 +410,16 @@ model EntryLog {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  studentId String
-  title     String
-  message   String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  student   User     @relation(fields: [studentId], references: [id])
+  id          String   @id @default(uuid())
+  studentId   String
+  title       String
+  message     String
+  type        String?  // e.g., "SYSTEM", "BILLING", "BOOKING"
+  actionUrl   String?  // e.g., "/student/dashboard?renew=true"
+  actionLabel String?  // e.g., "Renew Now"
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  student     User     @relation(fields: [studentId], references: [id])
 
   @@index([studentId])
 }

@@ -24,9 +24,14 @@ export function calculateBookingDates(
   } else {
     // Otherwise, default to current time. If the student has an active booking that hasn't expired, append to it.
     const defaultStart = facts.authoritativeCurrentTime;
-    startsAt = facts.currentBookingWindow && facts.currentBookingWindow.endsAt >= defaultStart
-      ? new Date(facts.currentBookingWindow.endsAt.getTime() + 1)
-      : defaultStart;
+    
+    if (draft.operation === 'UPGRADE_PLAN') {
+      startsAt = defaultStart;
+    } else {
+      startsAt = facts.currentBookingWindow && facts.currentBookingWindow.endsAt >= defaultStart
+        ? new Date(facts.currentBookingWindow.endsAt.getTime() + 1)
+        : defaultStart;
+    }
   }
 
   const validityDays = selectedPlan.validityDays;

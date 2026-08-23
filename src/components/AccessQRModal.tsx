@@ -13,7 +13,7 @@ import confetti from "canvas-confetti";
 
 import { supabase } from "@/lib/supabase-client";
 
-export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: initialIsCheckedIn }: { libraryId: string; studentId: string; iconOnly?: boolean; isCheckedIn?: boolean }) {
+export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: initialIsCheckedIn, children }: { libraryId: string; studentId: string; iconOnly?: boolean; isCheckedIn?: boolean; children?: React.ReactNode }) {
   const [qrData, setQrData] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,18 +134,24 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={
-        iconOnly ? (
-          <Button variant="ghost" className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full flex-shrink-0 text-foreground hover:bg-muted">
-            <QrCode size={24} strokeWidth={2.5} className="!w-6 !h-6" />
-          </Button>
-        ) : (
-          <Button variant="outline" className="gap-2 w-full sm:w-auto">
-            <QrCode className="w-4 h-4" />
-            {isCheckedIn ? "Check-out QR" : "Check-in QR"}
-          </Button>
-        )
-      } />
+      {children ? (
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+      ) : (
+        <DialogTrigger render={
+          iconOnly ? (
+            <Button variant="ghost" className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full flex-shrink-0 text-foreground hover:bg-muted">
+              <QrCode size={24} strokeWidth={2.5} className="!w-6 !h-6" />
+            </Button>
+          ) : (
+            <Button variant="outline" className="gap-2 w-full sm:w-auto">
+              <QrCode className="w-4 h-4" />
+              {isCheckedIn ? "Check-out QR" : "Check-in QR"}
+            </Button>
+          )
+        } />
+      )}
       <DialogContent className="sm:max-w-md border-border/50 shadow-xl rounded-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-center font-heading text-xl">
@@ -217,13 +223,13 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-100 flex flex-col items-center gap-6 w-full"
+              className="bg-white p-4 sm:p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-100 flex flex-col items-center gap-4 w-full"
             >
-              <div className="relative">
+              <div className="relative mt-2">
                 <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 to-transparent rounded-full blur-2xl -z-10" />
                 <QRCode 
                   value={qrData} 
-                  size={200}
+                  size={240}
                   level="Q"
                   className="rounded-lg shadow-sm" 
                   fgColor={isCheckedIn ? "#d97706" : "#059669"}

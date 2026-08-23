@@ -34,8 +34,33 @@ async function getFeaturedLibraries() {
   }).slice(0, 3);
 }
 
-export default async function HomePage() {
+import { getSession } from "@/app/actions/auth-actions"
+import { redirect } from "next/navigation"
+
+export default async function HomePage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
   await connection();
+  const sp = await searchParams;
+
+  if (sp.explore !== 'true') {
+    const session = await getSession();
+    if (session) {
+      const activeBooking = await prisma.booking.findFirst({
+        where: {
+          studentId: session.userId,
+          status: 'CONFIRMED',
+          endTime: { gt: new Date() }
+        }
+      });
+      if (activeBooking) {
+        redirect('/student/dashboard');
+      }
+    }
+  }
+
   // Fetch top 3 libraries to showcase in the interactive mockup and carousel
   const libraries = await getFeaturedLibraries();
 

@@ -801,3 +801,41 @@ export async function updateCrmNote(studentId: string, note: string, isExpiredLe
     return { success: false, message: "Internal server error" };
   }
 }
+
+export async function collectDues(bookingId: string, additionalCashPaise: number, additionalOnlinePaise: number) {
+  const session = await getSession();
+  if (!session || (session.role !== 'LIBRARIAN' && session.role !== 'ADMIN' && session.role !== 'RECEPTIONIST')) {
+    return { error: 'Unauthorized' };
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId }
+    });
+
+    if (!booking) {
+      return { error: 'Booking not found' };
+    }
+
+    const currentDue = booking.amountDuePaise || 0;
+    const paymentTotal = additionalCashPaise + additionalOnlinePaise;
+    const newDue = Math.max(0, currentDue - paymentTotal);
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        amountPaidCashPaise: (booking.amountPaidCashPaise || 0) + additionalCashPaise,
+        amountPaidOnlinePaise: (booking.amountPaidOnlinePaise || 0) + additionalOnlinePaise,
+        amountDuePaise: newDue
+      }
+    });
+
+    revalidatePath("/dashboard/students");
+    revalidatePath("/dashboard/financials");
+    
+    return { success: true, booking: updated };
+  } catch (error) {
+    console.error("Failed to collect dues:", error);
+    return { error: 'Failed to collect dues' };
+  }
+}
