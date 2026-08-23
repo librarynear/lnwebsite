@@ -1,5 +1,5 @@
 import { Calendar, Clock, MapPin, User as UserIcon, BookOpen, Key, Flame } from "lucide-react";
-import { FocusActivityCalendar } from "./FocusActivityCalendar";
+import { FocusActivityCalendar } from "@/components/dashboard/FocusActivityCalendar";
 import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth-actions";
@@ -110,10 +110,11 @@ export default async function StudentDashboardPage() {
       }
       displayAmount = Math.round(basePrice + lockerCost + premiumCost);
     }
+    return displayAmount;
+  };
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Suspense fallback={null}><BookingSuccessToast /></Suspense>
-      <h1 className="text-4xl font-heading font-bold text-foreground mb-8">My Dashboard</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -121,43 +122,56 @@ export default async function StudentDashboardPage() {
         <div className="lg:col-span-1 space-y-6">
           
           {/* Digital Pass & Streak Card */}
-          <div className="bg-card rounded-2xl border border-border p-6 shadow-sm flex flex-col items-center relative overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors">
-            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-            <AccessQRModal 
-              libraryId={activeBookings[0]?.libraryId || ""} 
-              studentId={session.userId}
-              isCheckedIn={recentLogs.length > 0 && recentLogs[recentLogs.length - 1].status === 'CHECK_IN' && recentLogs[recentLogs.length - 1].libraryId === activeBookings[0]?.libraryId}
-            >
-              <div className="w-full flex flex-col items-center">
-                <div className="w-24 h-24 bg-white rounded-xl p-2 shadow-sm border border-border mb-3 relative overflow-hidden group-hover:shadow-md transition-shadow">
+          <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative group">
+            {/* Streak header banner inside card */}
+            <div className="bg-gradient-to-r from-orange-500/10 to-orange-400/10 border-b border-orange-500/20 px-6 py-3 flex items-center justify-between">
+              <span className="font-heading font-bold text-sm tracking-wide text-orange-600 dark:text-orange-400">Activity Streak</span>
+              <div className="flex items-center gap-1.5 bg-background rounded-full px-3 py-1 shadow-sm border border-orange-500/20 text-orange-600 dark:text-orange-400 font-bold text-sm">
+                <Flame className="w-4 h-4 fill-current animate-pulse" />
+                {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
+              </div>
+            </div>
+
+            {/* Profile Info */}
+            <div className="p-6 pb-4 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4 shadow-inner ring-4 ring-background z-10 relative">
+                {student.profilePhotoUrl ? (
+                  <img src={student.profilePhotoUrl} alt={student.name} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <UserIcon className="w-10 h-10" />
+                )}
+              </div>
+              <h2 className="text-2xl font-bold font-heading text-foreground mb-1">{student.name}</h2>
+              <div className="bg-muted px-3 py-1 rounded-md font-mono font-bold text-sm tracking-widest text-foreground border border-border/50 select-all mb-2">
+                {student.uniqueId}
+              </div>
+            </div>
+
+            {/* Blurred QR area */}
+            <div className="px-6 pb-6 w-full flex flex-col items-center">
+              <AccessQRModal 
+                libraryId={activeBookings[0]?.libraryId || ""} 
+                studentId={session.userId}
+                isCheckedIn={recentLogs.length > 0 && recentLogs[recentLogs.length - 1].status === 'CHECK_IN' && recentLogs[recentLogs.length - 1].libraryId === activeBookings[0]?.libraryId}
+              >
+                <div className="w-full max-w-[220px] aspect-square bg-white rounded-xl p-3 shadow-inner border border-border relative overflow-hidden group-hover:border-primary/50 transition-colors cursor-pointer">
                   {/* Mock QR pattern for the collapsed state */}
-                  <div className="w-full h-full bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-contain bg-center opacity-80" />
-                  <div className="absolute inset-0 bg-black/5 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[1px]">
-                    <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full">Tap to Expand</span>
+                  <div className="w-full h-full bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-contain bg-center opacity-90 blur-sm transition-all duration-300 group-hover:blur-md" />
+                  <div className="absolute inset-0 bg-background/20 flex flex-col items-center justify-center transition-all">
+                    <div className="bg-background/90 text-foreground text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-border backdrop-blur-md flex items-center gap-2">
+                      <Key className="w-3.5 h-3.5" /> Tap to reveal QR Pass
+                    </div>
                   </div>
                 </div>
-                <h3 className="font-heading font-black text-xl text-foreground mb-1 tracking-tight">Digital Pass</h3>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active Subscription</p>
-              </div>
-            </AccessQRModal>
-            
-            <div className="mt-6 flex items-center gap-2 bg-orange-500/10 text-orange-600 dark:text-orange-400 px-4 py-2 rounded-full border border-orange-500/20 shadow-sm relative z-10">
-              <Flame className="w-5 h-5 fill-current animate-pulse" />
-              <span className="font-bold text-sm">{currentStreak} Day Study Streak</span>
+              </AccessQRModal>
             </div>
           </div>
 
+          {/* Focus Activity Calendar */}
+          <FocusActivityCalendar logs={recentLogs} />
+
+          {/* Account Details */}
           <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                <UserIcon className="w-8 h-8" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">{student.name}</h2>
-                <p className="text-muted-foreground">Student</p>
-              </div>
-            </div>
-            
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">FocusX ID</p>
@@ -181,9 +195,6 @@ export default async function StudentDashboardPage() {
               </div>
             </div>
           </div>
-
-          {/* Focus Activity Calendar */}
-          <FocusActivityCalendar logs={recentLogs} />
         </div>
 
         {/* Bookings Section */}
@@ -331,6 +342,5 @@ export default async function StudentDashboardPage() {
 
         </div>
       </div>
-    </div>
   );
 }

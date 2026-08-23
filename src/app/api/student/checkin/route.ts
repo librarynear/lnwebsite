@@ -71,6 +71,11 @@ export async function POST(request: Request) {
     // that the phone passes to the local relay to physically unlock the door over local WiFi/BLE.
     // Or, if the relay is connected to WebSockets/MQTT, the backend would trigger it here.
     
+    if (newStatus === "CHECK_IN") {
+      const { updateStreak } = require("@/lib/streak-utils");
+      await updateStreak(studentId, new Date());
+    }
+
     // Check duration and notify if they exceeded their limit (only on checkout)
     if (newStatus === "CHECK_OUT") {
       // Import dynamically to avoid circular dependencies if any, or just import at top. Wait, better to import at top.

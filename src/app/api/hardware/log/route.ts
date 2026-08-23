@@ -200,7 +200,15 @@ export async function POST(request: Request) {
                 },
               });
             }
-          }, { isolationLevel: 'Serializable' }).catch(err => console.error("Failed to insert CheckinLog:", err));
+            return { newStatus, changed: !lastLog || lastLog.status !== newStatus };
+          }, { isolationLevel: 'Serializable' })
+          .then(async (result) => {
+            if (result.changed && result.newStatus === "CHECK_IN") {
+              const { updateStreak } = require("@/lib/streak-utils");
+              await updateStreak(log.userId as string, log.timestamp);
+            }
+          })
+          .catch(err => console.error("Failed to insert CheckinLog:", err));
         }
       }
     }

@@ -135,9 +135,7 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children ? (
-        <DialogTrigger asChild>
-          {children}
-        </DialogTrigger>
+        <DialogTrigger render={children as React.ReactElement} />
       ) : (
         <DialogTrigger render={
           iconOnly ? (

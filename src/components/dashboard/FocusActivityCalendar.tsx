@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   startOfMonth, 
   endOfMonth, 
@@ -10,56 +10,75 @@ import {
   isToday,
   isBefore,
   isAfter,
-  addDays
+  addDays,
+  parseISO
 } from 'date-fns';
-import { Activity } from 'lucide-react';
+import { Clock } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Log = {
-  timestamp: Date;
+  timestamp: Date | string;
   status: 'CHECK_IN' | 'CHECK_OUT';
 };
 
 export function FocusActivityCalendar({ logs }: { logs: Log[] }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  // Group logs by day string (yyyy-MM-dd in IST)
+  const logsByDay = useMemo(() => {
+    const map = new Map<string, Log[]>();
+    logs.forEach(log => {
+      // Convert to IST for grouping
+      const d = new Date(log.timestamp);
+      d.setMinutes(d.getMinutes() + 330);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      if (!map.has(dateStr)) {
+        map.set(dateStr, []);
+      }
+      map.get(dateStr)!.push(log);
+    });
+    return map;
+  }, [logs]);
+
   // Compute daily hours
   const dailyHours = useMemo(() => {
     const hoursMap = new Map<string, number>();
     
-    // Group logs by day string (yyyy-MM-dd)
-    const logsByDay = new Map<string, Log[]>();
-    logs.forEach(log => {
-      const dateStr = format(new Date(log.timestamp), 'yyyy-MM-dd');
-      if (!logsByDay.has(dateStr)) {
-        logsByDay.set(dateStr, []);
-      }
-      logsByDay.get(dateStr)!.push(log);
-    });
-
-    // Calculate duration for each day
     logsByDay.forEach((dayLogs, dateStr) => {
       let totalMs = 0;
       let lastCheckin: Date | null = null;
       
-      // Sort logs chronologically for the day
+      // Sort logs chronologically
       dayLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
       dayLogs.forEach(log => {
         if (log.status === 'CHECK_IN') {
           lastCheckin = new Date(log.timestamp);
         } else if (log.status === 'CHECK_OUT' && lastCheckin) {
-          totalMs += new Date(log.timestamp).getTime() - lastCheckin.getTime();
+          totalMs += new Date(log.timestamp).getTime() - (lastCheckin as Date).getTime();
           lastCheckin = null;
         }
       });
       
-      // If there's an unclosed checkin on the same day and it's not today, assume 2 hours
-      // If it's today, calculate up to now
       if (lastCheckin) {
-        const checkinDay = format(lastCheckin, 'yyyy-MM-dd');
-        const todayDay = format(new Date(), 'yyyy-MM-dd');
-        if (checkinDay === todayDay) {
-          totalMs += new Date().getTime() - lastCheckin.getTime();
+        // Unclosed check-in
+        const checkinDay = new Date(lastCheckin);
+        checkinDay.setMinutes(checkinDay.getMinutes() + 330);
+        
+        const nowIST = new Date();
+        nowIST.setMinutes(nowIST.getMinutes() + 330);
+
+        if (checkinDay.toISOString().split('T')[0] === nowIST.toISOString().split('T')[0]) {
+          totalMs += new Date().getTime() - (lastCheckin as Date).getTime();
         } else {
-          totalMs += 2 * 60 * 60 * 1000; // Assume 2 hours
+          totalMs += 2 * 60 * 60 * 1000; // Assume 2 hours if left open overnight
         }
       }
 
@@ -67,100 +86,148 @@ export function FocusActivityCalendar({ logs }: { logs: Log[] }) {
     });
 
     return hoursMap;
-  }, [logs]);
+  }, [logsByDay]);
 
   // Current month grid
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-  
-  // To match typical calendar layout, get days to pad the start
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
   const startPadding = monthStart.getDay(); // 0 is Sunday
-  
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
-  const totalHoursThisMonth = useMemo(() => {
-    let total = 0;
-    daysInMonth.forEach(day => {
-      total += dailyHours.get(format(day, 'yyyy-MM-dd')) || 0;
-    });
-    return Math.round(total);
-  }, [dailyHours, daysInMonth]);
+  const now = new Date();
 
   const getHeatmapColor = (hours: number) => {
-    if (hours === 0) return 'bg-[#1a1c23] text-muted-foreground/30';
-    if (hours < 2) return 'bg-[#0f3d23] text-white/70';
-    if (hours < 4) return 'bg-[#186a3b] text-white';
-    if (hours < 6) return 'bg-[#27ae60] text-white font-bold';
-    return 'bg-[#2ecc71] text-black font-bold';
+    if (hours === 0) return 'bg-muted text-muted-foreground opacity-50';
+    if (hours < 2) return 'bg-primary/30 text-primary-foreground';
+    if (hours < 4) return 'bg-primary/60 text-primary-foreground';
+    if (hours < 6) return 'bg-primary/80 text-primary-foreground font-bold';
+    return 'bg-primary text-primary-foreground font-bold shadow-sm';
   };
 
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      // Input is yyyy-MM
+      const [year, month] = e.target.value.split('-');
+      setCurrentDate(new Date(parseInt(year), parseInt(month) - 1, 1));
+    }
+  };
+
+  const selectedDayLogs = selectedDay 
+    ? logsByDay.get(
+        (() => {
+          const d = new Date(selectedDay);
+          d.setMinutes(d.getMinutes() + 330); // Need to pad IST correctly for lookup, actually `selectedDay` is already a pure Date from calendar, which is local midnight.
+          return format(selectedDay, 'yyyy-MM-dd'); // just use local format if we treat it as the day string
+        })()
+      ) || []
+    : [];
+
   return (
-    <div className="bg-[#0f1115] rounded-3xl p-6 sm:p-8 w-full max-w-3xl border border-white/5 shadow-2xl mx-auto font-sans">
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Activity className="w-6 h-6 text-[#2ecc71]" strokeWidth={2.5} />
-            <h2 className="text-2xl font-bold text-white tracking-tight">Focus Activity</h2>
+    <>
+      <div className="bg-card rounded-2xl p-6 w-full border border-border shadow-sm flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-heading font-black text-foreground tracking-tight capitalize">
+            {format(currentDate, 'MMMM')}
+          </h2>
+          <div className="relative">
+            <input 
+              type="month" 
+              value={format(currentDate, 'yyyy-MM')} 
+              onChange={handleMonthChange}
+              className="bg-muted text-foreground font-medium text-sm rounded-lg px-3 py-1.5 border border-border outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+            />
           </div>
-          <p className="text-[#a0a5b1] text-base">{totalHoursThisMonth} total hours this month</p>
         </div>
-        <div className="bg-[#1a1c23] rounded-xl px-4 py-2 flex items-center gap-4 border border-white/5">
-          <button className="text-[#a0a5b1] hover:text-white transition-colors">&lt;</button>
-          <span className="text-white font-medium text-sm w-28 text-center">{format(now, 'MMMM')} <span className="text-[#a0a5b1]">/ {format(now, 'yyyy')}</span></span>
-          <button className="text-[#a0a5b1] hover:text-white transition-colors">&gt;</button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-7 gap-3 sm:gap-4 mb-8">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center text-xs font-semibold text-[#a0a5b1] mb-2">{day}</div>
-        ))}
+        {/* Grid */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-6">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+            <div key={i} className="text-center text-xs font-bold text-muted-foreground mb-1 uppercase tracking-wider">{day}</div>
+          ))}
 
-        {/* Padding days */}
-        {Array.from({ length: startPadding }).map((_, i) => {
-          const prevDay = addDays(monthStart, -(startPadding - i));
-          return (
-            <div key={`pad-${i}`} className="aspect-square rounded-2xl bg-transparent flex items-center justify-center text-[#a0a5b1] opacity-20 text-sm font-medium">
-              {format(prevDay, 'd')}
-            </div>
-          )
-        })}
+          {/* Padding days */}
+          {Array.from({ length: startPadding }).map((_, i) => (
+            <div key={`pad-${i}`} className="aspect-square rounded-sm bg-transparent" />
+          ))}
 
-        {/* Month days */}
-        {daysInMonth.map((day) => {
-          const isFuture = isAfter(day, now) && !isSameDay(day, now);
-          const hours = dailyHours.get(format(day, 'yyyy-MM-dd')) || 0;
-          
-          if (isFuture) {
+          {/* Month days */}
+          {daysInMonth.map((day) => {
+            const isFuture = isAfter(day, now) && !isSameDay(day, now);
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const hours = dailyHours.get(dateStr) || 0;
+            
+            if (isFuture) {
+              return (
+                <div key={day.toISOString()} className="aspect-square rounded-sm bg-muted/20 flex items-center justify-center text-muted-foreground/30 text-xs font-medium cursor-not-allowed">
+                  {format(day, 'd')}
+                </div>
+              );
+            }
+
             return (
-              <div key={day.toISOString()} className="aspect-square rounded-2xl bg-[#1a1c23] opacity-30 flex items-center justify-center text-[#a0a5b1] text-sm font-medium transition-colors hover:bg-[#22252e]">
+              <div 
+                key={day.toISOString()} 
+                onClick={() => setSelectedDay(day)}
+                className={`aspect-square rounded-sm flex items-center justify-center text-xs transition-transform duration-200 hover:scale-110 cursor-pointer ${getHeatmapColor(hours)} ${isToday(day) ? 'ring-2 ring-foreground ring-offset-1 ring-offset-card' : ''}`}
+                title={`${Math.round(hours * 10) / 10} hours`}
+              >
                 {format(day, 'd')}
               </div>
             );
-          }
+          })}
+        </div>
 
-          return (
-            <div 
-              key={day.toISOString()} 
-              className={`aspect-square rounded-2xl flex items-center justify-center text-sm transition-all duration-300 hover:scale-[1.03] hover:ring-2 hover:ring-[#2ecc71]/50 cursor-default ${getHeatmapColor(hours)} ${isToday(day) ? 'ring-2 ring-white/20' : ''}`}
-              title={`${Math.round(hours * 10) / 10} hours on ${format(day, 'MMM d')}`}
-            >
-              {format(day, 'd')}
-            </div>
-          );
-        })}
+        {/* Legend */}
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground mt-auto">
+          <span>Less</span>
+          <div className="flex gap-1">
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-muted opacity-50" />
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-primary/30" />
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-primary/60" />
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-primary/80" />
+            <div className="w-3.5 h-3.5 rounded-[2px] bg-primary shadow-sm" />
+          </div>
+          <span>More</span>
+        </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2 mt-4 text-xs font-medium text-[#a0a5b1] bg-[#1a1c23] w-fit mx-auto px-4 py-2 rounded-full border border-white/5">
-        <span>Less</span>
-        <div className="w-4 h-4 rounded-[4px] bg-[#1a1c23] border border-white/5" />
-        <div className="w-4 h-4 rounded-[4px] bg-[#0f3d23]" />
-        <div className="w-4 h-4 rounded-[4px] bg-[#186a3b]" />
-        <div className="w-4 h-4 rounded-[4px] bg-[#27ae60]" />
-        <div className="w-4 h-4 rounded-[4px] bg-[#2ecc71]" />
-        <span>More</span>
-      </div>
-    </div>
+      {/* Timeline Modal */}
+      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+        <DialogContent className="max-w-md bg-card border-border sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-heading font-black text-xl flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Activity for {selectedDay && format(selectedDay, 'MMMM d, yyyy')}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="mt-6">
+            {selectedDayLogs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">No activity recorded for this date.</p>
+              </div>
+            ) : (
+              <div className="relative border-l-2 border-primary/20 ml-3 space-y-6 pb-2">
+                {selectedDayLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log, i) => {
+                  const d = new Date(log.timestamp);
+                  // Format strictly as IST
+                  const timeString = d.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+                  
+                  return (
+                    <div key={i} className="relative pl-6">
+                      <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-card ${log.status === 'CHECK_IN' ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-foreground">{log.status === 'CHECK_IN' ? 'Checked In' : 'Checked Out'}</span>
+                        <span className="text-sm text-muted-foreground">{timeString} (IST)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

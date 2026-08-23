@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
       req.headers.get("idempotency-key")
       ?? (typeof body.idempotencyKey === "string" ? body.idempotencyKey : "")
     ).trim().slice(0, 128)
+    const operation = typeof body.operation === "string" ? (body.operation as any) : undefined
+    const sourceBookingId = typeof body.sourceBookingId === "string" ? body.sourceBookingId : undefined
 
     if (!planId) {
       return NextResponse.json({ error: "Plan ID is required" }, { status: 400 })
@@ -142,8 +144,8 @@ export async function POST(req: NextRequest) {
       standaloneLockerId,
       hasLocker,
       idempotencyKey: suppliedIdempotencyKey,
-      operation: typeof body.operation === "string" ? (body.operation as any) : undefined,
-      sourceBookingId: typeof body.sourceBookingId === "string" ? body.sourceBookingId : undefined,
+      operation,
+      sourceBookingId,
     })
     createdIntentId = intent.id
 

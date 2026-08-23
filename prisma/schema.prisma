@@ -53,6 +53,10 @@ model User {
   referredById                String?
   walletBalance               Int                @default(0)
 
+  // Gamification
+  currentStreak               Int                @default(0)
+  lastActiveDate              DateTime?
+
   bookings            Booking[]
   bookingIntents      BookingIntent[]
   canvasState         CanvasState?
