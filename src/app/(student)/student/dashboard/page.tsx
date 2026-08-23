@@ -9,6 +9,7 @@ import PauseResumeButton from "./PauseResumeButton";
 import BookingSuccessToast from "./BookingSuccessToast";
 import ExtendPlanModal from "./ExtendPlanModal";
 import { AccessQRModal } from "@/components/AccessQRModal";
+import { DigitalPassCard } from "@/components/dashboard/DigitalPassCard";
 
 import { formatStandardDate, formatStandardDateTime } from "@/lib/date-utils";
 
@@ -112,60 +113,39 @@ export default async function StudentDashboardPage() {
     }
     return displayAmount;
   };
+
+  // Calculate IST Greeting
+  const nowIST = new Date();
+  nowIST.setMinutes(nowIST.getMinutes() + 330);
+  const hour = nowIST.getUTCHours();
+  let greeting = 'Good evening';
+  if (hour >= 5 && hour < 12) greeting = 'Good morning';
+  else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Suspense fallback={null}><BookingSuccessToast /></Suspense>
       
+      {/* Dynamic Greeting */}
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-medium text-foreground tracking-tight">
+          {greeting}, <span className="font-serif italic font-bold text-primary">{student.name?.split(' ')[0]}</span>
+        </h1>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Pass, Streak, Profile, Calendar */}
         <div className="lg:col-span-1 space-y-6">
           
           {/* Digital Pass & Streak Card */}
-          <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-md flex flex-col relative group">
-            {/* Streak header banner inside card */}
-            <div className="bg-gradient-to-r from-orange-500/10 to-orange-400/10 border-b border-orange-500/20 px-6 py-3 flex items-center justify-between">
-              <span className="font-heading font-bold text-sm tracking-wide text-orange-600 dark:text-orange-400">Activity Streak</span>
-              <div className="flex items-center gap-1.5 bg-background rounded-full px-3 py-1 shadow-sm border border-orange-500/20 text-orange-600 dark:text-orange-400 font-bold text-sm">
-                <Flame className="w-4 h-4 fill-current animate-pulse" />
-                {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
-              </div>
-            </div>
-
-            {/* Profile Info */}
-            <div className="p-6 pb-4 flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4 shadow-inner ring-4 ring-background z-10 relative">
-                {student.profilePhotoUrl ? (
-                  <img src={student.profilePhotoUrl} alt={student.name} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <UserIcon className="w-10 h-10" />
-                )}
-              </div>
-              <h2 className="text-2xl font-bold font-heading text-foreground mb-1">{student.name}</h2>
-              <div className="bg-muted px-3 py-1 rounded-md font-mono font-bold text-sm tracking-widest text-foreground border border-border/50 select-all mb-2">
-                {student.uniqueId}
-              </div>
-            </div>
-
-            {/* Blurred QR area */}
-            <div className="px-6 pb-6 w-full flex flex-col items-center">
-              <AccessQRModal 
-                libraryId={activeBookings[0]?.libraryId || ""} 
-                studentId={session.userId}
-                isCheckedIn={recentLogs.length > 0 && recentLogs[recentLogs.length - 1].status === 'CHECK_IN' && recentLogs[recentLogs.length - 1].libraryId === activeBookings[0]?.libraryId}
-              >
-                <div className="w-full max-w-[220px] aspect-square bg-white rounded-xl p-3 shadow-inner border border-border relative overflow-hidden group-hover:border-primary/50 transition-colors cursor-pointer">
-                  {/* Mock QR pattern for the collapsed state */}
-                  <div className="w-full h-full bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-contain bg-center opacity-90 blur-sm transition-all duration-300 group-hover:blur-md" />
-                  <div className="absolute inset-0 bg-background/20 flex flex-col items-center justify-center transition-all">
-                    <div className="bg-background/90 text-foreground text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-border backdrop-blur-md flex items-center gap-2">
-                      <Key className="w-3.5 h-3.5" /> Tap to reveal QR Pass
-                    </div>
-                  </div>
-                </div>
-              </AccessQRModal>
-            </div>
-          </div>
+          <DigitalPassCard 
+            student={student as any}
+            currentStreak={currentStreak}
+            libraryId={activeBookings[0]?.libraryId || ""}
+            studentId={session.userId}
+            isCheckedIn={recentLogs.length > 0 && recentLogs[recentLogs.length - 1].status === 'CHECK_IN' && recentLogs[recentLogs.length - 1].libraryId === activeBookings[0]?.libraryId}
+          />
 
           {/* Focus Activity Calendar */}
           <FocusActivityCalendar logs={recentLogs} />

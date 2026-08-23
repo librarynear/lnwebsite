@@ -121,12 +121,41 @@ export function FocusActivityCalendar({ logs }: { logs: Log[] }) {
       ) || []
     : [];
 
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe || isRightSwipe) {
+      if (navigator.vibrate) navigator.vibrate(10);
+      const newDate = new Date(currentDate);
+      if (isLeftSwipe) {
+        newDate.setMonth(newDate.getMonth() + 1);
+      } else {
+        newDate.setMonth(newDate.getMonth() - 1);
+      }
+      setCurrentDate(newDate);
+    }
+  };
+
   return (
     <>
-      <div className="bg-card rounded-2xl p-6 w-full border border-border shadow-sm flex flex-col">
+      <div 
+        className="bg-card rounded-2xl p-6 w-full border border-border shadow-sm flex flex-col"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-heading font-black text-foreground tracking-tight capitalize">
+          <h2 className="text-2xl font-heading font-black text-foreground tracking-tight capitalize select-none">
             {format(currentDate, 'MMMM')}
           </h2>
           <div className="relative">
@@ -167,7 +196,10 @@ export function FocusActivityCalendar({ logs }: { logs: Log[] }) {
             return (
               <div 
                 key={day.toISOString()} 
-                onClick={() => setSelectedDay(day)}
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(10);
+                  setSelectedDay(day);
+                }}
                 className={`aspect-square rounded-sm flex items-center justify-center text-xs transition-transform duration-200 hover:scale-110 cursor-pointer ${getHeatmapColor(hours)} ${isToday(day) ? 'ring-2 ring-foreground ring-offset-1 ring-offset-card' : ''}`}
                 title={`${Math.round(hours * 10) / 10} hours`}
               >

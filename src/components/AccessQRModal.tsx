@@ -123,6 +123,38 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
     return () => clearInterval(interval);
   }, [open, libraryId, showSuccess]);
 
+  // Wake Lock and Theme Color
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    let originalThemeColor = '';
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+    if (open) {
+      if (metaTheme) {
+        originalThemeColor = metaTheme.getAttribute('content') || '';
+        metaTheme.setAttribute('content', '#0F172A'); // match dark modal
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = '#0F172A';
+        document.head.appendChild(meta);
+      }
+
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').then(lock => {
+          wakeLock = lock;
+        }).catch(err => console.log('Wake Lock error:', err));
+      }
+    }
+
+    return () => {
+      if (wakeLock) wakeLock.release();
+      if (metaTheme && originalThemeColor) {
+        metaTheme.setAttribute('content', originalThemeColor);
+      }
+    };
+  }, [open]);
+
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
@@ -150,13 +182,18 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
           )
         } />
       )}
-      <DialogContent className="sm:max-w-md border-border/50 shadow-xl rounded-2xl p-6">
-        <DialogHeader>
-          <DialogTitle className="text-center font-heading text-xl">
+      <DialogContent className="sm:max-w-md bg-[#0F172A] border-white/10 shadow-2xl rounded-3xl p-6 overflow-hidden">
+        {/* Force high contrast white blob to brighten the screen area */}
+        <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/20 blur-[100px] rounded-full pointer-events-none" />
+        
+        <DialogHeader className="relative z-10">
+          <DialogTitle className="text-center font-heading text-xl text-white tracking-tight">
             {isCheckedIn ? "Library Check-out" : "Library Check-in"}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col items-center justify-center py-4">
+        <div className="flex flex-col items-center justify-center py-4 relative z-10">
           {loading && !qrData ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -221,46 +258,45 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white p-4 sm:p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-100 flex flex-col items-center gap-4 w-full"
+              className="bg-[#1E293B]/80 backdrop-blur-xl p-4 sm:p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-white/10 flex flex-col items-center gap-4 w-full"
             >
-              <div className="relative mt-2">
-                <div className="absolute -inset-4 bg-gradient-to-tr from-primary/10 to-transparent rounded-full blur-2xl -z-10" />
+              <div className="relative mt-2 p-3 bg-white rounded-2xl shadow-lg">
                 <QRCode 
                   value={qrData} 
-                  size={240}
+                  size={220}
                   level="Q"
-                  className="rounded-lg shadow-sm" 
-                  fgColor={isCheckedIn ? "#d97706" : "#059669"}
+                  className="rounded-md" 
+                  fgColor={isCheckedIn ? "#ea580c" : "#059669"}
                 />
                 
                 {/* Scanning animation overlay */}
-                <div className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none rounded-2xl overflow-hidden">
                   <motion.div
                     animate={{ top: ["-10%", "110%"] }}
                     transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                    className="absolute left-0 right-0 h-0.5 bg-primary/50 shadow-[0_0_8px_rgba(var(--primary),0.8)]"
+                    className="absolute left-0 right-0 h-[2px] bg-primary/70 shadow-[0_0_12px_rgba(var(--primary),1)]"
                   />
                 </div>
               </div>
               
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-sm font-bold text-slate-700">Scan at the reception tablet</p>
-                <p className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              <div className="flex flex-col items-center gap-1 mt-2">
+                <p className="text-sm font-bold text-white">Scan at the reception tablet</p>
+                <p className="text-xs font-semibold text-white/50 bg-black/20 px-3 py-1 rounded-full border border-white/5">
                   Auto-refreshes every 20s
                 </p>
               </div>
 
               {/* Today's Times */}
-              <div className="w-full pt-4 border-t border-slate-100 flex flex-col gap-2">
+              <div className="w-full pt-4 border-t border-white/10 flex flex-col gap-2">
                 <div className="flex justify-between items-center px-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's First In</span>
-                  <span className="text-sm font-bold text-slate-700">{firstIn ? firstIn.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                  <span className="text-xs font-bold text-white/40 uppercase tracking-wider">Today's First In</span>
+                  <span className="text-sm font-bold text-white/90">{firstIn ? firstIn.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                 </div>
                 <div className="flex justify-between items-center px-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Last Out</span>
-                  <span className="text-sm font-bold text-slate-700">{lastOut ? lastOut.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (isCheckedIn ? 'Still In' : '-')}</span>
+                  <span className="text-xs font-bold text-white/40 uppercase tracking-wider">Today's Last Out</span>
+                  <span className="text-sm font-bold text-white/90">{lastOut ? lastOut.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (isCheckedIn ? 'Still In' : '-')}</span>
                 </div>
-                <a href="/student/profile" className="text-center text-xs font-bold text-[#0085FF] hover:underline mt-2">View past check-ins</a>
+                <a href="/student/profile" className="text-center text-xs font-bold text-primary hover:text-primary-foreground transition-colors mt-2">View past check-ins</a>
               </div>
             </motion.div>
           ) : null}
