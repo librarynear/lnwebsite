@@ -36,7 +36,7 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex-col shadow-lg border-r border-sidebar-border hidden md:flex">
         <div className="p-6">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <Image src="/final-logo.svg" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+            <Image src="/final-logo.svg" alt="FocusX Logo" width={48} height={48} className="object-contain" />
             <span className="text-xl font-heading font-bold text-sidebar-primary">FocusX</span>
           </Link>
           <div className="mt-6 flex items-center justify-between px-3 py-2 bg-background/50 border border-border rounded-md text-sm text-muted-foreground shadow-sm">
@@ -114,7 +114,7 @@ async function DashboardAuthWrapper({ children }: { children: ReactNode }) {
         {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <Image src="/final-logo.svg" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+            <Image src="/final-logo.svg" alt="FocusX Logo" width={48} height={48} className="object-contain" />
             <span className="text-xl font-heading font-bold text-sidebar-primary hidden sm:block">FocusX</span>
           </Link>
           <MobileNav role={session.role} adminLibraries={adminLibraries} activeLibraryId={activeLibraryId} />
