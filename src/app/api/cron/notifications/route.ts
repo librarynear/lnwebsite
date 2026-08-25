@@ -15,30 +15,17 @@ export async function GET(request: Request) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // 1 Day before expiry
-    const oneDayFromNowStart = new Date(today);
-    oneDayFromNowStart.setDate(oneDayFromNowStart.getDate() + 1);
-    const oneDayFromNowEnd = new Date(oneDayFromNowStart);
-    oneDayFromNowEnd.setDate(oneDayFromNowEnd.getDate() + 1);
-
-    // 3 Days before expiry
+    // 3 Days before expiry (for plans expiring 3 days from now)
     const threeDaysFromNowStart = new Date(today);
     threeDaysFromNowStart.setDate(threeDaysFromNowStart.getDate() + 3);
     const threeDaysFromNowEnd = new Date(threeDaysFromNowStart);
     threeDaysFromNowEnd.setDate(threeDaysFromNowEnd.getDate() + 1);
 
-    // Fetch active bookings expiring tomorrow
-    const expiringTomorrow = await prisma.booking.findMany({
-      where: {
-        status: { in: ['CONFIRMED', 'COMPLETED'] },
-        endTime: {
-          gte: oneDayFromNowStart,
-          lt: oneDayFromNowEnd
-        },
-        isPaused: false
-      },
-      include: { plan: true }
-    });
+    // Just Expired (for plans that expired yesterday)
+    const yesterdayStart = new Date(today);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(yesterdayStart);
+    yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
 
     // Fetch active bookings expiring in 3 days
     const expiringIn3Days = await prisma.booking.findMany({
@@ -53,31 +40,22 @@ export async function GET(request: Request) {
       include: { plan: true }
     });
 
+    // Fetch bookings that just expired yesterday
+    const expiredYesterday = await prisma.booking.findMany({
+      where: {
+        status: { in: ['CONFIRMED', 'COMPLETED'] },
+        endTime: {
+          gte: yesterdayStart,
+          lt: yesterdayEnd
+        },
+        isPaused: false
+      },
+      include: { plan: true }
+    });
+
     let notificationsCreated = 0;
 
-    // Process tomorrow
-    for (const booking of expiringTomorrow) {
-      // Check if we already notified
-      const existing = await prisma.notification.findFirst({
-        where: {
-          studentId: booking.studentId,
-          title: "Plan Expiring Tomorrow! ⏰",
-          createdAt: { gte: today }
-        }
-      });
-      if (!existing) {
-        await prisma.notification.create({
-          data: {
-            studentId: booking.studentId,
-            title: "Plan Expiring Tomorrow! ⏰",
-            message: `Your ${booking.plan.name} plan expires tomorrow. [Renew Plan](/student/dashboard) to keep your seat!`,
-          }
-        });
-        notificationsCreated++;
-      }
-    }
-
-    // Process 3 days
+    // Process 3 days notice
     for (const booking of expiringIn3Days) {
       const existing = await prisma.notification.findFirst({
         where: {
@@ -92,6 +70,27 @@ export async function GET(request: Request) {
             studentId: booking.studentId,
             title: "Plan Expiring Soon 🗓️",
             message: `Your ${booking.plan.name} plan expires in 3 days. [Renew Plan](/student/dashboard) to avoid losing access.`,
+          }
+        });
+        notificationsCreated++;
+      }
+    }
+
+    // Process just expired notice
+    for (const booking of expiredYesterday) {
+      const existing = await prisma.notification.findFirst({
+        where: {
+          studentId: booking.studentId,
+          title: "Plan Expired ⚠️",
+          createdAt: { gte: today }
+        }
+      });
+      if (!existing) {
+        await prisma.notification.create({
+          data: {
+            studentId: booking.studentId,
+            title: "Plan Expired ⚠️",
+            message: `Your ${booking.plan.name} plan has expired. [Renew Plan](/student/dashboard) to regain access to the library.`,
           }
         });
         notificationsCreated++;
