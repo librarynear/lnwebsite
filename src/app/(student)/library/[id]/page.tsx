@@ -45,7 +45,7 @@ export async function generateMetadata({
   const title = `${library.name} — Study Library in ${area}`;
   const description = `Book a seat at ${library.name}, a premium study library in ${area}${library.city ? `, ${library.city}` : ''}. Plans from ₹${minPrice}/mo with verified amenities. Reserve on FocusX.`;
   const canonical = `${APP_URL}/library/${id}`;
-  const image = library.photos.length > 0 ? library.photos[0] : "https://ik.imagekit.io/focusdesk/logo.png";
+  const image = library.photos.length > 0 ? library.photos[0] : "/final-logo.svg";
 
   return {
     title,
@@ -94,7 +94,7 @@ export default async function LibraryDetailsPage({
     "@context": "https://schema.org",
     "@type": ["LocalBusiness", "Library"],
     "name": library.name,
-    "image": library.photos.length > 0 ? library.photos[0] : "https://ik.imagekit.io/focusdesk/logo.png",
+    "image": library.photos.length > 0 ? library.photos[0] : "/final-logo.svg",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": library.address,

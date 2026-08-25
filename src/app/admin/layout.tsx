@@ -39,7 +39,7 @@ async function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="flex items-center gap-2 group">
-            <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+            <Image src="/final-logo.svg" alt="FocusX Logo" width={32} height={32} className="object-contain" />
             <span className="text-xl font-heading font-bold text-primary">Admin Control</span>
           </Link>
           <span className="text-xs px-2 py-1 bg-destructive/10 text-destructive rounded-full font-bold uppercase tracking-wide">

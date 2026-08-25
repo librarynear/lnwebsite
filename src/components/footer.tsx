@@ -13,7 +13,7 @@ export function Footer() {
             {/* Left Column */}
             <div className="flex flex-col space-y-4">
               <Link href="/" className="flex items-center gap-2 group">
-                <Image src="https://ik.imagekit.io/focusdesk/logo.png" alt="FocusX Logo" width={32} height={32} className="object-contain" />
+                <Image src="/final-logo.svg" alt="FocusX Logo" width={32} height={32} className="object-contain" />
                 <span className="text-xl tracking-tight text-primary font-heading font-bold">
                   FocusX
                 </span>

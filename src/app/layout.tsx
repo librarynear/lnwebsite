@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: "FocusX",
     images: [
       {
-        url: "https://ik.imagekit.io/focusdesk/logo.png",
+        url: "/final-logo.svg",
         width: 1200,
         height: 630,
         alt: "FocusX - Book Study Libraries",
@@ -44,10 +44,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "FocusX | Book Premium Study Libraries",
     description: "Find and book premium study libraries starting at ₹500/mo. Compare seats, amenities & ratings on FocusX.",
-    images: ["https://ik.imagekit.io/focusdesk/logo.png"],
+    images: ["/final-logo.svg"],
   },
   icons: {
-    icon: "https://ik.imagekit.io/focusdesk/logo.png",
+    icon: "/final-logo.svg",
   },
   manifest: "/manifest.json",
 };
