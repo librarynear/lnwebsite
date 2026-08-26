@@ -14,7 +14,7 @@ export default function PrototypePass() {
     profilePhotoUrl: null,
     joinDate: '15.06',
   };
-  const currentStreak = 0;
+  const currentStreak: number = 0;
 
   // Helper to format name: "Garv Choudhary" -> "Garv  C."
   const formatName = (fullName: string) => {
