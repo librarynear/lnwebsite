@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverActions: { bodySizeLimit: "20mb" },
   serverExternalPackages: ["firebase-admin"],
   cacheComponents: true,
   turbopack: {
