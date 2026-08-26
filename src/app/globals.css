@@ -200,3 +200,52 @@ body.scroll-down .search-bar-sticky {
 .embed-mode main {
   background: transparent !important;
 }
+
+
+
+@keyframes aurora-1 {
+  0% { transform: translate(-20%, 0%) rotate(-15deg) scaleY(1.5) scaleX(2); opacity: 0.6; }
+  50% { transform: translate(20%, -10%) rotate(-5deg) scaleY(2) scaleX(2.5); opacity: 0.9; }
+  100% { transform: translate(-20%, 0%) rotate(-15deg) scaleY(1.5) scaleX(2); opacity: 0.6; }
+}
+@keyframes aurora-2 {
+  0% { transform: translate(20%, -10%) rotate(10deg) scaleY(2) scaleX(2); opacity: 0.5; }
+  50% { transform: translate(-20%, 5%) rotate(25deg) scaleY(1.5) scaleX(2.5); opacity: 0.8; }
+  100% { transform: translate(20%, -10%) rotate(10deg) scaleY(2) scaleX(2); opacity: 0.5; }
+}
+@keyframes aurora-3 {
+  0% { transform: translate(-10%, -5%) rotate(-5deg) scaleY(2) scaleX(1.5); opacity: 0.7; }
+  50% { transform: translate(15%, 5%) rotate(15deg) scaleY(2.5) scaleX(2); opacity: 0.4; }
+  100% { transform: translate(-10%, -5%) rotate(-5deg) scaleY(2) scaleX(1.5); opacity: 0.7; }
+}
+.animate-aurora-1 { animation: aurora-1 12s infinite ease-in-out alternate; }
+.animate-aurora-2 { animation: aurora-2 15s infinite ease-in-out alternate; }
+.animate-aurora-3 { animation: aurora-3 10s infinite ease-in-out alternate; }
+
+@keyframes scan-line {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+.animate-scan {
+  animation: scan-line 3s linear infinite;
+}
+
+
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+
+@keyframes flicker {
+  0%, 100% { transform: scale(1) translateY(0); opacity: 1; filter: drop-shadow(0 0 8px rgba(39,129,202,0.8)); }
+  25% { transform: scale(1.05) translateY(-1px); opacity: 0.9; filter: drop-shadow(0 0 12px rgba(59,130,246,1)); }
+  50% { transform: scale(0.95) translateY(1px) skewX(2deg); opacity: 0.8; filter: drop-shadow(0 0 6px rgba(39,129,202,0.6)); }
+  75% { transform: scale(1.1) translateY(-2px) skewX(-2deg); opacity: 1; filter: drop-shadow(0 0 15px rgba(96,165,250,1)); }
+}
+.animate-flicker {
+  animation: flicker 0.4s infinite ease-in-out alternate;
+  transform-origin: bottom center;
+}

@@ -137,7 +137,7 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
         
         {/* Profile Picture Section */}
         <div className="flex flex-col md:flex-row items-center gap-6 pb-8 border-b border-border">
-          <div className={`w-32 h-32 rounded-full border-4 border-muted flex items-center justify-center bg-muted/30 overflow-hidden relative shrink-0 ${user.digilockerVerified ? 'opacity-80' : 'group'}`}>
+          <div className={`w-32 h-32 rounded-full border-4 border-muted flex items-center justify-center bg-muted/30 overflow-hidden relative shrink-0 group`}>
             {photoUrl ? (
               // Profile photos may use arbitrary user-provided providers.
               // eslint-disable-next-line @next/next/no-img-element
@@ -145,16 +145,13 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
             ) : (
               <User className="w-12 h-12 text-muted-foreground" />
             )}
-            {!user.digilockerVerified && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <Camera className="w-8 h-8 text-white" />
-              </div>
-            )}
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <Camera className="w-8 h-8 text-white" />
+            </div>
             <input 
               type="file" 
               accept="image/*" 
-              className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-              disabled={user.digilockerVerified}
+              className="absolute inset-0 opacity-0 cursor-pointer"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   const file = e.target.files[0];

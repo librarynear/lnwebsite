@@ -59,7 +59,7 @@ export async function updateStudentProfile(formData: FormData): Promise<{ succes
     profilePhotoUrl = await uploadImage(
       buffer,
       `profile_${session.userId}_${Date.now()}`,
-      '/profiles',
+      `/profiles/history/${session.userId}`,
       mimeType,
     );
   }
@@ -82,7 +82,7 @@ export async function updateStudentProfile(formData: FormData): Promise<{ succes
         locality: locality || null,
         qualification: qualification || null,
         organization: organization || null,
-        ...(profilePhotoUrl && !isVerified && { profilePhotoUrl }),
+        ...(profilePhotoUrl && { profilePhotoUrl }),
       }
     });
   } catch (error: unknown) {
