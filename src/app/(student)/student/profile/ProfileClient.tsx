@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { User, Camera, ShieldCheck, Loader2 } from "lucide-react"
+import { ImageCropperModal } from "@/components/ImageCropperModal"
 import type { User as UserRecord } from "@prisma/client"
 
 import { UpdatePhoneModal } from "./UpdatePhoneModal"
@@ -44,7 +45,8 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState(user.profilePhotoUrl || "")
+  const [photoUrl, setPhotoUrl] = useState<string | null>(user.profilePhotoUrl || "")
+  const [uncroppedImageSrc, setUncroppedImageSrc] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const verifyCashfreeReturn = useCallback(async (verification_id: string) => {
@@ -127,6 +129,18 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
 
   return (
     <div className="bg-card border border-border shadow-sm rounded-3xl p-6 md:p-10 relative">
+      {uncroppedImageSrc && (
+        <ImageCropperModal 
+          imageSrc={uncroppedImageSrc}
+          onCropDone={(croppedFile, croppedUrl) => {
+            setSelectedFile(croppedFile);
+            setPhotoUrl(croppedUrl);
+            setUncroppedImageSrc(null);
+          }}
+          onCancel={() => setUncroppedImageSrc(null)}
+        />
+      )}
+
       {user.digilockerVerified && (
         <div className="absolute top-6 right-6 flex items-center gap-2 bg-success/10 text-success px-4 py-2 rounded-full font-bold text-sm">
           <ShieldCheck className="w-5 h-5" /> KYC Verified
@@ -155,8 +169,12 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   const file = e.target.files[0];
-                  setSelectedFile(file);
-                  setPhotoUrl(URL.createObjectURL(file)); // preview
+                  const reader = new FileReader();
+                  reader.addEventListener('load', () => {
+                    setUncroppedImageSrc(reader.result?.toString() || null);
+                  });
+                  reader.readAsDataURL(file);
+                  e.target.value = ''; // Reset input
                 }
               }}
             />
