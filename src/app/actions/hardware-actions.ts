@@ -16,9 +16,10 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
     return { error: "Unauthorized" };
   }
 
-  // Verify the user has an active booking for this library right now
   const now = new Date();
-  const activeBooking = await prisma.booking.findFirst({
+  
+  // Start the background queries immediately and concurrently
+  const activeBookingPromise = prisma.booking.findFirst({
     where: {
       studentId: session.userId,
       libraryId: libraryId,
@@ -28,6 +29,24 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       isPaused: false
     }
   });
+
+  const latestLogPromise = prisma.checkinLog.findFirst({
+    where: { studentId: session.userId, libraryId: libraryId },
+    orderBy: { timestamp: 'desc' }
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todaysLogsPromise = prisma.checkinLog.findMany({
+    where: { studentId: session.userId, libraryId: libraryId, timestamp: { gte: today } },
+    orderBy: { timestamp: 'asc' }
+  });
+
+  const [activeBooking, latestLog, todaysLogs] = await Promise.all([
+    activeBookingPromise,
+    latestLogPromise,
+    todaysLogsPromise
+  ]);
 
   if (!activeBooking) {
     // Maybe they are the librarian or staff?
@@ -86,18 +105,6 @@ export async function generateEntryQR(libraryId: string, doorId: string = "MAIN_
       door: doorId,
       sig: signature
     };
-
-    const latestLog = await prisma.checkinLog.findFirst({
-      where: { studentId: session.userId, libraryId: libraryId },
-      orderBy: { timestamp: 'desc' }
-    });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todaysLogs = await prisma.checkinLog.findMany({
-      where: { studentId: session.userId, libraryId: libraryId, timestamp: { gte: today } },
-      orderBy: { timestamp: 'asc' }
-    });
 
     const firstIn = todaysLogs.find(l => l.status === 'CHECK_IN');
     const lastOut = [...todaysLogs].reverse().find(l => l.status === 'CHECK_OUT');

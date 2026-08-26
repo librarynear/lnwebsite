@@ -27,6 +27,7 @@ model User {
   qualification       String?
   digilockerVerified  Boolean            @default(false)
   employerLibraryId   String?
+  passColor           String?            @default("#2781CA")
   consecutiveFailures Int                @default(0)
   failureReasons      String?
   rfidTag             String?            @unique

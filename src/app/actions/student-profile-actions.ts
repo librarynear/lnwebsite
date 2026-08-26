@@ -157,3 +157,16 @@ export async function syncUpdatedPhone() {
   revalidatePath("/student/profile");
   return { success: true, phone: newPhone };
 }
+
+export async function updatePassColor(color: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: { passColor: color }
+  });
+
+  revalidatePath("/student/dashboard");
+  return { success: true };
+}

@@ -3,12 +3,14 @@
 import { Flame, ScanLine, Camera, QrCode } from 'lucide-react';
 import { AccessQRModal } from '@/components/AccessQRModal';
 import { useEffect, useState } from 'react';
+import { updatePassColor } from '@/app/actions/student-profile-actions';
 
 interface DigitalPassCardProps {
   student: {
     name: string | null;
     uniqueId: string;
     profilePhotoUrl: string | null;
+    passColor?: string | null;
   };
   currentStreak: number;
   libraryId: string;
@@ -19,6 +21,16 @@ interface DigitalPassCardProps {
 export function DigitalPassCard({ student, currentStreak, libraryId, studentId, isCheckedIn }: DigitalPassCardProps) {
   const theme: string = 'light'; // Hardcoded to match the finalized light mode preference
   const [greeting, setGreeting] = useState('Good evening,');
+  const [passColor, setPassColor] = useState(student.passColor || '#2781CA');
+
+  const handleColorChange = async (color: string) => {
+    setPassColor(color);
+    try {
+      await updatePassColor(color);
+    } catch (e) {
+      setPassColor(student.passColor || '#2781CA'); // revert on error
+    }
+  };
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -51,13 +63,13 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-50">Streak</span>
             <span className="font-mono font-bold text-xl flex items-center gap-1">
-              <Flame className="w-5 h-5 text-[#2781CA] drop-shadow-[0_0_8px_rgba(39,129,202,0.8)]" /> {currentStreak}
+              <Flame className="w-5 h-5" style={{ color: passColor, filter: `drop-shadow(0 0 8px ${passColor}CC)` }} /> {currentStreak}
             </span>
           </div>
         </div>
 
-        {/* Photo Framing Area - Stylized blue block */}
-        <div className="relative w-full aspect-square bg-[#2781CA] flex flex-col items-center justify-end overflow-hidden p-6">
+        {/* Photo Framing Area - Stylized colored block */}
+        <div className="relative w-full aspect-square flex flex-col items-center justify-end overflow-hidden p-6 transition-colors duration-500" style={{ backgroundColor: passColor }}>
           {/* Lanyard Hole Mockup */}
           <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-16 h-3 rounded-full border-2 shadow-inner ${theme === 'dark' ? 'bg-[#111] border-black/50' : 'bg-[#ddd] border-black/10'}`}></div>
 
@@ -67,7 +79,7 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
           </div>
 
           <div className="absolute bottom-6 right-6 w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-xl rotate-12">
-            <span className="text-[#2781CA] font-heading font-bold text-xl leading-none text-center">FX<br/>48</span>
+            <span className="font-heading font-bold text-xl leading-none text-center" style={{ color: passColor }}>FX<br/>48</span>
           </div>
 
           {/* The Student Photo inside a graphic frame */}
@@ -77,7 +89,7 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
               <img src={student.profilePhotoUrl} alt="Student" className="w-full h-full object-cover relative z-10" />
             ) : (
               <>
-                <img src="https://api.dicebear.com/9.x/micah/svg?seed=placeholder&backgroundColor=2781CA" alt="Placeholder" className="w-full h-full object-cover opacity-90 relative z-10" />
+                <img src={`https://api.dicebear.com/9.x/micah/svg?seed=placeholder&backgroundColor=${passColor.replace('#', '')}`} alt="Placeholder" className="w-full h-full object-cover opacity-90 relative z-10" />
                 <div className="absolute inset-0 backdrop-blur-sm bg-black/30 flex flex-col items-center justify-center gap-3 text-white z-30 transition-all duration-300">
                   <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md border border-white/30 shadow-lg">
                     <Camera className="w-5 h-5 text-white" strokeWidth={1.5} />
@@ -114,7 +126,7 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
                 <QrCode className="absolute inset-0 w-full h-full opacity-[0.04] text-black mix-blend-overlay -rotate-6 scale-125 pointer-events-none" strokeWidth={0.5} />
 
                 {/* Scanner line horizontal */}
-                <div className="absolute -left-[1px] -right-[1px] h-[1px] bg-[#2781CA] animate-scan z-20"></div>
+                <div className="absolute -left-[1px] -right-[1px] h-[1px] animate-scan z-20" style={{ backgroundColor: passColor }}></div>
 
                 <div className="relative z-10 flex items-center gap-3">
                   <ScanLine className="w-5 h-5 opacity-70" />
@@ -124,6 +136,23 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
             </AccessQRModal>
           </div>
 
+          {/* Color Customization Palette */}
+          <div className="flex justify-center gap-3 pt-3 opacity-20 hover:opacity-100 transition-opacity duration-300">
+            {['#2781CA', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#111827'].map((c) => (
+              <button 
+                key={c}
+                onClick={() => handleColorChange(c)}
+                className={`w-3 h-3 rounded-full transition-transform cursor-pointer shadow-sm`}
+                style={{ 
+                  backgroundColor: c, 
+                  boxShadow: passColor === c ? `0 0 0 2px white, 0 0 0 3px ${c}` : 'none',
+                  transform: passColor === c ? 'scale(1.2)' : 'scale(1)'
+                }}
+                title="Change Pass Color"
+                aria-label={`Change color to ${c}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

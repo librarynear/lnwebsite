@@ -203,13 +203,15 @@ export function AccessQRModal({ libraryId, studentId, iconOnly, isCheckedIn: ini
             <div className="py-8 flex flex-col items-center justify-center gap-4 bg-slate-50/50 rounded-2xl border border-slate-100 p-6">
                 <QrCode className="w-10 h-10 text-rose-500 opacity-50" />
                 <div className="text-center">
-                  <h3 className="font-bold text-slate-800 text-lg mb-1">{!studentId ? "Not Signed In" : "No Active Plan"}</h3>
+                  <h3 className="font-bold text-slate-800 text-lg mb-1">{!studentId ? "Not Signed In" : error || "No Active Plan"}</h3>
                   <p className="text-sm text-slate-500 font-medium max-w-[250px] mx-auto">
                     {!studentId
                       ? "Please sign in to view your library access QR code."
-                      : libraryId 
-                        ? "Your plan has expired. Please renew your plan to generate an access QR code." 
-                        : "You do not have an active booking at any library yet."}
+                      : error === "Server configuration error"
+                        ? "Contact support. Hardware signature keys are missing."
+                        : error
+                          ? "You do not have a confirmed subscription active right now."
+                          : "You do not have an active booking at any library yet."}
                   </p>
                 </div>
                 {!studentId ? (
