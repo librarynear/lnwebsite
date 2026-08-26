@@ -17,7 +17,7 @@ interface DigitalPassCardProps {
 }
 
 export function DigitalPassCard({ student, currentStreak, libraryId, studentId, isCheckedIn }: DigitalPassCardProps) {
-  const theme = 'light'; // Hardcoded to match the finalized light mode preference
+  const theme: string = 'light'; // Hardcoded to match the finalized light mode preference
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState('Good evening,');
 
