@@ -95,10 +95,16 @@ export function ProfileClient({ user: initialUser }: { user: ProfileUser }) {
     if (selectedFile) {
       formData.set("profilePhotoFile", selectedFile);
     }
-    await updateStudentProfile(formData)
-    setLoading(false)
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
+    try {
+      await updateStudentProfile(formData)
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    } catch (e: any) {
+      console.error("Save profile error:", e);
+      alert(e.message || "Failed to save profile. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleVerifyDigilocker() {
