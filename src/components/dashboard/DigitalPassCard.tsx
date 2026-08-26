@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, ScanLine, Camera } from 'lucide-react';
+import { Flame, ScanLine, Camera, QrCode } from 'lucide-react';
 import { AccessQRModal } from '@/components/AccessQRModal';
 import { useEffect, useState } from 'react';
 
@@ -18,11 +18,9 @@ interface DigitalPassCardProps {
 
 export function DigitalPassCard({ student, currentStreak, libraryId, studentId, isCheckedIn }: DigitalPassCardProps) {
   const theme: string = 'light'; // Hardcoded to match the finalized light mode preference
-  const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState('Good evening,');
 
   useEffect(() => {
-    setMounted(true);
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Good morning,');
     else if (hour < 17) setGreeting('Good afternoon,');
@@ -38,8 +36,6 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
 
   const formattedName = formatName(student.name);
 
-  // Avoid hydration mismatch by rendering a safe default before mount
-  if (!mounted) return <div className="w-full max-w-[400px] mx-auto aspect-[3/5] bg-card rounded-2xl animate-pulse border border-border"></div>;
 
   return (
     <div className="relative w-full max-w-[400px] mx-auto">
@@ -115,7 +111,7 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
               <div className={`relative w-full max-w-[280px] mx-auto aspect-[4/1] flex items-center justify-center border border-black group cursor-pointer overflow-hidden transition-all duration-300`}>
                 
                 {/* Faded QR Background */}
-                <div className={`absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg')] bg-cover bg-center bg-no-repeat opacity-[0.08] blur-[1px] ${theme === 'dark' ? 'invert' : ''}`}></div>
+                <QrCode className="absolute inset-0 w-full h-full opacity-[0.04] text-black mix-blend-overlay -rotate-6 scale-125 pointer-events-none" strokeWidth={0.5} />
 
                 {/* Scanner line horizontal */}
                 <div className="absolute -left-[1px] -right-[1px] h-[1px] bg-[#2781CA] animate-scan z-20"></div>
