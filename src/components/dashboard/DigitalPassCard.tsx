@@ -2,7 +2,6 @@
 
 import { Flame, ScanLine, Camera } from 'lucide-react';
 import { AccessQRModal } from '@/components/AccessQRModal';
-import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 interface DigitalPassCardProps {
@@ -18,7 +17,7 @@ interface DigitalPassCardProps {
 }
 
 export function DigitalPassCard({ student, currentStreak, libraryId, studentId, isCheckedIn }: DigitalPassCardProps) {
-  const { theme } = useTheme();
+  const theme = 'light'; // Hardcoded to match the finalized light mode preference
   const [mounted, setMounted] = useState(false);
   const [greeting, setGreeting] = useState('Good evening,');
 
