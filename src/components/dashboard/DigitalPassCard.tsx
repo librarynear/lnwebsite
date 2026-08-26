@@ -78,7 +78,7 @@ export function DigitalPassCard({ student, currentStreak, libraryId, studentId, 
           <div className="relative w-[85%] aspect-[3/4] border-[4px] border-white shadow-2xl bg-[#0a0a0a] overflow-hidden -mb-16 rotate-[-2deg] flex items-center justify-center">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+CiAgPHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPgogIDxwYXRoIGQ9Ik0wIDM5aDQwVjQwSDB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+CiAgPHBhdGggZD0iTTM5IDB2NDBoMVYweiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPgo8L3N2Zz4=')] opacity-30 mix-blend-overlay z-20 pointer-events-none"></div>
             {student.profilePhotoUrl ? (
-              <img src={student.profilePhotoUrl} alt="Student" className="w-full h-full object-cover filter grayscale contrast-125 mix-blend-luminosity opacity-90 relative z-10" />
+              <img src={student.profilePhotoUrl} alt="Student" className="w-full h-full object-cover relative z-10" />
             ) : (
               <>
                 <img src="https://api.dicebear.com/9.x/micah/svg?seed=placeholder&backgroundColor=2781CA" alt="Placeholder" className="w-full h-full object-cover opacity-90 relative z-10" />
