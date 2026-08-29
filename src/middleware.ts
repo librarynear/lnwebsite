@@ -30,6 +30,7 @@ const CSRF_EXEMPT_PREFIXES = [
   '/api/student/checkin',
   '/api/razorpay/callback',
   '/api/vitals',
+  '/api/mobile',
 ];
 
 function getAllowedOrigins(request: NextRequest): Set<string> {
