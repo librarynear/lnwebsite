@@ -39,6 +39,8 @@ export async function GET(req: Request) {
   }
 }
 
+import { syncUserOnSignup } from '@/app/actions/auth-actions';
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -55,23 +57,24 @@ export async function POST(req: Request) {
     }
 
     const { name } = await req.json();
+    const phone = decodedToken.phone_number || '';
 
-    // Upsert user safely to guarantee zero data loss. 
-    // If the authId exists, it only updates the name.
-    // If it doesn't exist, it safely creates a new student user.
-    const user = await prisma.user.upsert({
+    // Use the exact same sync logic as the website dashboard to handle:
+    // 1. Phone number fallback matching (for manual admin creations)
+    // 2. Generating FocusX Unique IDs
+    // 3. Preventing duplicates
+    const syncResult = await syncUserOnSignup(token, phone, name);
+    if (syncResult.error) {
+      return NextResponse.json({ error: syncResult.error }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
       where: { authId: decodedToken.uid },
-      update: {
-        name: name,
-      },
-      create: {
-        authId: decodedToken.uid,
-        name: name,
-        phone: decodedToken.phone_number || undefined,
-        email: decodedToken.email || undefined,
-        role: 'STUDENT',
-      },
     });
+
+    if (!user) {
+      return NextResponse.json({ error: "Failed to fetch synced user" }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
