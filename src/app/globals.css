@@ -57,7 +57,7 @@
   --card-foreground: oklch(0.2 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0 0);
-  --primary: oklch(0.55 0.15 250); /* Premium Blue */
+  --primary: oklch(0.552 0.236 264.8); /* FocusX Blue #2a5ff9 */
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.96 0 0); /* Light gray bounds */
   --secondary-foreground: oklch(0.2 0 0);

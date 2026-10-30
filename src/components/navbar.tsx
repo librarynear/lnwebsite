@@ -13,12 +13,17 @@ export function Navbar() {
             width={40}
             height={40}
             sizes="40px"
-            className="h-8 w-auto object-contain shrink-0 md:h-10"
+            className="h-8 w-auto object-contain shrink-0 sm:hidden"
             priority
           />
-          <span className="text-2xl tracking-tight hidden sm:block">
-            <span className="text-slate-800 font-semibold text-[22px]">Library</span><span className="text-primary font-bold text-[22px]">Near</span>
-          </span>
+          <Image
+            src="/logo.webp"
+            alt="LibraryNear Logo"
+            width={240}
+            height={40}
+            className="hidden sm:block h-8 w-auto object-contain shrink-0 md:h-10"
+            priority
+          />
         </IntentLink>
 
         <div className="flex items-center gap-2 md:gap-4 shrink-0">

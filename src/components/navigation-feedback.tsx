@@ -93,7 +93,7 @@ export function NavigationFeedback() {
         pending ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className={`h-full w-full bg-[linear-gradient(90deg,#0F74C5_0%,#4BA3F8_40%,#93C5FD_100%)] ${
+      <div className={`h-full w-full bg-[linear-gradient(90deg,#2A5FF9_0%,#608CFA_40%,#A5BFFD_100%)] ${
         pending ? "animate-[nav-progress_1.1s_ease-in-out_infinite]" : ""
       }`} />
     </div>

@@ -39,19 +39,14 @@ export function Footer() {
         <div className="w-full rounded-3xl border border-border/80 bg-white pt-10 pb-6 px-8 md:px-12 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 mb-12">
             <div className="col-span-1 md:col-span-5">
-              <Link href="/" className="flex items-center gap-2 group mb-5">
+              <Link href="/" className="inline-block group mb-5">
                 <Image
-                  src="/logo-icon.webp"
+                  src="/logo.webp"
                   alt="LibraryNear Logo"
-                  width={40}
+                  width={240}
                   height={40}
-                  sizes="40px"
-                  className="h-10 w-auto object-contain shrink-0"
+                  className="h-9 md:h-10 w-auto object-contain"
                 />
-                <span className="text-2xl tracking-tight hidden sm:block">
-                  <span className="text-slate-800 font-semibold text-[22px]">Library</span>
-                  <span className="text-primary font-bold text-[22px]">Near</span>
-                </span>
               </Link>
               <p className="text-[13px] text-muted-foreground leading-relaxed max-w-[320px]">
                 Find, compare, and shortlist study libraries near you. We help students discover reliable spaces and help owners reach the right audience.
@@ -115,7 +110,7 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="h-[30px] w-[30px] rounded bg-sky-50 flex items-center justify-center text-primary/80 hover:bg-primary/10 transition-colors"
+                    className="h-[30px] w-[30px] rounded bg-primary/10 flex items-center justify-center text-primary/80 hover:bg-primary/20 transition-colors"
                   >
                     <SocialIcon label={label} />
                   </a>
