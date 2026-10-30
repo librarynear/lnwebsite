@@ -3,7 +3,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
 import { client } from "@/sanity/lib/client";
 
-export const revalidate = 0; // Force dynamic to bust Vercel cache
+export const revalidate = 86400; // Cache for 24h at the edge so Googlebot gets instant responses
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();

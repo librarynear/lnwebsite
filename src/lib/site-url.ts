@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://librarynear.com";
+const DEFAULT_SITE_URL = "https://www.librarynear.com";
 
 export function getSiteUrl() {
   const rawUrl =
