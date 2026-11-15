@@ -31,7 +31,7 @@ const getCached24HourLibraries = unstable_cache(
   async (city: string) => get24HourLibraries(city),
   ["libraries-24-hour"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards"],
   },
 );
@@ -39,7 +39,7 @@ const getCached24HourLibraries = unstable_cache(
 const getCity24HourLibraries =
   process.env.NODE_ENV === "development" ? get24HourLibraries : getCached24HourLibraries;
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city } = await params;

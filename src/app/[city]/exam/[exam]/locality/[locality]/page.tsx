@@ -51,7 +51,7 @@ const getCachedExamLocalityLibraries = unstable_cache(
   async (city: string, locality: string) => getExamLocalityLibraries(city, locality),
   ["libraries-exam-locality-fallback"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards"],
   },
 );
@@ -59,7 +59,7 @@ const getCachedExamLocalityLibraries = unstable_cache(
 const getLocalExamLibraries =
   process.env.NODE_ENV === "development" ? getExamLocalityLibraries : getCachedExamLocalityLibraries;
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city, exam, locality: localitySlug } = await params;

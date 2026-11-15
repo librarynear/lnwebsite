@@ -13,7 +13,7 @@ interface PageProps {
   params: Promise<{ city: string; slug: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 2592000; // 30 days
 
 export async function generateStaticParams() {
   return [];

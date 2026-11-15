@@ -6,7 +6,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { getStudyLeaderboard } from "@/lib/study-room";
 import { StudyRoomClient } from "./study-room-client";
 
-export const revalidate = 300;
+export const revalidate = 3600; // 1 hour
 
 const url = `${getSiteUrl()}/study-room`;
 

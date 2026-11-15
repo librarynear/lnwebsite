@@ -7,7 +7,7 @@ import { client } from "@/sanity/lib/client";
 import { urlForImage } from "@/sanity/lib/image";
 import { getSiteUrl } from "@/lib/site-url";
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 86400; // 24 hours
 
 function cleanSlug(slug: string) {
   try {

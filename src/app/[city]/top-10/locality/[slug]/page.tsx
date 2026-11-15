@@ -40,7 +40,7 @@ const getCachedTop10LocalityLibraries = unstable_cache(
   async (city: string, locality: string) => getTop10LocalityLibraries(city, locality),
   ["libraries-top-10-locality"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards"],
   },
 );
@@ -48,7 +48,7 @@ const getCachedTop10LocalityLibraries = unstable_cache(
 const getLocalTop10Libraries =
   process.env.NODE_ENV === "development" ? getTop10LocalityLibraries : getCachedTop10LocalityLibraries;
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city, slug } = await params;

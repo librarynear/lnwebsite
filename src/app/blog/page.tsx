@@ -7,7 +7,7 @@ import { client } from "@/sanity/lib/client";
 import { urlForImage } from "@/sanity/lib/image";
 import { HomeSearchShell } from "@/components/home-search-shell";
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 86400; // 24 hours
 
 async function getPosts() {
   const query = `*[_type == "post" && defined(slug.current)] | order(publishedAt desc) {

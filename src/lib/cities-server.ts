@@ -68,8 +68,8 @@ async function loadActiveCities(): Promise<ActiveCity[]> {
 }
 
 const getCachedActiveCities = unstable_cache(loadActiveCities, ["active-cities-v1"], {
-  revalidate: 3600,
-  tags: ["active-cities", "library-cards"],
+  revalidate: 604800,
+  tags: ["active-cities"],
 });
 
 export async function getActiveCities(): Promise<ActiveCity[]> {

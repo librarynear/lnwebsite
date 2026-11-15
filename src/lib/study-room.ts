@@ -49,7 +49,7 @@ async function loadLeaderboard(city: string | null): Promise<Leaderboard> {
   return { available: true, rows: (data ?? []) as unknown as LeaderRow[] };
 }
 
-const cached = unstable_cache(loadLeaderboard, ["study-leaderboard-v1"], { revalidate: 300, tags: ["study-leaderboard"] });
+const cached = unstable_cache(loadLeaderboard, ["study-leaderboard-v1"], { revalidate: 3600, tags: ["study-leaderboard"] });
 
 export function getStudyLeaderboard(city: string | null) {
   return process.env.NODE_ENV === "development" ? loadLeaderboard(city) : cached(city);

@@ -18,6 +18,21 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
+        userAgent: [
+          "Bytespider",
+          "CCBot",
+          "ClaudeBot",
+          "GPTBot",
+          "ChatGPT-User",
+          "SemrushBot",
+          "AhrefsBot",
+          "DotBot",
+          "PetalBot",
+          "DataForSeoBot",
+        ],
+        disallow: "/",
+      },
+      {
         userAgent: "*",
         allow: "/",
         disallow: PRIVATE_PATHS,

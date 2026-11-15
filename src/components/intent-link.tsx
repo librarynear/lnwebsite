@@ -22,6 +22,7 @@ export function IntentLink({ href, onMouseEnter, onFocus, onTouchStart, ...props
   return (
     <Link
       href={href}
+      prefetch={false}
       onMouseEnter={(event) => {
         prefetchOnIntent();
         onMouseEnter?.(event);

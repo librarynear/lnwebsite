@@ -42,7 +42,7 @@ const getCachedCityOverview = unstable_cache(
   async (city: string) => getCityOverview(city),
   ["city-overview"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards", "city-overview"],
   },
 );
@@ -80,7 +80,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 function toLocalitySlug(locality: string) {
   return locality.toLowerCase().replace(/\s+/g, "-");

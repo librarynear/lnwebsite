@@ -193,8 +193,8 @@ async function runSearch(cityName: string, filtersJson: string) {
 }
 
 const cachedSearch = unstable_cache(runSearch, ["library-search-v2"], {
-  revalidate: 1800,
-  tags: ["library-cards", "library-search-results"],
+  revalidate: 86400,
+  tags: ["library-search-results"],
 });
 
 export function searchLibraryCards(cityName: string, filters: LibrarySearchFilters) {
@@ -235,8 +235,8 @@ async function loadCityLocalities(cityName: string) {
 }
 
 const cachedCityLocalities = unstable_cache(loadCityLocalities, ["city-localities-v2"], {
-  revalidate: 3600,
-  tags: ["library-localities", "library-cards"],
+  revalidate: 604800,
+  tags: ["library-localities"],
 });
 
 export async function getCityLocalities(cityName: string) {

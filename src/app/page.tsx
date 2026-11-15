@@ -18,7 +18,7 @@ import { getActiveCities } from "@/lib/cities-server";
 import { getCityLocalities } from "@/lib/library-search";
 
 
-export const revalidate = 1800;
+export const revalidate = 86400; // 24 hours
 
 function HomeSkeleton() {
   return (
@@ -68,7 +68,7 @@ const getCachedLibraries = unstable_cache(
   async (locality?: string, q?: string) => getLibraries(locality, q),
   ["home-libraries"],
   {
-    revalidate: 1800,
+    revalidate: 86400,
     tags: ["library-cards"],
   },
 );
@@ -85,7 +85,7 @@ const getCachedTopLocalities = unstable_cache(
   async () => getTopLocalities(),
   ["home-top-localities"],
   {
-    revalidate: 1800,
+    revalidate: 86400,
     tags: ["library-cards"],
   },
 );

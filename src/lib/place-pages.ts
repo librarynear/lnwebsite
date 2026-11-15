@@ -28,7 +28,7 @@ async function librariesByAmenity(city: string, amenitySlug: string, amenityOr: 
 }
 
 const cachedLibrariesByAmenity = unstable_cache(librariesByAmenity, ["place-libraries-by-amenity-v1"], {
-  revalidate: 3600,
+  revalidate: 604800,
   tags: ["library-cards"],
 });
 
@@ -52,7 +52,7 @@ async function librariesByLocality(city: string, localitySlug: string) {
 }
 
 const cachedLibrariesByLocality = unstable_cache(librariesByLocality, ["place-libraries-by-locality-v1"], {
-  revalidate: 3600,
+  revalidate: 2592000,
   tags: ["library-cards"],
 });
 
@@ -81,7 +81,7 @@ async function findLocalityCity(localitySlug: string): Promise<string | null> {
 }
 
 const cachedFindLocalityCity = unstable_cache(findLocalityCity, ["place-locality-city-v1"], {
-  revalidate: 86400,
+  revalidate: 2592000,
   tags: ["library-cards"],
 });
 
@@ -119,7 +119,7 @@ const cachedFeeStats = unstable_cache(
     return feeStatsForLibraries(ids);
   },
   ["place-fee-stats-v1"],
-  { revalidate: 86400, tags: ["library-cards", "fee-stats"] },
+  { revalidate: 604800, tags: ["library-cards", "fee-stats"] },
 );
 
 export function getFeeStats(cacheKey: string, ids: string[]) {

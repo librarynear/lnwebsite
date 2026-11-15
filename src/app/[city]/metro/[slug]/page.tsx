@@ -39,7 +39,7 @@ const getCachedLibrariesByMetro = unstable_cache(
   async (city: string, metro: string) => getLibrariesByMetro(city, metro),
   ["libraries-by-metro"],
   {
-    revalidate: 3600,
+    revalidate: 2592000,
     tags: ["library-cards"],
   },
 );
@@ -52,7 +52,7 @@ export async function generateStaticParams() {
   return [];
 }
 
-export const revalidate = 3600;
+export const revalidate = 2592000; // 30 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city, slug } = await params;

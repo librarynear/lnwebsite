@@ -32,7 +32,7 @@ const getCachedTop10Libraries = unstable_cache(
   async (city: string) => getTop10Libraries(city),
   ["libraries-top-10"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards"],
   },
 );
@@ -40,7 +40,7 @@ const getCachedTop10Libraries = unstable_cache(
 const getCityTop10Libraries =
   process.env.NODE_ENV === "development" ? getTop10Libraries : getCachedTop10Libraries;
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city } = await params;

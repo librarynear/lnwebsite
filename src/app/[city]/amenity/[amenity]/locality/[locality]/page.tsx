@@ -12,7 +12,7 @@ interface PageProps {
   params: Promise<{ city: string; amenity: string; locality: string }>;
 }
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateStaticParams() {
   return [];

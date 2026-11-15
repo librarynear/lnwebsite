@@ -34,7 +34,7 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const revalidate = 1800;
+export const revalidate = 86400; // 24 hours
 
 function describeFilters(filters: LibrarySearchFilters) {
   const parts: string[] = [];

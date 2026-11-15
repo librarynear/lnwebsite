@@ -43,7 +43,7 @@ const getCachedExamLibraries = unstable_cache(
   async (city: string) => getExamLibraries(city),
   ["libraries-exam-fallback"],
   {
-    revalidate: 3600,
+    revalidate: 604800,
     tags: ["library-cards"],
   },
 );
@@ -51,7 +51,7 @@ const getCachedExamLibraries = unstable_cache(
 const getCityExamLibraries =
   process.env.NODE_ENV === "development" ? getExamLibraries : getCachedExamLibraries;
 
-export const revalidate = 3600;
+export const revalidate = 604800; // 7 days
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { city, exam } = await params;

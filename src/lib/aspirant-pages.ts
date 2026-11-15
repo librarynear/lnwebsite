@@ -39,7 +39,7 @@ async function loadPoints(cityName: string): Promise<LibraryPoint[]> {
   return points;
 }
 
-const cachedPoints = unstable_cache(loadPoints, ["aspirant-library-points-v1"], { revalidate: 86400, tags: ["library-cards"] });
+const cachedPoints = unstable_cache(loadPoints, ["aspirant-library-points-v1"], { revalidate: 604800, tags: ["library-cards"] });
 const getPoints = (cityName: string) => (isDev ? loadPoints(cityName) : cachedPoints(cityName));
 
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -99,7 +99,7 @@ async function buildCoachingPlaces(citySlug: string, cityName: string): Promise<
   return result.sort((a, b) => b.nearby.length - a.nearby.length || a.name.localeCompare(b.name));
 }
 
-const cachedCoaching = unstable_cache(buildCoachingPlaces, ["aspirant-coaching-places-v2"], { revalidate: 86400, tags: ["library-cards"] });
+const cachedCoaching = unstable_cache(buildCoachingPlaces, ["aspirant-coaching-places-v2"], { revalidate: 604800, tags: ["library-cards"] });
 
 export function getCoachingPlaces(citySlug: string, cityName: string) {
   return isDev ? buildCoachingPlaces(citySlug, cityName) : cachedCoaching(citySlug, cityName);

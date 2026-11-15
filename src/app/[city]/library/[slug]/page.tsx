@@ -126,7 +126,7 @@ export async function generateStaticParams() {
 }
 
 // Edits call revalidatePath() for the page, so a long window is safe and cheap.
-export const revalidate = 3600;
+export const revalidate = 2592000; // 30 days (edits call revalidatePath)
 
 function formatTimeLabel(value: string | null | undefined) {
   if (!value) return null;
@@ -272,8 +272,8 @@ const getCachedLibraryDetailData = unstable_cache(
   async (slug: string) => getLibraryDetailData(slug),
   ["library-detail-data"],
   {
-    revalidate: 3600,
-    tags: ["library-detail", "library-cards"],
+    revalidate: 2592000,
+    tags: ["library-detail"],
   },
 );
 
@@ -368,7 +368,7 @@ async function getNearbyLibraries(city: string, locality: string | null, exclude
 }
 
 const getCachedNearbyLibraries = unstable_cache(getNearbyLibraries, ["library-detail-nearby-v1"], {
-  revalidate: 3600,
+  revalidate: 2592000,
   tags: ["library-cards"],
 });
 
@@ -395,7 +395,7 @@ async function getPublishedReviews(libraryId: string): Promise<PublishedReview[]
 }
 
 const getCachedPublishedReviews = unstable_cache(getPublishedReviews, ["library-detail-reviews-v1"], {
-  revalidate: 3600,
+  revalidate: 86400,
   tags: ["library-detail", "library-reviews"],
 });
 
