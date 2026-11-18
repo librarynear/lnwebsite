@@ -43,7 +43,10 @@ export const metadata: Metadata = {
     images: [`${siteUrl}/og-default.png`],
   },
   verification: {
-    google: "rJBJvfoFMWlJWCWWco0hcovhQEBs0gBmuzibnPiGHCo",
+    google: [
+      "rJBJvfoFMWlJWCWWco0hcovhQEBs0gBmuzibnPiGHCo",
+      "fczh-U8K8jiKkDwlJr2Hr5qGwSJvIfQe9KRBJMD-y18",
+    ],
     ...(process.env.BING_SITE_VERIFICATION
       ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } }
       : {}),
