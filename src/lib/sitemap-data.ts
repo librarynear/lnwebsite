@@ -44,9 +44,8 @@ export function renderUrlset(entries: SitemapEntry[]) {
 }
 
 export function renderSitemapIndex(locations: string[]) {
-  const now = new Date().toISOString();
   const body = locations
-    .map((loc) => `<sitemap><loc>${xmlEscape(loc)}</loc><lastmod>${now}</lastmod></sitemap>`)
+    .map((loc) => `<sitemap><loc>${xmlEscape(loc)}</loc></sitemap>`)
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</sitemapindex>\n`;
 }
@@ -61,10 +60,11 @@ export function xmlResponse(xml: string) {
 }
 
 export async function countActiveLibraries() {
-  const { count } = await supabaseServer
+  const { count, error } = await supabaseServer
     .from("library_branches")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true);
+  if (error) throw new Error("Unable to count sitemap libraries", { cause: error });
   return count ?? 0;
 }
 
@@ -100,7 +100,8 @@ async function fetchAllPlaceRows(): Promise<PlaceRow[]> {
       .eq("is_active", true)
       .order("id")
       .range(page * pageSize, (page + 1) * pageSize - 1);
-    if (error || !data || data.length === 0) break;
+    if (error) throw new Error("Unable to load sitemap places", { cause: error });
+    if (!data || data.length === 0) break;
     rows.push(...(data as PlaceRow[]));
     if (data.length < pageSize) break;
   }
@@ -180,7 +181,7 @@ export async function buildPagesEntries(): Promise<SitemapEntry[]> {
   const hubs = await getPublishedHubs(async (slug) => nameOf(slug));
   for (const { hub } of hubs) entries.push({ url: `${base}/guides/moving-to/${hub.slug}`, changeFrequency: "weekly", priority: 0.7 });
   for (const city of activeCities) {
-    const places = await getCoachingPlaces(city.slug, city.name).catch(() => []);
+    const places = await getCoachingPlaces(city.slug, city.name);
     if (places.length >= 3) entries.push({ url: `${base}/${city.slug}/near`, changeFrequency: "weekly", priority: 0.6 });
     for (const place of places) entries.push({ url: `${base}/${city.slug}/near/${encodeURI(place.slug)}`, changeFrequency: "weekly", priority: 0.6 });
   }
@@ -203,7 +204,8 @@ export async function buildPagesEntries(): Promise<SitemapEntry[]> {
       .eq("is_active", true)
       .order("id")
       .range(page * 1000, page * 1000 + 999);
-    if (error || !data || data.length === 0) break;
+    if (error) throw new Error("Unable to load sitemap fee coverage", { cause: error });
+    if (!data || data.length === 0) break;
     for (const row of data as Array<{ city: string }>) bump(feeCounts, citySlug(row.city));
     if (data.length < 1000) break;
   }
@@ -237,7 +239,8 @@ export async function buildLibraryEntries(part: number): Promise<SitemapEntry[]>
       .eq("is_active", true)
       .order("id")
       .range(from, from + pageSize - 1);
-    if (error || !data || data.length === 0) break;
+    if (error) throw new Error("Unable to load sitemap libraries", { cause: error });
+    if (!data || data.length === 0) break;
     for (const row of data) {
       entries.push({
         url: `${base}/${citySlug(row.city)}/library/${encodeURIComponent(row.slug)}`,

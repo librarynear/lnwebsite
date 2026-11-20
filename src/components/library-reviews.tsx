@@ -10,6 +10,7 @@ export type ReviewType = {
   rating: number;
   review_text: string;
   created_at: string;
+  source?: string | null;
   reviewer_name?: string | null;
   reviewer_photo_url?: string | null;
   profiles: { full_name: string | null; avatar_url: string | null } | null;
@@ -31,7 +32,7 @@ export function LibraryReviews({
   // Calculate rating distribution
   const distribution = [5, 4, 3, 2, 1].map((star) => {
     const count = reviews.filter((r) => r.rating === star).length;
-    const percentage = reviewCount > 0 ? (count / reviewCount) * 100 : 0;
+    const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
     return { star, count, percentage };
   });
 
@@ -40,7 +41,7 @@ export function LibraryReviews({
       <div className="flex flex-col md:flex-row gap-10">
         {/* Left column: Summary */}
         <div className="md:w-1/3">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Reviews</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Reviews</h2>
           <div className="flex items-center gap-4 mb-6">
             <div className="text-6xl font-bold tracking-tighter text-gray-900">
               {aggregateRating > 0 ? aggregateRating.toFixed(1) : "0.0"}
@@ -54,10 +55,11 @@ export function LibraryReviews({
                   />
                 ))}
               </div>
-              <p className="text-sm font-medium text-gray-500">Based on {reviewCount} review{reviewCount !== 1 ? 's' : ''}</p>
+              <p className="text-sm font-medium text-gray-500">Listed rating · {reviewCount} review{reviewCount !== 1 ? 's' : ''}</p>
             </div>
           </div>
 
+          <p className="mb-3 text-xs text-gray-500">Distribution of the {reviews.length} reviews displayed below. The listed overall rating may include additional reviews.</p>
           <div className="space-y-3 mb-8">
             {distribution.map(({ star, percentage }) => (
               <div key={star} className="flex items-center gap-3 text-sm font-medium text-gray-600">
@@ -98,6 +100,7 @@ export function LibraryReviews({
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-900">{authorName}</h4>
+                    <p className="text-xs text-gray-500">{review.source === "google" ? "Source: Google" : review.source === "user" ? "Source: LibraryNear" : "Source not confirmed"}</p>
                     <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
                       <div className="flex text-amber-400">
                         {[1, 2, 3, 4, 5].map((i) => (

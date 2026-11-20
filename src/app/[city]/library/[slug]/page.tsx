@@ -464,7 +464,7 @@ export default async function LibraryDetailPage({ params }: PageProps) {
   // Imported third-party (Google) reviews are not marked up, per Google's
   // review snippet guidelines, and anonymous reviews are skipped.
   const markupReviews = reviews.filter(
-    (review) => review.source !== "google" && Boolean(review.profiles?.full_name),
+    (review) => review.source === "user" && Boolean(review.profiles?.full_name),
   );
 
   const librarySchema = {
@@ -527,17 +527,6 @@ export default async function LibraryDetailPage({ params }: PageProps) {
             description: plan.description || plan.duration_label || undefined,
             availability: "https://schema.org/InStock",
           })),
-        }
-      : {}),
-    ...(lib.aggregate_rating && lib.review_count
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: lib.aggregate_rating,
-            reviewCount: lib.review_count,
-            bestRating: 5,
-            worstRating: 1,
-          },
         }
       : {}),
     ...(markupReviews.length

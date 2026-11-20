@@ -70,7 +70,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     title,
     description,
     alternates: { canonical: canonicalUrl },
-    robots: filtered ? { index: false, follow: true } : { index: true, follow: true },
+    robots: filtered || city.libraryCount < 3 ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: { type: "website", url: canonicalUrl, title: `${title} | LibraryNear`, description, siteName: "LibraryNear" },
   };
 }

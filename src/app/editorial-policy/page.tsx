@@ -32,7 +32,7 @@ const sections = [
     body: [
       "Reviews are written by signed-in students and publish immediately. Each account can have one review per library; editing a review keeps its earlier version on record.",
       "We remove reviews that are spam, abusive, contain personal data, or are written by the library or its competitors. Libraries cannot pay to remove or improve reviews.",
-      "Ratings shown in search results and structured data come only from reviews written on LibraryNear.",
+      "Imported reviews are labelled by source. Listed aggregate ratings may include external ratings; they are not submitted as LibraryNear aggregate rating markup. Only reviews with a confirmed LibraryNear source are eligible for individual review markup.",
     ],
   },
   {

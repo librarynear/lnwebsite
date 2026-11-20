@@ -240,7 +240,7 @@ export function buildLibraryFaqs(lib: LibrarySeoInput): FaqItem[] {
   if (lib.aggregate_rating && lib.review_count) {
     faqs.push({
       question: `Is ${name} a good library?`,
-      answer: `Students rate ${name} ${lib.aggregate_rating.toFixed(1)} out of 5 across ${lib.review_count} review${lib.review_count === 1 ? "" : "s"} on LibraryNear.`,
+      answer: `The listed rating for ${name} is ${lib.aggregate_rating.toFixed(1)} out of 5 across ${lib.review_count} review${lib.review_count === 1 ? "" : "s"}; check the review section for sources.`,
     });
   }
 

@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Phone, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { track } from "@/lib/analytics";
 import { submitLead } from "@/app/actions/leads";
 import { formatIndianPhone, toTelHref } from "@/lib/phone";
 
@@ -38,6 +39,7 @@ export function EnquiryForm({ libraryBranchId, phoneNumber, sourcePage }: Enquir
       });
 
       if (result.success) {
+        track("library_enquiry_submitted", { library_id: libraryBranchId, source_page: sourcePage?.split("?")[0] });
         setStatus("success");
         form.reset();
       } else {
@@ -130,6 +132,7 @@ export function EnquiryForm({ libraryBranchId, phoneNumber, sourcePage }: Enquir
         <div className="mt-4 flex items-center justify-center">
           <a
             href={telHref}
+              onClick={() => track("library_call_clicked", { library_id: libraryBranchId, source_page: sourcePage?.split("?")[0] })}
             className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
           >
             <Phone className="w-4 h-4" /> Call {formatIndianPhone(phoneNumber)}

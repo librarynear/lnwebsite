@@ -51,3 +51,6 @@ reports/
 *.log
 
 .claude/
+
+# Temporary local production build
+/scratch/seo-build/

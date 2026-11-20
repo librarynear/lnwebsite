@@ -105,9 +105,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl();
 
   return {
-    title: "LibraryNear - Find the Best Study Libraries Near You in Delhi",
+    title: { absolute: "Study Libraries & Reading Rooms Near You | LibraryNear" },
     description:
-      "Discover and compare study libraries and reading rooms in Delhi. Explore localities, fees, amenities, and nearby metro access on LibraryNear.",
+      "Find study libraries and reading rooms across India. Choose your city and compare listed fees, opening hours, amenities and metro access.",
     alternates: {
       canonical: siteUrl,
     },
@@ -131,8 +131,8 @@ async function HomeContent() {
 
   const homeFaqs = [
     {
-      q: "How do I find the best study library near me in Delhi?",
-      a: "Use LibraryNear to search by locality or metro station. Compare fees, amenities, timings, and verified status to shortlist the right library for your study routine.",
+      q: "How do I find a study library near me?",
+      a: "Choose your city, then search by locality or metro station. Compare fees, amenities, timings, and verified status to shortlist the right library for your study routine.",
     },
     {
       q: "Is LibraryNear free for students?",
@@ -175,7 +175,7 @@ async function HomeContent() {
       <div className="w-full border-b border-border/50 bg-white shadow-sm">
         <div className="container mx-auto px-4 md:px-10 flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar py-2 md:py-3">
           <IntentLink
-            href="/"
+            href="/delhi"
             className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] md:text-[13px] font-semibold transition-colors md:px-4 md:py-2 bg-primary text-white shadow-sm shadow-primary/20`}
           >
             All Delhi
@@ -196,7 +196,7 @@ async function HomeContent() {
       <section className="container mx-auto px-6 md:px-10 py-10 pb-20">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-black">
-            {libraries.length > 0 ? "20+" : "0"} libraries in Delhi
+            Featured study libraries in Delhi
           </h2>
         </div>
 
@@ -320,7 +320,7 @@ async function HomeContent() {
         <section className="border-t border-border/40 bg-white">
           <div className="container mx-auto px-6 py-12 md:px-10">
             <div className="mb-6 flex items-end justify-between gap-4">
-              <h2 className="text-2xl font-bold text-black">Find libraries in other cities</h2>
+              <h2 className="text-2xl font-bold text-black">Explore libraries by city</h2>
               <IntentLink href="/cities" className="text-sm font-semibold text-primary hover:underline">All cities</IntentLink>
             </div>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -358,6 +358,11 @@ async function HomeContent() {
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
+      <header className="container mx-auto px-6 pt-8 pb-4 md:px-10">
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Find your study space</h1>
+        <p className="mt-3 max-w-2xl text-muted-foreground">Explore study libraries and reading rooms across India. Choose a city to compare listed fees, hours and facilities before you visit.</p>
+        <IntentLink href="/cities" className="mt-4 inline-block font-semibold text-primary underline">Choose your city</IntentLink>
+      </header>
       <Suspense fallback={null}>
         <HomeSearchShell />
       </Suspense>
